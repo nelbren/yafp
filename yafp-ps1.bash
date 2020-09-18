@@ -2,23 +2,23 @@
 #
 # yafp-ps1.bash
 #
-# v0.0.1 - 2020-09-17 - nelbren@nelbren.com
+# v0.0.2 - 2020-09-17 - nelbren@nelbren.com
 #
 
 _pro_root() {
-  PS1='$($base/yafp-git.bash && echo -e "\n")[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[1;48;5;5m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[38;5;1m\]#\[\e[0m\] '
+  PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[1;48;5;5m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[38;5;1m\]#\[\e[0m\] '
 }
 
 _pro_user() {
-  PS1='$($base/yafp-git.bash && echo -e "\n")[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[0m\e[30;48;5;5m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\]\$ '
+  PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[0m\e[30;48;5;5m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\]\$ '
 }
 
 _dev_root() {
-  PS1='$($base/yafp-git.bash && echo -e "\n")[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[1;48;5;2m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[38;5;1m\]#\[\e[0m\] '
+  PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[1;48;5;2m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[38;5;1m\]#\[\e[0m\] '
 }
 
 _dev_user() {
-  PS1='$($base/yafp-git.bash && echo -e "\n")[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[0m\e[30;48;5;2m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\]\$ '
+  PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[0m\e[30;48;5;2m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\]\$ '
 }
 
 _pro() {
@@ -35,6 +35,11 @@ _dev() {
   else
     _dev_user
   fi
+}
+
+function prompt_command {
+  $base/yafp-git.bash
+  #export PS1=$(~/bin/bash_prompt)
 }
 
 base=/usr/local/yafp
@@ -56,3 +61,5 @@ if [ "$dev" == "1" ]; then
 else
   _pro
 fi
+
+export PROMPT_COMMAND=prompt_command
