@@ -17,15 +17,21 @@ Colors change according to:
   - root
   - normal user
 
-## Install
+## Get
 
 ```bash
 cd /usr/local
 git clone https://github.com/nelbren/yafp.git
 ```
 
-## Usage
+## Use
 
 ```bash
 source /usr/local/yafp/yafp-ps1.bash
+```
+
+## Install
+
+```bash
+echo "source /usr/local/yafp/yafp-ps1.bash" | tee -a ~/.bashrc /etc/skel/.bashrc
 ```
