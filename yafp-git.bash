@@ -18,10 +18,10 @@ gitstatus="$(git status --porcelain)"
 normal="\e[0m\e[97m"
 crepo="\e[7;49;97m"
 cbranch="\e[30;48;5;7m"
-symbol_clean="\e[7;49;92m✓"
+symbol_clean="\e[7;49;92m≡"
 symbol_delete="\e[7;49;91m-"
 symbol_new="\e[7;49;96m+"
-symbol_change="\e[7;49;93m*"
+symbol_change="\e[7;49;93m±"
 
 delete=0; change=0; new=0
 
