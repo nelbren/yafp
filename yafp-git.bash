@@ -2,7 +2,7 @@
 #
 # yafp-git.bash
 #
-# v0.0.1 - 2020-09-17 - nelbren@nelbren.com
+# v0.0.2 - 2020-10-16 - nelbren@nelbren.com
 #
 # Based on: https://raw.githubusercontent.com/pablopunk/bashy/master/bashy
 
@@ -21,7 +21,7 @@ cbranch="\e[30;48;5;7m"
 symbol_clean="\e[7;49;92m✓"
 symbol_delete="\e[7;49;91m-"
 symbol_new="\e[7;49;96m+"
-symbol_change="\e[7;49;93m•"
+symbol_change="\e[7;49;93m*"
 
 delete=0; change=0; new=0
 
