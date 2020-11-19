@@ -10,6 +10,9 @@
 - With repository
   ![](screenshot_02.png)
 
+- With repository - New file and Changes
+  ![](screenshot_03.png)
+
 ## Styles :art:
 
 Colors change according to:
