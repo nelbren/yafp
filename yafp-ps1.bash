@@ -6,19 +6,19 @@
 # \e[K -> \e[J
 
 _pro_root() {
-  PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[1;48;5;5m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[1;37m\]]\[\e[0m\e[91m\]#\[\e[0m$(ps1k)\] '
+  yafp_PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[1;48;5;5m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[1;37m\]]\[\e[0m\e[91m\]#\[\e[0m$(ps1k)\] '
 }
 
 _pro_user() {
-  PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[0m\e[30;48;5;5m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[1;37m\]]\[\e[0m\e[92m\]\$\[\e[0m$(ps1k)\] '
+  yafp_PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[0m\e[30;48;5;5m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[1;37m\]]\[\e[0m\e[92m\]\$\[\e[0m$(ps1k)\] '
 }
 
 _dev_root() {
-  PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[1;48;5;2m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[1;37m\]]\[\e[0m\e[91m\]#\[\e[0m$(ps1k)\] '
+  yafp_PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[1;48;5;2m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[1;37m\]]\[\e[0m\e[91m\]#\[\e[0m$(ps1k)\] '
 }
 
 _dev_user() {
-  PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[0m\e[30;48;5;2m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[1;37m\]]\[\e[0m\e[92m\]\$\[\e[0m$(ps1k)\] '
+  yafp_PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[0m\e[30;48;5;2m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[1;37m\]]\[\e[0m\e[92m\]\$\[\e[0m$(ps1k)\] '
 }
 
 _pro() {
@@ -37,31 +37,82 @@ _dev() {
   fi
 }
 
-function prompt_command {
-  $base/yafp-git.bash
+_pro_or_dev() {
+  if [ "$dev" == "1" ]; then
+    _dev
+  else
+    _pro
+  fi
+}
+
+# Based on: https://raw.githubusercontent.com/pablopunk/bashy/master/bashy
+
+function yafp_git() {
+  origin_repo=$(git remote get-url origin 2>/dev/null)
+  [ -z "$origin_repo" ] && return
+ 
+  repo=$(basename $origin_repo)
+  branch="$(git symbolic-ref --short HEAD)" || branch="unnamed"
+  gitstatus="$(git status --porcelain)"
+  
+  cnormal="\e[0m\e[97m"
+  crepo="\e[7;49;97m"
+  cbranch="\e[30;48;5;7m"
+  symbol_clean="\e[7;49;92m≡"
+  symbol_delete="\e[7;49;91m-"
+  symbol_new="\e[7;49;96m+"
+  symbol_change="\e[7;49;93m±"
+
+  delete=0; change=0; new=0
+
+  for line in $gitstatus; do
+    [[ $line =~ ^D ]] && delete=$((delete+1))
+    [[ $line =~ ^M ]] && change=$((change+1))
+    [[ $line =~ ^\?\? ]] && new=$((new+1))
+  done
+
+  symbols=''
+
+  [ $delete -gt 0 ] && symbols="$symbols$symbol_delete$delete"
+  [ $change -gt 0 ] && symbols="$symbols$symbol_change$change"
+  [ $new -gt 0 ] && symbols="$symbols$symbol_new$new"
+
+  [ -z "$symbols" ] && symbols="$symbol_clean"
+
+  echo -e "$cnormal[$crepo$repo$cnormal$cbranch@$branch:$symbols$cnormal]"
+}
+
+
+function prompt_command_yafp() {
+  yafp_exit=$?
+  [ "$PROMPT" == "git" ] && yafp_git
+  if [ "$yafp_exit" == "0" ]; then
+    PS1="$yafp_PS1"
+  else
+    PS1="$yafp_PS1(\[\e[1;48;5;1m\]$yafp_exit\[\e[0m\]) "
+  fi
+  [ -n "$TITLE" ] && add_title_to_terminal
 }
 
 function ps1k() {
   [ $((${#USER}+${#HOSTNAME}+${#PWD}+6)) -gt $(tput cols) ] && echo -en "\e[K"
 }
 
-base=/usr/local/yafp
+function add_title_to_terminal() {
+  if [ "$yafp_exit" == "0" ]; then
+    PS1="$PS1\[\e]0;[\u@\h:\w]\a\]"
+  else
+    PS1="$PS1\[\e]0;[\u@\h:\w] - exit code $yafp_exit\a\]"
+  fi
+}
 
-cfg=$base/yafp-cfg.bash
+cfg=/usr/local/yafp/yafp-cfg.bash
 [ -x $cfg ] || exit 1
 . $cfg
 
-len=${#PRO}
-
 dev=1
-if [ "${HOSTNAME:0:len}" == "$PRO" ]; then
-  dev=0
-fi
+[ "${HOSTNAME:0:${#PRO}}" == "$PRO" ] && dev=0
 
-if [ "$dev" == "1" ]; then
-  _dev
-else
-  _pro
-fi
+_pro_or_dev
 
-export PROMPT_COMMAND=prompt_command
+export PROMPT_COMMAND=prompt_command_yafp
