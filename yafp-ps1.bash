@@ -95,7 +95,13 @@ function prompt_command_yafp() {
 }
 
 function ps1k() {
-  [ $((${#USER}+${#HOSTNAME}+${#PWD}+6)) -gt $(tput cols) ] && echo -en "\e[K"
+  if [ "$yafp_exit" == "0" ]; then
+    YEL=0
+  else
+    L=${#yafp_exit}
+    YEL=$((L+3))
+  fi
+  [ $((${#USER}+${#HOSTNAME}+${#PWD}+6+${YEL})) -gt $(tput cols) ] && echo -en "\e[K"
 }
 
 function add_title_to_terminal() {
