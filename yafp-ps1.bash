@@ -2,52 +2,11 @@
 #
 # yafp-ps1.bash
 #
-# v0.0.5 - 2020-11-16 - nelbren@nelbren.com 
-# \e[K -> \e[J
-
-_pro_root() {
-  yafp_PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[1;48;5;5m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[1;37m\]]\[\e[0m\e[91m\]#\[\e[0m$(ps1k)\] '
-}
-
-_pro_user() {
-  yafp_PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[0m\e[30;48;5;5m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[1;37m\]]\[\e[0m\e[92m\]\$\[\e[0m$(ps1k)\] '
-}
-
-_dev_root() {
-  yafp_PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[1;48;5;2m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[1;37m\]]\[\e[0m\e[91m\]#\[\e[0m$(ps1k)\] '
-}
-
-_dev_user() {
-  yafp_PS1='[\[\e[30;48;5;6m\]\u\[\e[0m\e[1;37m\]@\[\e[0m\e[30;48;5;2m\]\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[1;37m\]]\[\e[0m\e[92m\]\$\[\e[0m$(ps1k)\] '
-}
-
-_pro() {
-  if [ "$USER" == "root" ]; then
-    _pro_root
-  else
-    _pro_user
-  fi
-}
-
-_dev() {
-  if [ "$USER" == "root" ]; then
-    _dev_root
-  else
-    _dev_user
-  fi
-}
-
-_pro_or_dev() {
-  if [ "$dev" == "1" ]; then
-    _dev
-  else
-    _pro
-  fi
-}
-
-# Based on: https://raw.githubusercontent.com/pablopunk/bashy/master/bashy
+# v0.0.6 - 2020-11-22 - nelbren@nelbren.com 
+# 
 
 function yafp_git() {
+  # Based on: https://raw.githubusercontent.com/pablopunk/bashy/master/bashy
   origin_repo=$(git remote get-url origin 2>/dev/null)
   [ -z "$origin_repo" ] && return
  
@@ -82,16 +41,30 @@ function yafp_git() {
   echo -e "$cnormal[$crepo$repo$cnormal$cbranch@$branch:$symbols$cnormal]"
 }
 
-
-function prompt_command_yafp() {
-  yafp_exit=$?
-  [ "$PROMPT" == "git" ] && yafp_git
-  if [ "$yafp_exit" == "0" ]; then
-    PS1="$yafp_PS1"
+_pro_or_dev() {
+  # https://github.com/nelbren/npres/blob/master/lib/super-tiny-colors.bash
+  if [ "$dev" == "1" ]; then
+    c_host='\[\e[0m\e[30;48;5;2m\]'
   else
-    PS1="$yafp_PS1(\[\e[1;48;5;1m\]$yafp_exit\[\e[0m\]) "
+    c_host='\[\e[0m\e[30;48;5;5m\]'
   fi
-  [ -n "$TITLE" ] && add_title_to_terminal
+  if [ "$USER" == "root" ]; then
+    c_user='\[\e[0m\e[7;49;91m'
+    c_prompt='\[\e[0m\e[91m\]'
+  else
+    c_user='\[\e[0m\e[30;48;5;6m\]'
+    c_prompt='\[\e[0m\e[92m\]'
+  fi
+
+  yafp_PS1="[${c_user}\u\[\e[0m\e[1;37m\]@${c_host}\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[1;37m\]]"
+}
+
+function add_title_to_terminal() {
+  if [ "$yafp_exit" == "0" ]; then
+    PS1="$PS1\[\e]0;[\u@\h:\w]\a\]"
+  else
+    PS1="$PS1\[\e]0;[\u@\h:\w] - exit code $yafp_exit\a\]"
+  fi
 }
 
 function ps1k() {
@@ -104,12 +77,14 @@ function ps1k() {
   [ $((${#USER}+${#HOSTNAME}+${#PWD}+6+${YEL})) -gt $(tput cols) ] && echo -en "\e[K"
 }
 
-function add_title_to_terminal() {
-  if [ "$yafp_exit" == "0" ]; then
-    PS1="$PS1\[\e]0;[\u@\h:\w]\a\]"
-  else
-    PS1="$PS1\[\e]0;[\u@\h:\w] - exit code $yafp_exit\a\]"
-  fi
+function prompt_command_yafp() {
+  yafp_exit=$?
+  [ "$YAFP_REPOS" == "1" ] && yafp_git
+  PS1="$yafp_PS1"
+  [ "$YAFP_ERROR" == "0" ] && yafp_exit=0
+  [ "$yafp_exit" != "0" ] && PS1="${PS1}(\e[1;48;5;1m\]$yafp_exit\[\e[0m\])"
+  PS1="${PS1}${c_prompt}\$\[\e[0m$(ps1k)\] "
+  [ "$YAFP_TITLE" == "1" ] && add_title_to_terminal
 }
 
 cfg=/usr/local/yafp/yafp-cfg.bash

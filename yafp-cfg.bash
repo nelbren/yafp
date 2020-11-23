@@ -3,7 +3,6 @@
 DEV='ndev-'
 PRO='npro-'
 
-#PROMPT='ps1'
-PROMPT='git'
-TITLE=1
-#TITLE=0
+YAFP_REPOS=1
+YAFP_TITLE=1
+YAFP_ERROR=1
