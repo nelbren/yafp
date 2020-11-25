@@ -2,7 +2,7 @@
 #
 # yafp-ps1.bash
 #
-# v0.0.6 - 2020-11-22 - nelbren@nelbren.com 
+# v0.0.7 - 2020-11-24 - nelbren@nelbren.com 
 # 
 
 function yafp_git() {
@@ -51,9 +51,11 @@ _pro_or_dev() {
   if [ "$USER" == "root" ]; then
     c_user='\[\e[0m\e[7;49;91m'
     c_prompt='\[\e[0m\e[91m\]'
+    c_mark='#'
   else
     c_user='\[\e[0m\e[30;48;5;6m\]'
     c_prompt='\[\e[0m\e[92m\]'
+    c_mark='\$'
   fi
 
   yafp_PS1="[${c_user}\u\[\e[0m\e[1;37m\]@${c_host}\h\[\e[0m\e[1;37m\]:\[\e[0m\e[30;48;5;3m\]\w\[\e[0m\e[1;37m\]]"
@@ -83,7 +85,7 @@ function prompt_command_yafp() {
   PS1="$yafp_PS1"
   [ "$YAFP_ERROR" == "0" ] && yafp_exit=0
   [ "$yafp_exit" != "0" ] && PS1="${PS1}(\e[1;48;5;1m\]$yafp_exit\[\e[0m\])"
-  PS1="${PS1}${c_prompt}\$\[\e[0m$(ps1k)\] "
+  PS1="${PS1}${c_prompt}${c_mark}\[\e[0m$(ps1k)\] "
   [ "$YAFP_TITLE" == "1" ] && add_title_to_terminal
 }
 
