@@ -2,7 +2,7 @@
 #
 # yafp-ps1.bash
 #
-# v0.0.8 - 2020-11-25 - nelbren@nelbren.com 
+# v0.0.9 - 2020-11-25 - nelbren@nelbren.com 
 # 
 
 function yafp_git() {
@@ -84,7 +84,7 @@ function prompt_command_yafp() {
   [ "$YAFP_REPOS" == "1" ] && yafp_git
   PS1="$yafp_PS1"
   [ "$YAFP_ERROR" == "0" ] && yafp_exit=0
-  [ "$yafp_exit" != "0" ] && PS1="${PS1}(\e[1;48;5;1m\]$yafp_exit\[\e[0m\])"
+  [ "$yafp_exit" != "0" ] && PS1="${PS1}(\[\e[1;48;5;1m\]$yafp_exit\[\e[0m\])"
   PS1="${PS1}${c_prompt}${c_mark}\[\e[0m$(ps1k)\] "
   [ "$YAFP_TITLE" == "1" ] && add_title_to_terminal
 }
