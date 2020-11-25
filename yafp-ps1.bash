@@ -2,7 +2,7 @@
 #
 # yafp-ps1.bash
 #
-# v0.0.7 - 2020-11-24 - nelbren@nelbren.com 
+# v0.0.8 - 2020-11-25 - nelbren@nelbren.com 
 # 
 
 function yafp_git() {
@@ -49,7 +49,7 @@ _pro_or_dev() {
     c_host='\[\e[0m\e[30;48;5;5m\]'
   fi
   if [ "$USER" == "root" ]; then
-    c_user='\[\e[0m\e[7;49;91m'
+    c_user='\[\e[0m\e[7;49;91m\]'
     c_prompt='\[\e[0m\e[91m\]'
     c_mark='#'
   else
