@@ -10,9 +10,10 @@ function yafp_git() {
   origin_repo=$(git remote get-url origin 2>/dev/null)
   [ -z "$origin_repo" ] && return
  
-  repo=$(basename $origin_repo)
+  gitstatus="$(git status --porcelain 2>/dev/null)"
+  [ "$?" == "0" ] || return
   branch="$(git symbolic-ref --short HEAD)" || branch="unnamed"
-  gitstatus="$(git status --porcelain)"
+  repo=$(basename $origin_repo)
   
   cnormal='\e[0m\e[97m'
   crepo='\e[7;49;97m'
