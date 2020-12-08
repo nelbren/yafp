@@ -2,7 +2,7 @@
 #
 # yafp-ps1.bash
 #
-# v0.0.9 - 2020-11-25 - nelbren@nelbren.com 
+# v0.1.0 - 2020-12-08 - nelbren@nelbren.com 
 # 
 
 function yafp_git() {
@@ -76,7 +76,9 @@ function ps1k() {
     L=${#yafp_exit}
     YEL=$((L+3))
   fi
-  [ $((${#USER}+${#HOSTNAME}+${#PWD}+6+${YEL})) -gt $(tput cols) ] && echo -en "\e[K"
+  myhost=${HOSTNAME%.*}
+  mypwd=$(dirs +0)
+  [ $((${#USER}+${#myhost}+${#mypwd}+6+${YEL})) -gt $(tput cols) ] && echo -en "\e[K"
 }
 
 function prompt_command_yafp() {
