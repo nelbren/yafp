@@ -14,13 +14,13 @@ function yafp_git() {
   branch="$(git symbolic-ref --short HEAD)" || branch="unnamed"
   gitstatus="$(git status --porcelain)"
   
-  cnormal="\e[0m\e[97m"
-  crepo="\e[7;49;97m"
-  cbranch="\e[30;48;5;7m"
-  symbol_clean="\e[7;49;92m≡"
-  symbol_delete="\e[7;49;91m-"
-  symbol_new="\e[7;49;96m+"
-  symbol_change="\e[7;49;93m±"
+  cnormal='\e[0m\e[97m'
+  crepo='\e[7;49;97m'
+  cbranch='\e[30;48;5;7m'
+  symbol_clean='\e[7;49;92m≡'
+  symbol_delete='\e[7;49;91m-'
+  symbol_new='\e[7;49;96m+'
+  symbol_change='\e[7;49;93m±'
 
   delete=0; change=0; new=0
 
@@ -36,9 +36,9 @@ function yafp_git() {
   [ $change -gt 0 ] && symbols="$symbols$symbol_change$change"
   [ $new -gt 0 ] && symbols="$symbols$symbol_new$new"
 
-  [ -z "$symbols" ] && symbols="$symbol_clean"
+  [ -z "$symbols" ] && symbols=$symbol_clean
 
-  echo -e "$cnormal[$crepo$repo$cnormal$cbranch@$branch:$symbols$cnormal]"
+  printf "$cnormal[$crepo$repo$cnormal$cbranch@$branch:$symbols$cnormal]\n"
 }
 
 _pro_or_dev() {
