@@ -2,7 +2,7 @@
 #
 # yafp-ps1.bash
 #
-# v0.1.0 - 2020-12-08 - nelbren@nelbren.com 
+# v0.1.1 - 2020-12-09 - nelbren@nelbren.com 
 # 
 
 function yafp_git() {
@@ -25,11 +25,13 @@ function yafp_git() {
 
   delete=0; change=0; new=0
 
+  IFS=$'\n'
   for line in $gitstatus; do
-    [[ $line =~ ^D ]] && delete=$((delete+1))
-    [[ $line =~ ^M ]] && change=$((change+1))
+    [[ $line =~ ^[[:space:]]D ]] && delete=$((delete+1))
+    [[ $line =~ ^[[:space:]]M ]] && change=$((change+1))
     [[ $line =~ ^\?\? ]] && new=$((new+1))
   done
+  unset IFS
 
   symbols=''
 
