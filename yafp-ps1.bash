@@ -2,19 +2,19 @@
 #
 # yafp-ps1.bash
 #
-# v0.1.1 - 2020-12-09 - nelbren@nelbren.com 
-# 
+# v0.1.2 - 2021-03-02 - nelbren@nelbren.com
+#
 
 function yafp_git() {
   # Based on: https://raw.githubusercontent.com/pablopunk/bashy/master/bashy
   origin_repo=$(git remote get-url origin 2>/dev/null)
   [ -z "$origin_repo" ] && return
- 
+
   gitstatus="$(git status --porcelain 2>/dev/null)"
   [ "$?" == "0" ] || return
   branch="$(git symbolic-ref --short HEAD)" || branch="unnamed"
   repo=$(basename $origin_repo)
-  
+
   cnormal='\e[0m\e[97m'
   crepo='\e[7;49;97m'
   cbranch='\e[30;48;5;7m'
@@ -40,8 +40,9 @@ function yafp_git() {
   [ $new -gt 0 ] && symbols="$symbols$symbol_new$new"
 
   [ -z "$symbols" ] && symbols=$symbol_clean
+  [[ -z "$yafp_venv" ]] && n='\n' || n=''
 
-  printf "$cnormal[$crepo$repo$cnormal$cbranch@$branch:$symbols$cnormal]\n"
+  printf "$cnormal[$crepo$repo$cnormal$cbranch@$branch:$symbols$cnormal]$n"
 }
 
 _pro_or_dev() {
@@ -86,7 +87,10 @@ function ps1k() {
 
 function prompt_command_yafp() {
   yafp_exit=$?
+  [[ "$YAFP_PVENV" == "1" ]] && yafp_venv=${VIRTUAL_ENV##*/} || yafp_venv=""
   [ "$YAFP_REPOS" == "1" ] && yafp_git
+  [ -n "$yafp_venv" ] && printf "(\e[44;93m$yafp_venv\e[0m)\n"
+  #[ -n "$yafp_venv" ] && PS1="${PS1}{\[\e[44;93m\]$yafp_venv\[\e[0m\]}"
   PS1="$yafp_PS1"
   [ "$YAFP_ERROR" == "0" ] && yafp_exit=0
   [ "$yafp_exit" != "0" ] && PS1="${PS1}(\[\e[1;48;5;1m\]$yafp_exit\[\e[0m\])"
