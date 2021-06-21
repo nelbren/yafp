@@ -67,9 +67,9 @@ _pro_or_dev() {
 
 function add_title_to_terminal() {
   if [ "$yafp_exit" == "0" ]; then
-    PS1="$PS1\[\e]0;[\u@\h:\w]\a\]"
+    PS1="$PS1\[\e]0;[\u@\h:\w]\a"
   else
-    PS1="$PS1\[\e]0;[\u@\h:\w] - exit code $yafp_exit\a\]"
+    PS1="$PS1\[\e]0;[\u@\h:\w] - exit code $yafp_exit\a"
   fi
 }
 
