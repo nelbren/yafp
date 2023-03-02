@@ -2,23 +2,31 @@
 #
 # yafp-ps1.bash
 #
-# v0.1.2 - 2021-03-02 - nelbren@nelbren.com
+# v0.1.3 - 2023-03-01 - nelbren@nelbren.com
 #
 
 function yafp_git() {
+  [ -d .git ] || return
   # Based on: https://raw.githubusercontent.com/pablopunk/bashy/master/bashy
-  origin_repo=$(git remote get-url origin 2>/dev/null)
-  [ -z "$origin_repo" ] && return
+  git_repo=$(git remote get-url origin 2>/dev/null)
+  if [ -z "$git_repo" ]; then
+    # Based on: https://stackoverflow.com/questions/15715825/how-do-you-get-the-git-repositorys-name-in-some-git-repository
+    git_repo=$(basename `git rev-parse --show-toplevel`)
+    remo="⇣" #⭣⬇
+  else
+    remo="⚡" #⬍
+  fi
 
   gitstatus="$(git status --porcelain 2>/dev/null)"
   [ "$?" == "0" ] || return
   branch="$(git symbolic-ref --short HEAD)" || branch="unnamed"
-  repo=$(basename $origin_repo)
+  repo=$(basename -s .git $git_repo)
 
   cnormal='\e[0m\e[97m'
   crepo='\e[7;49;97m'
   cbranch='\e[30;48;5;7m'
-  symbol_clean='\e[7;49;92m≡'
+  # https://www.vertex42.com/ExcelTips/unicode-symbols.html
+  symbol_clean='\e[7;49;92m✅≡'
   symbol_delete='\e[7;49;91m-'
   symbol_new='\e[7;49;96m+'
   symbol_change='\e[7;49;93m±'
@@ -35,14 +43,14 @@ function yafp_git() {
 
   symbols=''
 
-  [ $delete -gt 0 ] && symbols="$symbols$symbol_delete$delete"
-  [ $change -gt 0 ] && symbols="$symbols$symbol_change$change"
-  [ $new -gt 0 ] && symbols="$symbols$symbol_new$new"
+  [ $delete -gt 0 ] && symbols="$symbols$symbol_delete$delete🟥"
+  [ $change -gt 0 ] && symbols="$symbols$symbol_change$change🟨"
+  [ $new -gt 0 ] && symbols="$symbols$symbol_new$new🟦"
 
-  [ -z "$symbols" ] && symbols=$symbol_clean
+  [ -z "$symbols" ] && symbols="$symbol_clean"
   [[ -z "$yafp_venv" ]] && n='\n' || n=''
 
-  printf "$cnormal[$crepo$repo$cnormal$cbranch@$branch:$symbols$cnormal]$n"
+  printf "$cnormal[$crepo$repo$cnormal$cbranchᚼ$branch💻$remo📁$symbols$cnormal]$n"
 }
 
 _pro_or_dev() {
