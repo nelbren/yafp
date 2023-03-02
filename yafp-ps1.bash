@@ -2,7 +2,7 @@
 #
 # yafp-ps1.bash
 #
-# v0.1.3 - 2023-03-01 - nelbren@nelbren.com
+# v0.1.4 - 2023-03-01 - nelbren@nelbren.com
 #
 
 function yafp_git() {
@@ -43,14 +43,14 @@ function yafp_git() {
 
   symbols=''
 
-  [ $delete -gt 0 ] && symbols="$symbols$symbol_delete$delete🟥"
-  [ $change -gt 0 ] && symbols="$symbols$symbol_change$change🟨"
-  [ $new -gt 0 ] && symbols="$symbols$symbol_new$new🟦"
+  [ $delete -gt 0 ] && symbols="$symbols$symbol_delete${delete}🟥"
+  [ $change -gt 0 ] && symbols="$symbols$symbol_change${change}🟨"
+  [ $new -gt 0 ] && symbols="$symbols$symbol_new${new}🟦"
 
   [ -z "$symbols" ] && symbols="$symbol_clean"
   [[ -z "$yafp_venv" ]] && n='\n' || n=''
 
-  printf "$cnormal[$crepo$repo$cnormal$cbranchᚼ$branch💻$remo📁$symbols$cnormal]$n"
+  printf "$cnormal[$crepo$repo$cnormal${cbranch}ᚼ${branch}💻${remo}📁$symbols$cnormal]$n"
 }
 
 _pro_or_dev() {
