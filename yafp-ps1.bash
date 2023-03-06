@@ -2,11 +2,12 @@
 #
 # yafp-ps1.bash
 #
-# v0.1.4 - 2023-03-01 - nelbren@nelbren.com
+# v0.1.5 - 2023-03-05 - nelbren@nelbren.com
 #
 
 function yafp_git() {
-  [ -d .git ] || return
+  git -C . rev-parse 2>/dev/null 1>&2
+  [ "$?" == "128" ] && return
   # Based on: https://raw.githubusercontent.com/pablopunk/bashy/master/bashy
   git_repo=$(git remote get-url origin 2>/dev/null)
   if [ -z "$git_repo" ]; then
