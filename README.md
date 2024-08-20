@@ -1,31 +1,36 @@
 # :computer: Yet Another Fancy Prompt
 
-[![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/)
+[![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/) ![version](https://img.shields.io/badge/version-0.1.6-green)
 
 ## :soon: Insert here the most beautiful screenshots
 
-- :black_circle: **Without** repository
+- ### :apple: macOS 
 
-  ![](screenshot_01.png)
+  ![](screenshot_macOS.png)
 
-- :white_circle: **With** repository
+- ### :window: [Cygwin](https://www.cygwin.com/)
 
-  ![](screenshot_02.png)
+  ![](screenshot_Cygwin.png)
 
-- :large_blue_circle: With repository - **New file** and **Changes** example
+- ### :window: [Git Bash](https://git-scm.com/download/win)
 
-  ![](screenshot_03.png)
+  ![](screenshot_GitBash.png)
+
+- ### :penguin: Linux
+
+  ![](screenshot_Linux.png)
+
 
 ## :art: Styles
 
 ### :bulb: Colors change according to:
 
-- :green_book: **Developer**
-  - :necktie: root (**#**)
-  - :tshirt: normal user (**$**)
-- :closed_book: **Production** 
-  - :necktie: root (**#**)
-  - :tshirt: normal user (**$**)
+- #### :green_book: **Developer**
+  - ##### :necktie: root (**`#`**)
+  - ##### :tshirt: normal user (**`$`**)
+- #### :closed_book: **Production** 
+  - ##### :necktie: root (**`#`**)
+  - ##### :tshirt: normal user (**`$`**)
 
 ## :floppy_disk: Acquire
 
