@@ -125,9 +125,6 @@ function yafp_venv_and_git() {
   lastGitTS=$(git log -1 --stat --date=format:'%Y-%m-%d %H:%M:%S' | grep Date | cut -d":" -f2-)
   lastGitTS=$(echo $lastGitTS)
 
-  #cnormal='\e[0m\e[97m'
-  #crepo='\e[7;49;97m'
-  #cbranch='\e[30;48;5;7m'
   # https://www.vertex42.com/ExcelTips/unicode-symbols.html
   symbol_clean="$(SetColor GREEN black bold)✅≡"
   symbol_delete="$(SetColor RED black bold blink)-"
@@ -161,6 +158,10 @@ function yafp_err() {
   previous_timestamp=$timestamp
   timestamp="$(date +'%Y-%m-%d %H:%M:%S')"
   if [ "$previous_command" != "prompt_command_yafp" ]; then
+    # Fix: Issue with time command execution mixing with PS1 control characters
+    if [ "${previous_command:0:4}" == "PS1=" ]; then
+      previous_command=""
+    fi
     if [ "$yafp_exit" == "0" ]; then
       codes="${cStatusOk}[🔚${previous_timestamp}🚀${previous_command}→✅]${cNormal}"
     else
@@ -195,13 +196,7 @@ _pro_or_dev() {
 }
 
 function add_title_to_terminal() {
-  if [ "$yafp_exit" == "0" ]; then
-    PS1="$PS1\[\e]0;[\u@\h:\w]\a"
-    PS1="$PS1\[\e]0;[\u@\h:\w]${title}\a"
-  else
-    PS1="$PS1\[\e]0;[\u@\h:\w] - exit code $yafp_exit\a"
-    PS1="$PS1\[\e]0;[\u@\h:\w]${title}\a"
-  fi
+  PS1="$PS1\[\e]0;[\u@\h:\w]${title}\a"
 }
 
 function ps1k() {
