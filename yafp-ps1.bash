@@ -2,7 +2,7 @@
 #
 # yafp-ps1.bash
 #
-# v0.1.6 - 2024-08-19 - nelbren@nelbren.com
+# v0.1.7 - 2024-09-04 - nelbren@nelbren.com
 #
 
 # https://www.cyberciti.biz/faq/bash-shell-change-the-color-of-my-shell-prompt-under-linux-or-unix/
@@ -93,6 +93,7 @@ setColors() {
   if [ "$machine" == "MinGw" ]; then
     cError="$(SetColor red yellow)"
   fi
+  cReset="\e[K"
 }
 
 #testColors
@@ -151,7 +152,7 @@ function yafp_venv_and_git() {
   [[ -z "$yafp_venv" ]] && n='\n' || n=''
 
   codes="${cStatusGit}[🔛${lastGitTS}${cRepo}💾${repo}ᚼ${branch}💻${remo}📁${symbols}${cStatusGit}]${cNormal}"
-  printf "${codes}\n"
+  printf "${codes}${cReset}\n"
 }
 
 function yafp_err() {
@@ -171,7 +172,7 @@ function yafp_err() {
     printf "${codes}"
   fi
   codes="${cStatusNext}[🔜${timestamp}↓]${cNormal}"
-  printf "${codes}\n"
+  printf "${codes}${cReset}\n"
 }
 
 _pro_or_dev() {

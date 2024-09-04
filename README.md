@@ -1,6 +1,6 @@
 # :computer: Yet Another Fancy Prompt
 
-[![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/) ![version](https://img.shields.io/badge/version-0.1.6-green)
+[![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/) ![version](https://img.shields.io/badge/version-0.1.7-green)
 
 ## :soon: Insert here the most beautiful screenshots
 
