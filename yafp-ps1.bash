@@ -2,7 +2,7 @@
 #
 # yafp-ps1.bash
 #
-# v0.1.7 - 2024-09-04 - nelbren@nelbren.com
+# v0.1.8 - 2024-12-16 - nelbren@nelbren.com
 #
 
 # https://www.cyberciti.biz/faq/bash-shell-change-the-color-of-my-shell-prompt-under-linux-or-unix/
@@ -163,6 +163,9 @@ function yafp_err() {
     if [ "${previous_command:0:4}" == "PS1=" ]; then
       previous_command=""
     fi
+    if echo "${previous_command}" | grep -q "%"; then
+      previous_command=$(echo "$previous_command" | sed "s/%/%%/g")
+    fi
     if [ "$yafp_exit" == "0" ]; then
       codes="${cStatusOk}[🔚${previous_timestamp}🚀${previous_command}→✅]${cNormal}"
     else
@@ -171,7 +174,15 @@ function yafp_err() {
     title="[${previous_command} => exit code ${yafp_exit}]"
     printf "${codes}"
   fi
-  codes="${cStatusNext}[🔜${timestamp}↓]${cNormal}"
+  hour=${timestamp:11:2}
+  if [ "$hour" -gt "06" -a "$hour" -lt "12" ]; then
+    day="🌇"
+  elif [ "$hour" -ge "12" -a "$hour" -lt "18" ]; then
+    day="🌆"
+  else
+    day="🌃" # ↓
+  fi
+  codes="${cStatusNext}[🔜${timestamp}${day}]${cNormal}"
   printf "${codes}${cReset}\n"
 }
 
