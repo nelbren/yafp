@@ -2,10 +2,11 @@
 #
 # yafp-ps1.bash
 #
-# v0.1.8 - 2024-12-16 - nelbren@nelbren.com
+# v0.1.9 - 2025-03-12 - nelbren@nelbren.com
 #
 
 # https://www.cyberciti.biz/faq/bash-shell-change-the-color-of-my-shell-prompt-under-linux-or-unix/
+
 function getColorIndex() {
   declare -a colorNames=(black red green yellow blue magenta cyan white)
   declare -a colorNAMES=(BLACK RED GREEN YELLOW BLUE MAGENTA CYAN WHITE)
@@ -44,7 +45,7 @@ function SetColor() {
     codes=${codes}$(tput sgr0)
   fi
   codes=${codes}$(tput setab $indexBG)$(tput setaf $indexFG)
-  printf $codes
+  printf "$codes"
   if [ "$DEBUG" == "1" ]; then
     echo $colorBG $indexBG $colorFG $indexFG
   fi
@@ -220,7 +221,7 @@ function ps1k() {
   fi
   myhost=${HOSTNAME%.*}
   mypwd=$(dirs +0)
-  [ $((${#USER}+${#myhost}+${#mypwd}+6+${YEL})) -gt $(tput cols) ] && echo -en "\e[K"
+  [ $((${#USER}+${#myhost}+${#mypwd}+6+${YEL})) -gt $(tput cols) ] && echo -en "\e[K\]"
 }
 
 function prompt_command_yafp() {
@@ -230,7 +231,7 @@ function prompt_command_yafp() {
   yafp_err
   PS1="$yafp_PS1"
   [ "$YAFP_ERROR" == "0" ] && yafp_exit=0
-  PS1="${PS1}${cPrompt}${promptMark}\[\e[0m$(ps1k)\] "
+  PS1="${PS1}${cPrompt}${promptMark}\[\e[0m$(ps1k)\]\] "
   [ "$YAFP_TITLE" == "1" ] && add_title_to_terminal
 }
 
