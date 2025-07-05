@@ -221,7 +221,10 @@ function ps1k() {
   fi
   myhost=${HOSTNAME%.*}
   mypwd=$(dirs +0)
-  [ $((${#USER}+${#myhost}+${#mypwd}+6+${YEL})) -gt $(tput cols) ] && echo -en "\e[K\]"
+  # Clear any leftover characters when the prompt length exceeds the
+  # width of the terminal. Only emit the escape sequence so the caller
+  # can properly wrap it inside "\[" and "\]".
+  [ $((${#USER}+${#myhost}+${#mypwd}+6+${YEL})) -gt $(tput cols) ] && echo -en "\e[K"
 }
 
 function prompt_command_yafp() {
@@ -231,7 +234,9 @@ function prompt_command_yafp() {
   yafp_err
   PS1="$yafp_PS1"
   [ "$YAFP_ERROR" == "0" ] && yafp_exit=0
-  PS1="${PS1}${cPrompt}${promptMark}\[\e[0m$(ps1k)\]\] "
+  # Balance the non-printing character markers around the escape
+  # sequences and the optional output from ps1k.
+  PS1="${PS1}${cPrompt}${promptMark}\[\e[0m$(ps1k)\] "
   [ "$YAFP_TITLE" == "1" ] && add_title_to_terminal
 }
 
