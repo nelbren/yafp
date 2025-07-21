@@ -2,7 +2,7 @@
 #
 # yafp-ps1.bash
 #
-# v0.1.9 - 2025-03-12 - nelbren@nelbren.com
+# v0.2.1 - 2025-07-21 - nelbren@nelbren.com
 #
 
 # https://www.cyberciti.biz/faq/bash-shell-change-the-color-of-my-shell-prompt-under-linux-or-unix/
@@ -113,7 +113,7 @@ function yafp_venv_and_git() {
   git_repo=$(git remote get-url origin 2>/dev/null)
   if [ -z "$git_repo" ]; then
     # Based on: https://stackoverflow.com/questions/15715825/how-do-you-get-the-git-repositorys-name-in-some-git-repository
-    git_repo=$(basename `git rev-parse --show-toplevel`)
+    git_repo=$(basename "`git rev-parse --show-toplevel 2>/dev/null`")
     remo="⇣" #⭣⬇
   else
     remo="⚡" #⬍
@@ -121,10 +121,10 @@ function yafp_venv_and_git() {
 
   gitstatus="$(git status --porcelain 2>/dev/null)"
   [ "$?" == "0" ] || return
-  branch="$(git symbolic-ref --short HEAD)" || branch="unnamed"
-  repo=$(basename -s .git $git_repo)
+  branch="$(git symbolic-ref --short HEAD 2>/dev/null)" || branch="unnamed"
+  repo=$(basename -s .git "$git_repo")
 
-  lastGitTS=$(git log -1 --stat --date=format:'%Y-%m-%d %H:%M:%S' | grep Date | cut -d":" -f2-)
+  lastGitTS=$(git log -1 --stat --date=format:'%Y-%m-%d %H:%M:%S' 2>/dev/null | grep Date | cut -d":" -f2-)
   lastGitTS=$(echo $lastGitTS)
 
   # https://www.vertex42.com/ExcelTips/unicode-symbols.html
