@@ -28,6 +28,13 @@ if (-not (Get-Variable -Name promptRan -Scope Script -ErrorAction SilentlyContin
     $script:promptRan = $false
 }
 
+# Detectar si PSStyle está disponible (solo en PowerShell 7+)
+$script:HasPSStyle = $false
+try {
+    if ($PSVersionTable.PSEdition -eq 'Core' -and (Get-Variable PSStyle -ErrorAction Stop)) {
+        $script:HasPSStyle = $true
+    }
+} catch {}
 function Get-YafpVenv {
     try {
         if ($global:YAFP_PVENV -eq 1 -and $env:VIRTUAL_ENV) {
@@ -109,7 +116,6 @@ function Get-VarSafe {
         $Default
     }
 }
-
 function Test-LastInputWasEmpty {
     # Devuelve $true si el usuario solo presionó Enter sin comando
     $cur = 0
@@ -120,6 +126,7 @@ function Test-LastInputWasEmpty {
     return $justEnter
 }
 
+function Ansi { param([string]$s) "$([char]27)[$s" }
 function Get-LastCommandStatus {
     param([int]$defaultInternalCode = 1)
     # Write-Host "001"  -ForegroundColor Black -BackgroundColor Yellow
@@ -284,7 +291,9 @@ function prompt {
 
     Write-Host ":" -ForegroundColor White -NoNewline
     Write-Host "$path" -ForegroundColor Black -BackgroundColor Yellow -NoNewline
-    Write-Host "]" -ForegroundColor White -NoNewline
+    Write-Host "]" -ForegroundColor White -BackgroundColor Black -NoNewline
+    # Fixing color bug in last line
+    Write-Host "$(Ansi '106m')$(Ansi '30m')$(Ansi '0m')$(Ansi '0K')" -NoNewline
 
     $global:LASTEXITCODE = $origLast
 
