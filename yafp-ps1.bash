@@ -170,7 +170,7 @@ function yafp_err() {
     if [ "$yafp_exit" == "0" ]; then
       codes="${cStatusOk}[🔚${previous_timestamp}🚀${previous_command}→✅]${cNormal}"
     else
-      codes="${cStatusError}[🔚${previous_timestamp}🚀${previous_command}${cStatusError}→❌${cError}${yafp_exit}${cNormal}${cStatusError}]${cNormal}"
+      codes="${cStatusError}[🔚${previous_timestamp}🚀${previous_command}${cStatusError}→⚠️${cError}${yafp_exit}${cNormal}${cStatusError}]${cNormal}"
     fi
     title="[${previous_command} => exit code ${yafp_exit}]"
     printf "${codes}"

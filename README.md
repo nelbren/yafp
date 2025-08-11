@@ -1,24 +1,28 @@
 # :computer: Yet Another Fancy Prompt
 
-[![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/) ![version](https://img.shields.io/badge/version-0.1.7-green)
+[![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/) [![made-with-powershell](https://img.shields.io/badge/Made%20with-PowerShell-5391FE.svg?logo=powershell)](https://docs.microsoft.com/powershell/) ![version](https://img.shields.io/badge/version-0.2.2-green)
 
 ## :soon: Insert here the most beautiful screenshots
 
 - ### :apple: macOS 
 
-  ![](screenshot_macOS.png)
+  ![](images/screenshot_macOS.png)
 
 - ### :window: [Cygwin](https://www.cygwin.com/)
 
-  ![](screenshot_Cygwin.png)
+  ![](images/screenshot_Cygwin.png)
 
 - ### :window: [Git Bash](https://git-scm.com/download/win)
 
-  ![](screenshot_GitBash.png)
+  ![](images/screenshot_GitBash.png)
 
 - ### :penguin: Linux
 
-  ![](screenshot_Linux.png)
+  ![](images/screenshot_Linux.png)
+
+- ### :window: [PowerShell](https://learn.microsoft.com/es-es/powershell/scripting/install/installing-powershell-on-windows?view=powershell-7.5)
+
+  ![](images/screenshot_PowerShell.png)
 
 
 ## :art: Styles
