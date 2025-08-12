@@ -35,6 +35,40 @@ try {
         $script:HasPSStyle = $true
     }
 } catch {}
+
+# $global:YAFP_DARKC = 0  # 4Testing
+
+if ($global:YAFP_DARKC -eq 1) {
+    $greenColorBackground = 'DarkGreen'
+    $greenColorForeground = 'Black'
+    $redColorBackground = 'DarkRed'
+    $redColorForeground = 'White'
+    $cyanColorBackground = 'DarkCyan'
+    $cyanColorForeground = 'Black'
+    $magentaColorBackground = 'DarkMagenta'
+    $magentaColorForeground = 'Black'
+    $yellowColorBackground = 'DarkYellow'
+    $yellowColorForeground = 'Black'
+    $grayColorBackground = 'Gray'
+    $grayColorForeground = 'Black'
+    $blueColorBackground = 'DarkBlue'
+    $blueColorForeground = 'White'
+} else {
+    $greenColorBackground = 'Green'
+    $greenColorForeground = 'Black'
+    $redColorBackground = 'Red'
+    $redColorForeground = 'Black'
+    $cyanColorBackground = 'Cyan'
+    $cyanColorForeground = 'Black'
+    $magentaColorBackground = 'Magenta'
+    $magentaColorForeground = 'Black'
+    $yellowColorBackground = 'Yellow'
+    $yellowColorForeground = 'Black'
+    $grayColorBackground = 'White'
+    $grayColorForeground = 'Black'
+    $blueColorBackground = 'Blue'
+    $blueColorForeground = 'White'
+}
 function Get-YafpVenv {
     try {
         if ($global:YAFP_PVENV -eq 1 -and $env:VIRTUAL_ENV) {
@@ -226,7 +260,9 @@ function prompt {
     if ($global:YAFP_PVENV -eq 1 -and $env:VIRTUAL_ENV) {
         $venv = Get-YafpVenv
         if ($venv) { 
-            Write-Host "$venv" -ForegroundColor White -BackgroundColor Blue -NoNewline
+            Write-Host "$venv" `
+                -ForegroundColor $blueColorForeground `
+                -BackgroundColor $blueColorBackground -NoNewline
         }
     }
 
@@ -234,28 +270,31 @@ function prompt {
     if ($global:YAFP_REPOS -eq 1) {
         $git = Get-YafpGit
         if ($git) { 
-            Write-Host "$git" -ForegroundColor Black -BackgroundColor Gray
+            Write-Host "$git" `
+                -ForegroundColor $grayColorForeground `
+                -BackgroundColor $grayColorBackground
         }
     }
 
     $previous_command = ""
     if ((Get-History).Count -gt 0) {
         $previous_command = (Get-History)[-1].CommandLine
-
     } 
 
     if ($last -ne 0) {
-        Write-Host "[" -ForegroundColor Black -BackgroundColor Red -NoNewline
-        Write-Host "🔚${previous_timestamp}🚀" -ForegroundColor Black -BackgroundColor Red -NoNewline
-        Write-Host "$previous_command→⚠️" -ForegroundColor Black -BackgroundColor Red -NoNewline
-        Write-Host "$last" -ForegroundColor Yellow -BackgroundColor Red -NoNewline
-        Write-Host "]" -ForegroundColor Black -BackgroundColor Red -NoNewline
+        Write-Host "[🔚${previous_timestamp}🚀$previous_command→⚠️" `
+            -ForegroundColor $redColorForeground `
+            -BackgroundColor $redColorBackground -NoNewline
+        Write-Host "$last" `
+            -ForegroundColor Yellow `
+            -BackgroundColor $redColorBackground -NoNewline
+        Write-Host "]" `
+            -ForegroundColor $redColorForeground `
+            -BackgroundColor $redColorBackground -NoNewline
     } else {
-        Write-Host "[" -ForegroundColor Black -BackgroundColor Green -NoNewline
-        Write-Host "🔚${previous_timestamp}🚀" -ForegroundColor Black -BackgroundColor Green -NoNewline
-        Write-Host "$previous_command" -ForegroundColor Black -BackgroundColor Green -NoNewline
-        Write-Host "→✅" -ForegroundColor Black -BackgroundColor Green -NoNewline
-        Write-Host "]" -ForegroundColor Black -BackgroundColor Green -NoNewline
+        Write-Host "[🔚${previous_timestamp}🚀${previous_command}→✅]" `
+            -ForegroundColor $greenColorForeground `
+            -BackgroundColor $greenColorBackground -NoNewline
     }
 
     if ($hour -gt 6 -and $hour -lt 12) {
@@ -272,26 +311,40 @@ function prompt {
         [Security.Principal.WindowsIdentity]::GetCurrent() `
     ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
-    Write-Host "[🔜$script:timestamp$day]" -ForegroundColor Black -BackgroundColor Cyan # -NoNewline
+    Write-Host "[🔜$script:timestamp$day]" `
+        -ForegroundColor $cyanColorForeground `
+        -BackgroundColor $cyanColorBackground
 
     Write-Host "[" -ForegroundColor White -NoNewline
     if ($isAdmin) {
-        Write-Host "$user" -ForegroundColor White -BackgroundColor Red -NoNewline
+        Write-Host "$user" `
+            -ForegroundColor White `
+            -BackgroundColor Red -NoNewline
         $promptMark='#'
     } else {
-        Write-Host "$user" -ForegroundColor Black -BackgroundColor Cyan -NoNewline
+        Write-Host "$user" `
+            -ForegroundColor $cyanColorForeground `
+            -BackgroundColor $cyanColorBackground -NoNewline
         $promptMark='$'
     }
     Write-Host "@" -ForegroundColor White -NoNewline
     if ($dev -eq 1) {
-        Write-Host "$comp" -ForegroundColor Black -BackgroundColor Green -NoNewline
+        Write-Host "$comp" `
+            -ForegroundColor $greenColorForeground `
+            -BackgroundColor $greenColorBackground -NoNewline
     } else {
-        Write-Host "$comp" -ForegroundColor Black -BackgroundColor Magenta -NoNewline
+        Write-Host "$comp" `
+            -ForegroundColor $magentaColorForeground `
+            -BackgroundColor $magentaColorBackground -NoNewline
     }
 
     Write-Host ":" -ForegroundColor White -NoNewline
-    Write-Host "$path" -ForegroundColor Black -BackgroundColor Yellow -NoNewline
-    Write-Host "]" -ForegroundColor White -BackgroundColor Black -NoNewline
+    Write-Host "$path" `
+        -ForegroundColor $yellowColorForeground `
+        -BackgroundColor $yellowColorBackground -NoNewline
+    Write-Host "]" `
+        -ForegroundColor White `
+        -BackgroundColor Black -NoNewline
     # Fixing color bug in last line
     Write-Host "$(Ansi '106m')$(Ansi '30m')$(Ansi '0m')$(Ansi '0K')" -NoNewline
 
