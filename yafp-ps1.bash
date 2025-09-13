@@ -124,7 +124,7 @@ function yafp_venv_and_git() {
   branch="$(git symbolic-ref --short HEAD 2>/dev/null)" || branch="unnamed"
   repo=$(basename -s .git "$git_repo")
 
-  lastGitTS=$(git log -1 --stat --date=format:'%Y-%m-%d %H:%M:%S' 2>/dev/null | grep Date | cut -d":" -f2-)
+  lastGitTS=$(git log -1 --stat --date=format:'%Y-%m-%d %H:%M:%S' 2>/dev/null | egrep "^Date:" | cut -d":" -f2-)
   lastGitTS=$(echo $lastGitTS)
 
   # https://www.vertex42.com/ExcelTips/unicode-symbols.html
