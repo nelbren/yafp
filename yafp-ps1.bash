@@ -2,256 +2,294 @@
 #
 # yafp-ps1.bash
 #
-# v0.2.1 - 2025-07-21 - nelbren@nelbren.com
+# Main engine of YAFP
 #
 
-# https://www.cyberciti.biz/faq/bash-shell-change-the-color-of-my-shell-prompt-under-linux-or-unix/
-
 function getColorIndex() {
-  declare -a colorNames=(black red green yellow blue magenta cyan white)
-  declare -a colorNAMES=(BLACK RED GREEN YELLOW BLUE MAGENTA CYAN WHITE)
-  colorName=$1
-  for index in "${!colorNames[@]}"; do
-    if [[ "${colorNames[$index]}" = "${colorName}" ]]; then
-      echo ${index}
-    else
-      if [[ "${colorNAMES[$index]}" = "${colorName}" ]]; then
-        echo $((index+8))
-      fi
-    fi
-  done
-  return 0
+    declare -a colorNames=(
+        black red green yellow blue magenta cyan white
+    )
+    declare -a colorNAMES=(
+        BLACK RED GREEN YELLOW BLUE MAGENTA CYAN WHITE
+    )
+
+    local colorName
+    local index
+
+    colorName="$1"
+
+    for index in "${!colorNames[@]}"; do
+        if [[ "${colorNames[$index]}" = "${colorName}" ]]; then
+            echo "${index}"
+            return 0
+        fi
+
+        if [[ "${colorNAMES[$index]}" = "${colorName}" ]]; then
+            echo $((index + 8))
+            return 0
+        fi
+    done
+
+    echo "0"
+    return 0
 }
+
 
 function SetColor() {
-  colorBG=$1
-  colorFG=$2
-  indexBG=$(getColorIndex $colorBG)
-  indexFG=$(getColorIndex $colorFG)
-  normal=1
-  codes=""
-  shift 2
-  for atributo in "$@"; do
-    if [ "$atributo" == "bold" ]; then
-      codes=${codes}$(tput bold)
-      normal=0
+    local colorBG
+    local colorFG
+    local indexBG
+    local indexFG
+    local normal
+    local codes
+    local atributo
+
+    colorBG="$1"
+    colorFG="$2"
+
+    indexBG=$(getColorIndex "$colorBG")
+    indexFG=$(getColorIndex "$colorFG")
+
+    normal=1
+    codes=""
+
+    shift 2
+
+    for atributo in "$@"; do
+        if [ "$atributo" = "bold" ]; then
+            codes="${codes}$(tput bold)"
+            normal=0
+        fi
+
+        if [ "$atributo" = "blink" ]; then
+            codes="${codes}$(tput blink)"
+            normal=0
+        fi
+    done
+
+    if [ "$normal" = "1" ]; then
+        codes="${codes}$(tput sgr0)"
     fi
-    if [ "$atributo" == "blink" ]; then
-      codes=${codes}$(tput blink)
-      normal=0
-    fi
-  done
-  if [ "$normal" == "1" ]; then
-    codes=${codes}$(tput sgr0)
-  fi
-  codes=${codes}$(tput setab $indexBG)$(tput setaf $indexFG)
-  printf "$codes"
-  if [ "$DEBUG" == "1" ]; then
-    echo $colorBG $indexBG $colorFG $indexFG
-  fi
+
+    codes="${codes}$(tput setab "$indexBG")$(tput setaf "$indexFG")"
+    printf "%s" "$codes"
 }
 
-testColors() {
-  DEBUG="1"
 
-  SetColor black white
-  SetColor white black
+function ThemeColor() {
+    local bg
+    local fg
+    local attrs
 
-  SetColor black RED
-  SetColor red black
+    bg="$1"
+    fg="$2"
+    attrs="$3"
 
-  SetColor WHITE red bold blink
-  SetColor red white
-
-  SetColor yellow BLACK
-  SetColor YELLOW black
-
-  SetColor white BLUE
-  SetColor WHITE BLUE
-
-  exit
-}
-
-setColors() {
-  unameOut="$(uname -s)"
-  case "${unameOut}" in
-    Linux*)     machine=Linux;;
-    Darwin*)    machine=Mac;;
-    CYGWIN*)    machine=Cygwin;;
-    MINGW*)     machine=MinGw;;
-    MSYS_NT*)   machine=Git;;
-    *)          machine="UNKNOWN:${unameOut}"
-  esac
-  cError="$(SetColor red YELLOW bold blink)"
-  cStatusOk="$(SetColor green black)"
-  cStatusError="$(SetColor red black)"
-  cNormal="$(SetColor black white)"
-  cStatusNext=$(SetColor cyan black)
-  cTimestamp="$(SetColor black white)"
-  cVenv="$(SetColor blue WHITE)"
-  cStatusGit=$(SetColor white black)
-  cRepo=$(SetColor white black)
-  if [ "$machine" == "MinGw" ]; then
-    cError="$(SetColor red yellow)"
-  fi
-  cReset="\e[K"
-}
-
-#testColors
-
-function yafp_venv_and_git() {
-  if [ -n "$yafp_venv" ]; then
-    codes="${cVenv}[🐍${yafp_venv}]${cNormal}"
-    printf "${codes}"
-  fi
-  git -C . rev-parse 2>/dev/null 1>&2
-  if [ "$?" == "128" ]; then
-    #printf "\e[K\n"
-    return
-  fi
-  # Based on: https://raw.githubusercontent.com/pablopunk/bashy/master/bashy
-  git_repo=$(git remote get-url origin 2>/dev/null)
-  if [ -z "$git_repo" ]; then
-    # Based on: https://stackoverflow.com/questions/15715825/how-do-you-get-the-git-repositorys-name-in-some-git-repository
-    git_repo=$(basename "`git rev-parse --show-toplevel 2>/dev/null`")
-    remo="⇣" #⭣⬇
-  else
-    remo="⚡" #⬍
-  fi
-
-  gitstatus="$(git status --porcelain 2>/dev/null)"
-  [ "$?" == "0" ] || return
-  branch="$(git symbolic-ref --short HEAD 2>/dev/null)" || branch="unnamed"
-  repo=$(basename -s .git "$git_repo")
-
-  lastGitTS=$(git log -1 --stat --date=format:'%Y-%m-%d %H:%M:%S' 2>/dev/null | egrep "^Date:" | cut -d":" -f2-)
-  lastGitTS=$(echo $lastGitTS)
-
-  # https://www.vertex42.com/ExcelTips/unicode-symbols.html
-  symbol_clean="$(SetColor GREEN black bold)✅≡"
-  symbol_delete="$(SetColor RED black bold blink)-"
-  symbol_new="$(SetColor CYAN black bold blink)+"
-  symbol_change="$(SetColor YELLOW black bold blink)±"
-
-  delete=0; change=0; new=0
-
-  IFS=$'\n'
-  for line in $gitstatus; do
-    [[ $line =~ ^[[:space:]]D ]] && delete=$((delete+1))
-    [[ $line =~ ^[[:space:]]M ]] && change=$((change+1))
-    [[ $line =~ ^\?\? ]] && new=$((new+1))
-  done
-  unset IFS
-
-  symbols=''
-
-  [ $delete -gt 0 ] && symbols="$symbols$symbol_delete${delete}🟥"
-  [ $change -gt 0 ] && symbols="$symbols$symbol_change${change}🟨"
-  [ $new -gt 0 ] && symbols="$symbols$symbol_new${new}🟦"
-
-  [ -z "$symbols" ] && symbols="$symbol_clean"
-  [[ -z "$yafp_venv" ]] && n='\n' || n=''
-
-  codes="${cStatusGit}[🔛${lastGitTS}${cRepo}💾${repo}ᚼ${branch}💻${remo}📁${symbols}${cStatusGit}]${cNormal}"
-  printf "${codes}${cReset}\n"
-}
-
-function yafp_err() {
-  previous_timestamp=$timestamp
-  timestamp="$(date +'%Y-%m-%d %H:%M:%S')"
-  if [ "$previous_command" != "prompt_command_yafp" ]; then
-    # Fix: Issue with time command execution mixing with PS1 control characters
-    if [ "${previous_command:0:4}" == "PS1=" ]; then
-      previous_command=""
-    fi
-    if echo "${previous_command}" | grep -q "%"; then
-      previous_command=$(echo "$previous_command" | sed "s/%/%%/g")
-    fi
-    if [ "$yafp_exit" == "0" ]; then
-      codes="${cStatusOk}[🔚${previous_timestamp}🚀${previous_command}→✅]${cNormal}"
+    if [ -n "$attrs" ]; then
+        # shellcheck disable=SC2086
+        SetColor "$bg" "$fg" $attrs
     else
-      codes="${cStatusError}[🔚${previous_timestamp}🚀${previous_command}${cStatusError}→⚠️${cError}${yafp_exit}${cNormal}${cStatusError}]${cNormal}"
+        SetColor "$bg" "$fg"
     fi
-    title="[${previous_command} => exit code ${yafp_exit}]"
-    printf "${codes}"
-  fi
-  hour=${timestamp:11:2}
-  if [ "$hour" -gt "06" -a "$hour" -lt "12" ]; then
-    day="🌇"
-  elif [ "$hour" -ge "12" -a "$hour" -lt "18" ]; then
-    day="🌆"
-  else
-    day="🌃" # ↓
-  fi
-  codes="${cStatusNext}[🔜${timestamp}${day}]${cNormal}"
-  printf "${codes}${cReset}\n"
 }
 
-_pro_or_dev() {
-  if [ "$dev" == "1" ]; then
-    cHost="\[$(SetColor green black)\]"
-  else
-    cHost="\[$(SetColor magenta black)\]"
-  fi
-  if [ "$USER" == "root" ]; then
-    cUser="\[$(SetColor red black)\]"
-    cPrompt="\[$(SetColor black RED)\]"
-    promptMark='#'
-  else
-    cUser="\[$(SetColor cyan black)\]"
-    cPrompt="\[$(SetColor black GREEN)\]"
-    promptMark='\$'
-  fi
-  cNormalPS1="\[$(SetColor black WHITE)\]"
-  cDirPS1="\[$(SetColor yellow black)\]"
 
-  yafp_PS1="[${cUser}\u${cNormalPS1}@${cHost}\h${cNormalPS1}:${cDirPS1}\w${cNormalPS1}]"
+function load_machine() {
+    local unameOut
+
+    unameOut="$(uname -s)"
+
+    case "${unameOut}" in
+        Linux*) machine=Linux ;;
+        Darwin*) machine=Mac ;;
+        CYGWIN*) machine=Cygwin ;;
+        MINGW*) machine=MinGw ;;
+        MSYS_NT*) machine=Git ;;
+        *) machine="UNKNOWN:${unameOut}" ;;
+    esac
 }
 
-function add_title_to_terminal() {
-  PS1="$PS1\[\e]0;[\u@\h:\w]${title}\a"
+
+function load_theme() {
+    local theme_file
+
+    theme_file="${SCRIPT_DIR}/themes/${YAFP_THEME}.bash"
+
+    if [ ! -f "$theme_file" ]; then
+        theme_file="${SCRIPT_DIR}/themes/default.bash"
+    fi
+
+    [ -f "$theme_file" ] || return 1
+    . "$theme_file"
 }
+
+
+function yafp_collect_context() {
+    yafp_ctx_exit="$1"
+    yafp_ctx_user="$USER"
+    yafp_ctx_host="$HOSTNAME"
+    yafp_ctx_pwd="$PWD"
+    yafp_ctx_timestamp="$(date +'%Y-%m-%d %H:%M:%S')"
+    yafp_ctx_previous_command="$previous_command"
+    yafp_ctx_previous_timestamp="$previous_timestamp"
+
+    yafp_ctx_is_root=0
+    yafp_ctx_is_dev=1
+    yafp_ctx_show_status=1
+
+    if [ "$yafp_ctx_user" = "root" ]; then
+        yafp_ctx_is_root=1
+    fi
+
+    if [ "${HOSTNAME:0:${#PRO}}" = "$PRO" ]; then
+        yafp_ctx_is_dev=0
+    fi
+
+    if [ "$YAFP_PVENV" = "1" ]; then
+        yafp_ctx_venv="${VIRTUAL_ENV##*/}"
+    else
+        yafp_ctx_venv=""
+    fi
+
+    if [ -z "$yafp_ctx_previous_command" ]; then
+        yafp_ctx_show_status=0
+    fi
+
+    case "$yafp_ctx_previous_command" in
+        prompt_command_yafp|theme_*|yafp_*|ps1k)
+            yafp_ctx_show_status=0
+            ;;
+    esac
+
+    if [ "${yafp_ctx_previous_command:0:4}" = "PS1=" ]; then
+        yafp_ctx_show_status=0
+        yafp_ctx_previous_command=""
+    fi
+
+    if printf "%s" "$yafp_ctx_previous_command" | grep -q "%"; then
+        yafp_ctx_previous_command=$(
+            printf "%s" "$yafp_ctx_previous_command" | sed 's/%/%%/g'
+        )
+    fi
+}
+
+
+function yafp_collect_git_context() {
+    local git_repo_url
+    local gitstatus
+    local line
+
+    yafp_ctx_git_has_repo=0
+    yafp_ctx_git_repo=""
+    yafp_ctx_git_branch=""
+    yafp_ctx_git_remote=""
+    yafp_ctx_git_last_ts=""
+    yafp_ctx_git_new=0
+    yafp_ctx_git_change=0
+    yafp_ctx_git_delete=0
+
+    git -C . rev-parse 2>/dev/null 1>&2 || return
+
+    yafp_ctx_git_has_repo=1
+
+    git_repo_url=$(git remote get-url origin 2>/dev/null)
+
+    if [ -z "$git_repo_url" ]; then
+        yafp_ctx_git_repo=$(
+            basename "$(git rev-parse --show-toplevel 2>/dev/null)"
+        )
+        yafp_ctx_git_remote="local"
+    else
+        yafp_ctx_git_repo=$(basename -s .git "$git_repo_url")
+        yafp_ctx_git_remote="remote"
+    fi
+
+    yafp_ctx_git_branch="$(git symbolic-ref --short HEAD 2>/dev/null)"
+    if [ -z "$yafp_ctx_git_branch" ]; then
+        yafp_ctx_git_branch="unnamed"
+    fi
+
+    yafp_ctx_git_last_ts=$(
+        git log -1 --stat --date=format:'%Y-%m-%d %H:%M:%S' 2>/dev/null \
+        | grep "^Date:" \
+        | cut -d":" -f2-
+    )
+    yafp_ctx_git_last_ts="$(echo $yafp_ctx_git_last_ts)"
+
+    gitstatus="$(git status --porcelain 2>/dev/null)"
+
+    while IFS= read -r line; do
+        [[ $line =~ ^[[:space:]]D ]] && \
+            yafp_ctx_git_delete=$((yafp_ctx_git_delete + 1))
+        [[ $line =~ ^[[:space:]]M ]] && \
+            yafp_ctx_git_change=$((yafp_ctx_git_change + 1))
+        [[ $line =~ ^\?\? ]] && \
+            yafp_ctx_git_new=$((yafp_ctx_git_new + 1))
+    done <<< "$gitstatus"
+}
+
 
 function ps1k() {
-  if [ "$yafp_exit" == "0" ]; then
-    YEL=0
-  else
-    L=${#yafp_exit}
-    YEL=$((L+3))
-  fi
-  myhost=${HOSTNAME%.*}
-  mypwd=$(dirs +0)
-  # Clear any leftover characters when the prompt length exceeds the
-  # width of the terminal. Only emit the escape sequence so the caller
-  # can properly wrap it inside "\[" and "\]".
-  [ $((${#USER}+${#myhost}+${#mypwd}+6+${YEL})) -gt $(tput cols) ] && echo -en "\e[K"
+    local yel
+    local myhost
+    local mypwd
+
+    if [ "$yafp_ctx_exit" = "0" ]; then
+        yel=0
+    else
+        yel=$((${#yafp_ctx_exit} + 3))
+    fi
+
+    myhost=${HOSTNAME%.*}
+    mypwd=$(dirs +0)
+
+    if [ $((${#USER} + ${#myhost} + ${#mypwd} + 6 + yel)) \
+        -gt "$(tput cols)" ]; then
+        echo -en "\e[K"
+    fi
 }
+
 
 function prompt_command_yafp() {
-  yafp_exit=$?
-  [[ "$YAFP_PVENV" == "1" ]] && yafp_venv=${VIRTUAL_ENV##*/} || yafp_venv=""
-  [ "$YAFP_REPOS" == "1" ] && yafp_venv_and_git
-  yafp_err
-  PS1="$yafp_PS1"
-  [ "$YAFP_ERROR" == "0" ] && yafp_exit=0
-  # Balance the non-printing character markers around the escape
-  # sequences and the optional output from ps1k.
-  PS1="${PS1}${cPrompt}${promptMark}\[\e[0m$(ps1k)\] "
-  [ "$YAFP_TITLE" == "1" ] && add_title_to_terminal
+    local last_exit=$?
+    local last_command
+
+    last_command="$previous_command"
+
+    yafp_collect_context "$last_exit"
+    yafp_ctx_previous_command="$last_command"
+    yafp_collect_git_context
+
+    theme_render_info_lines
+
+    PS1="$(theme_render_ps1)"
+
+    if [ "$YAFP_TITLE" = "1" ]; then
+        title="[${yafp_ctx_previous_command} => exit code ${yafp_ctx_exit}]"
+        theme_apply_terminal_title
+    fi
+
+    previous_timestamp="$yafp_ctx_timestamp"
 }
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-cfg=$SCRIPT_DIR/yafp-cfg.bash
-[ -x $cfg ] || exit 1
-. $cfg
 
-setColors
+SCRIPT_DIR=$(
+    cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd
+)
 
-dev=1
-[ "${HOSTNAME:0:${#PRO}}" == "$PRO" ] && dev=0
+cfg="${SCRIPT_DIR}/yafp-cfg.bash"
 
-_pro_or_dev
+[ -f "$cfg" ] || return 1
+. "$cfg"
 
-# https://stackoverflow.com/questions/6109225/echoing-the-last-command-run-in-bash
+load_machine
+load_theme || return 1
+theme_build
+
+previous_command=""
+this_command=""
+previous_timestamp=""
+
 trap 'previous_command=$this_command; this_command=$BASH_COMMAND' DEBUG
-export PROMPT_COMMAND=prompt_command_yafp
+PROMPT_COMMAND=prompt_command_yafp
+export PROMPT_COMMAND

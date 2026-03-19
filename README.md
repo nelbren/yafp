@@ -1,56 +1,60 @@
 # :computer: Yet Another Fancy Prompt
 
-[![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/) [![made-with-powershell](https://img.shields.io/badge/Made%20with-PowerShell-5391FE.svg?logo=powershell)](https://docs.microsoft.com/powershell/) ![version](https://img.shields.io/badge/version-0.2.2-green)
+[![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/) [![made-with-powershell](https://img.shields.io/badge/Made%20with-PowerShell-5391FE.svg?logo=powershell)](https://docs.microsoft.com/powershell/) ![version](https://img.shields.io/badge/version-0.3.0-green) ![](https://img.shields.io/badge/Welcome%20themes!-8A2BE2?logo=educative)
 
-## :soon: Insert here the most beautiful screenshots
+- ## :soon: Insert here the most beautiful screenshots
 
-- ### :apple: macOS 
+  - ### :apple: macOS
 
-  ![](images/screenshot_macOS.png)
+    ![macOS](images/screenshot_macOS.png)
 
-- ### :window: [Cygwin](https://www.cygwin.com/)
+  - ### :window: [Cygwin](https://www.cygwin.com/)
 
-  ![](images/screenshot_Cygwin.png)
+    ![Cygwin](images/screenshot_Cygwin.png)
 
-- ### :window: [Git Bash](https://git-scm.com/download/win)
+  - ### :window: [Git Bash](https://git-scm.com/download/win)
 
-  ![](images/screenshot_GitBash.png)
+    ![GitBash](images/screenshot_GitBash.png)
 
-- ### :penguin: Linux
+  - ### :penguin: Linux
 
-  ![](images/screenshot_Linux.png)
+    ![Linux](images/screenshot_Linux.png)
 
-- ### :window: [PowerShell](https://learn.microsoft.com/es-es/powershell/scripting/install/installing-powershell-on-windows?view=powershell-7.5)
+  - ### :window: [PowerShell](https://learn.microsoft.com/es-es/powershell/scripting/install/installing-powershell-on-windows?view=powershell-7.5)
 
-  ![](images/screenshot_PowerShell.png)
+    ![PowerShell](images/screenshot_PowerShell.png)
 
+- ## :art: Styles
 
-## :art: Styles
+  - ### :bulb: Colors change according to
 
-### :bulb: Colors change according to:
+    - #### :computer: Server type
 
-- #### :green_book: **Developer**
-  - ##### :necktie: root (**`#`**)
-  - ##### :tshirt: normal user (**`$`**)
-- #### :closed_book: **Production** 
-  - ##### :necktie: root (**`#`**)
-  - ##### :tshirt: normal user (**`$`**)
+      - ##### :green_book: **Developer**
 
-## :floppy_disk: Acquire
+      - ##### :closed_book: **Production**
 
-```bash
-cd /usr/local
-git clone https://github.com/nelbren/yafp.git
-```
+    - #### :bust_in_silhouette: User type
 
-## :eyes: Preview
+      - ##### :necktie: root (**`#`**)
 
-```bash
-source /usr/local/yafp/yafp-ps1.bash
-```
+      - ##### :tshirt: normal user (**`$`**)
 
-## :heavy_check_mark: Install
+- ## :floppy_disk: Acquire
 
-```bash
-echo "source /usr/local/yafp/yafp-ps1.bash" | tee -a ~/.bashrc /etc/skel/.bashrc
-```
+  ```bash
+  cd /usr/local
+  git clone https://github.com/nelbren/yafp.git
+  ```
+
+- ## :eyes: Preview
+
+  ```bash
+  source /usr/local/yafp/yafp-ps1.bash
+  ```
+
+- ## :heavy_check_mark: Install
+
+  ```bash
+  echo "source /usr/local/yafp/yafp-ps1.bash" | tee -a ~/.bashrc /etc/skel/.bashrc
+  ```
