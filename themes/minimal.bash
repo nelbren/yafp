@@ -168,7 +168,16 @@ function set_server_os() {
             ;;
         Linux)
             if [ -r /etc/debian_version ]; then
-                export SERVER_OS_EMOJI=""
+                if [ -f /etc/os-release ]; then
+                    . /etc/os-release
+                    if [ "$ID" == "kali" ]; then
+                        export SERVER_OS_EMOJI="㉿"
+		    else
+                        export SERVER_OS_EMOJI=""
+		    fi
+                else
+                    export SERVER_OS_EMOJI=""
+		fi
             else
                 export SERVER_OS_EMOJI="🐧"
             fi
@@ -586,7 +595,7 @@ function theme_render_main_block() {
         emojiClient="🖥️ ${cClientPS1}LOCAL${cNormalPS1}"
     fi
 
-    country_text="${OMP_GEOIP_COUNTRY:---}"
+    country_text="${OMP_GEOIP_COUNTRY:-🏠}"
 
     printf '%s %s %s\\u%s @ %s\\h%s ← %s ◎ %s%s%s ⌂ %s\\w%s' \
         "$SERVER_OS_EMOJI" \
