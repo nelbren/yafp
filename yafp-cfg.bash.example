@@ -9,6 +9,6 @@ YAFP_ERROR=1
 YAFP_PVENV=1
 YAFP_DEVEL=0
 
-#YAFP_THEME="default"
+YAFP_THEME="default"
 # YAFP_THEME="minimal"
-YAFP_THEME="light"
+# YAFP_THEME="light"
