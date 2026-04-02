@@ -239,12 +239,12 @@ theme_color() {
 
 
 theme_ps1_color() {
-    printf '%s' "$(ps1_wrap "$(ThemeColor "$1" "$2" "$3")")"
+    printf '%s' "$(ps1_wrap "$(themeColor "$1" "$2" "$3")")"
 }
 
 
 theme_reset() {
-    ThemeColor "$YAFP_COLOR_NORMAL_BG" "$YAFP_COLOR_NORMAL_FG"
+    themeColor "$YAFP_COLOR_NORMAL_BG" "$YAFP_COLOR_NORMAL_FG"
 }
 
 
