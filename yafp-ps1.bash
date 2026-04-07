@@ -374,7 +374,6 @@ theme_render_main_block() {
     fi
 }
 
-
 # -o-
 
 yafp_timer_backend_emoji() {
@@ -422,7 +421,7 @@ yafp_now_ms() {
 }
 
 
-function getColorIndex() {
+getColorIndex() {
     declare -a colorNames=(
         black red green yellow blue magenta cyan white
     )
@@ -498,7 +497,7 @@ setColor() {
 }
 
 
-function themeColor() {
+themeColor() {
     local bg
     local fg
     local attrs
@@ -516,7 +515,7 @@ function themeColor() {
 }
 
 
-function load_theme() {
+load_theme() {
     local theme_file
 
     yafp_timer_backend_init
@@ -636,7 +635,8 @@ set_YAFP_GEOIP_COUNTRY() {
 }
 
 
-function set_YAFP_CLOCK_EMOJI() {
+set_YAFP_CLOCK_EMOJI() {
+    [[ "${YAFP_CLOCK:-0}" -ne 0 ]] || return
     local h
     local m
     local base
@@ -709,7 +709,6 @@ yaft_general_context() {
 }
 
 
-
 yafp_git_check() {
     if [[ "$PWD" != "$YAFP_GIT_LAST_PWD" ]]; then
         if [[ -d .git ]]; then
@@ -739,7 +738,6 @@ yafp_git_context() {
         yafp_now_ms t_git_end
         return 0
     fi
-    # git -C . rev-parse 2>/dev/null 1>&2 || return
 
     local git_repo_url
     local gitstatus
@@ -807,7 +805,6 @@ yafp_venv_context() {
         venv_name="${VIRTUAL_ENV##*/}"
         yafp_venv_segment="${venv_name}"
     fi
-    # t_venv="$(yafp_now_ms)"
     yafp_now_ms t_venv_end
 }
 
@@ -827,8 +824,6 @@ yafp_err_context() {
     local previous_command
     previous_command="$(history 1 | sed 's/^ *[0-9]\+ *//')"
 
-    #echo "1-->($yafp_ctx_exit)<--$previous_command"
-
     # Escape '%' to avoid prompt expansion issues
     previous_command="${previous_command//%/%%}"
 
@@ -839,7 +834,6 @@ yafp_err_context() {
     fi
 
     yafp_ctx_previous_command="$previous_command"
-    #echo "2-->($yafp_ctx_exit)<--$yafp_ctx_previous_command"
     yafp_ctx_previous_timestamp="$previous_timestamp"
 
     previous_timestamp="$yafp_ctx_timestamp"
@@ -851,11 +845,10 @@ yafp_err_context() {
     case "$yafp_ctx_previous_command" in
         theme_*|yafp_*|ps1k)
             yafp_ctx_exit=0
-            # echo AAAAAA
             ;;
     esac
 
-    echo $yafp_ctx_timestamp $yafp_ctx_previous_command >> /tmp/yafp_ctx_previous_command.txt
+    # echo $yafp_ctx_timestamp $yafp_ctx_previous_command >> /tmp/yafp_ctx_previous_command.txt
 
     if [ "${yafp_ctx_previous_command:0:4}" = "PS1=" ]; then
         yafp_ctx_exit=0
@@ -869,10 +862,7 @@ yafp_err_context() {
     esac
 
     # Build segment
-    # yafp_ctx_exit=$last_exit
     yafp_err_segment="${previous_command} ✖ ${yafp_ctx_exit}"
-    #echo "3-->($yafp_ctx_exit)<--$yafp_ctx_previous_command"
-    #echo $yafp_err_segment
     yafp_now_ms t_err_end
 }
 
@@ -973,7 +963,6 @@ yafp_prompt_command() {
     yafp_now_ms t_all_end
 
     ps1=$(theme_render_ps1)
-    # ps1+="\033\[0m"
     PS1=$ps1
     #yafp_validate_ps1_strict $PS1
 }

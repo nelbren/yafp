@@ -91,9 +91,12 @@ YAFP_COLOR_COUNTRY_FG="CYAN"
 YAFP_COLOR_GIT_BRANCH_BG="transparent"
 YAFP_COLOR_GIT_BRANCH_FG="BLUE"
 
-YAFP_SYMBOL_GIT_EMOJI_OK="✓"
-YAFP_SYMBOL_GIT_EMOJI_DIRTY="✗"
+YAFP_SYMBOL_REMOTE="↯"
+YAFP_SYMBOL_GIT_DELETE_EMOJI=""
+YAFP_SYMBOL_GIT_CHANGE_EMOJI=""
+YAFP_SYMBOL_GIT_NEW_EMOJI=""
 
+YAFP_CLOCK_EMOJI="⏲"
 
 theme_render_general_block() {
     local cUserPS1
@@ -113,22 +116,18 @@ theme_render_general_block() {
     cTimestampPS1="$(ps1_wrap "$cTimestamp")"
 
     if [ -n "$SSH_CLIENT" ]; then
-        emojiClient="💻 ${cClientPS1}${CLIENT_OS_EMOJI}"
+        emojiClient="${cClientPS1}${CLIENT_OS_EMOJI}"
     else
-        emojiClient="🖥️ ${cClientPS1}LOCAL"
+        emojiClient="${cClientPS1}LOCAL"
     fi
 
     country_text="${OMP_GEOIP_COUNTRY:-🏠}"
 
     local parts=(
-        "$SERVER_OS_EMOJI $YAFP_USER_ICON "
+        "$SERVER_OS_EMOJI "
         "$cUserPS1\\u"
         "$cSeparator @ "
         "$cHostPS1\\h"
-        "$cSeparator ← $emojiClient"
-        "$cSeparator ◎ "
-        "$cCountryPS1$country_text"
-        "$cNormalPS1"
         "$cSeparator ⌂ "
         "$cDirPS1\\w"
         "$cSeparator"
@@ -159,21 +158,14 @@ theme_render_git_block() {
 
     if [ -z "$counts" ]; then
         text=""
-        emojiGit=$YAFP_SYMBOL_GIT_EMOJI_OK
-        cGitStatusPS1="$(ps1_wrap "$cStatusOk")"
     else
-        text=" with "
-        emojiGit=$YAFP_SYMBOL_GIT_EMOJI_DIRTY
-        cGitStatusPS1="$(ps1_wrap "$cStatusWarning")"
+        text="⇢"
     fi
 
     local parts=(
-        "$cSeparator on "
-        "$cGitStatusPS1"
-        "$emojiGit"
+        "$cSeparator $YAFP_SYMBOL_GIT_EMOJI "
         "$cGitBranchPS1"
         "$yafp_ctx_git_branch"
-        "$YAFP_SYMBOL_GIT_DIR"
         "$remote_symbol"
         "${cSeparator}$text"
         "$counts"
@@ -200,22 +192,10 @@ theme_render_venv_block() {
 
 
 theme_render_timestamp() {
-    local day
-    local hour
-
-    hour=${yafp_ctx_timestamp:11:2}
-    if [ "$hour" -gt 6 ] && [ "$hour" -lt 12 ]; then
-        day="$YAFP_SYMBOL_MORNING"
-    elif [ "$hour" -ge 12 ] && [ "$hour" -lt 18 ]; then
-        day="$YAFP_SYMBOL_AFTERNOON"
-    else
-        day="$YAFP_SYMBOL_NIGHT"
-    fi
-
     local parts=(
         "$cSeparator $YAFP_CLOCK_EMOJI "
         "${cTimestamp}$yafp_ctx_timestamp"
-        "$cSeparator $day"
+        "$cFullReset"
     )
 
     printf '%s' "${parts[@]}"
