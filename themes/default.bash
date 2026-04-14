@@ -79,10 +79,10 @@ theme_render_general_block() {
 
     cUserPS1="\[$(theme_ps1_user_color)\]"
     cHostPS1="\[$(theme_ps1_host_color)\]"
-    cNormalPS1="\[$(ThemeColor \
+    cNormalPS1="\[$(themeColor \
         "$YAFP_COLOR_NORMAL_BG" \
         "$YAFP_COLOR_NORMAL_FG")\]"
-    cDirPS1="\[$(ThemeColor \
+    cDirPS1="\[$(themeColor \
         "$YAFP_COLOR_DIR_BG" \
         "$YAFP_COLOR_DIR_FG")\]"
 
@@ -98,6 +98,10 @@ theme_render_general_block() {
     printf '%s' "${parts[@]}"
 }
 
+
+theme_render_status_ok_block() {
+    theme_render_status_error_block
+}
 
 theme_render_status_error_block() {
     local cmd

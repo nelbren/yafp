@@ -132,6 +132,24 @@ theme_render_timestamp() {
 }
 
 
+theme_render_status_ok_block() {
+    local cExitPS1
+    local cNormalPS1
+
+    cExitPS1="$(ps1_wrap "$cStatusOk")"
+    cNormalPS1="$(theme_ps1_reset)"
+
+    local parts=(
+        "$cSeparator"
+        " → $YAFP_SYMBOL_OK "
+        "${cExitPS1}$yafp_ctx_exit"
+        "$cFullReset"
+    )
+
+    printf '%s' "${parts[@]}"
+}
+
+
 theme_render_status_error_block() {
     local cExitPS1
     local cNormalPS1
@@ -141,7 +159,7 @@ theme_render_status_error_block() {
 
     local parts=(
         "$cSeparator"
-        " → $YAFP_SYMBOL_ERROR"
+        " → $YAFP_SYMBOL_ERROR "
         "${cExitPS1}$yafp_ctx_exit"
         "$cFullReset"
     )

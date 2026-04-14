@@ -96,7 +96,9 @@ YAFP_SYMBOL_GIT_DELETE_EMOJI=""
 YAFP_SYMBOL_GIT_CHANGE_EMOJI=""
 YAFP_SYMBOL_GIT_NEW_EMOJI=""
 
-YAFP_CLOCK_EMOJI="⏲"
+YAFP_CLOCK_EMOJI="⧖"
+YAFP_SYMBOL_ERROR="☒"
+YAFP_SYMBOL_OK="🗹"
 
 theme_render_general_block() {
     local cUserPS1
@@ -157,9 +159,9 @@ theme_render_git_block() {
     fi
 
     if [ -z "$counts" ]; then
-        text=""
+        text="${cStatusOk}✓${cSeparator}"
     else
-        text="⇢"
+        text="⇢[${counts}${cSeparator}]"
     fi
 
     local parts=(
@@ -167,8 +169,8 @@ theme_render_git_block() {
         "$cGitBranchPS1"
         "$yafp_ctx_git_branch"
         "$remote_symbol"
-        "${cSeparator}$text"
-        "$counts"
+        "${cSeparator}"
+        "$text"
     )
 
     printf '%s' "${parts[@]}"
@@ -201,6 +203,24 @@ theme_render_timestamp() {
     printf '%s' "${parts[@]}"
 }
 
+theme_render_status_ok_block() {
+    local cExitPS1
+    local cNormalPS1
+
+    cExitPS1="$(ps1_wrap "$cStatusOk")"
+    cNormalPS1="$(theme_ps1_reset)"
+
+    local parts=(
+        "${cSeparator} "
+        "${cExitPS1}"
+        "$YAFP_SYMBOL_OK "
+        # "$yafp_ctx_exit"
+        "$cFullReset"
+    )
+
+    printf '%s' "${parts[@]}"
+}
+
 
 theme_render_status_error_block() {
     local cExitPS1
@@ -210,9 +230,10 @@ theme_render_status_error_block() {
     cNormalPS1="$(theme_ps1_reset)"
 
     local parts=(
-        "$cSeparator"
-        " → $YAFP_SYMBOL_ERROR"
-        "${cExitPS1}$yafp_ctx_exit"
+        "${cSeparator} "
+        "${cExitPS1}"
+        "$YAFP_SYMBOL_ERROR "
+        "$yafp_ctx_exit"
         "$cFullReset"
     )
 

@@ -368,9 +368,12 @@ theme_render_main_block() {
 
     theme_render_timestamp
 
-    if [ "$yafp_ctx_show_status" = "1" ] &&
-       [ "$yafp_ctx_exit" != "0" ]; then
-        theme_render_status_error_block
+    if [ "$yafp_ctx_show_status" = "1" ]; then
+        if [ "$yafp_ctx_exit" == "0" ]; then
+            theme_render_status_ok_block
+        else
+            theme_render_status_error_block
+        fi
     fi
 }
 
