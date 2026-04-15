@@ -98,7 +98,7 @@ YAFP_SYMBOL_GIT_NEW_EMOJI=""
 
 YAFP_CLOCK_EMOJI="⧖"
 YAFP_SYMBOL_ERROR="☒"
-YAFP_SYMBOL_OK="🗹"
+YAFP_SYMBOL_OK="✓"
 
 theme_render_general_block() {
     local cUserPS1
