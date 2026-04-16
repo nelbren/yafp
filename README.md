@@ -1,60 +1,154 @@
 # :computer: Yet Another Fancy Prompt
 
-[![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/) [![made-with-powershell](https://img.shields.io/badge/Made%20with-PowerShell-5391FE.svg?logo=powershell)](https://docs.microsoft.com/powershell/) ![version](https://img.shields.io/badge/version-0.3.0-green) ![](https://img.shields.io/badge/Welcome%20themes!-8A2BE2?logo=educative)
+[![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/) [![made-with-powershell](https://img.shields.io/badge/Made%20with-PowerShell-5391FE.svg?logo=powershell)](https://docs.microsoft.com/powershell/) ![version](https://img.shields.io/badge/version-0.3.1-green) ![themes](https://img.shields.io/badge/themes-8A2BE2?logo=educative)
 
-- ## :soon: Insert here the most beautiful screenshots
+## :soon: Insert here the most beautiful screenshots
 
-  - ### :apple: macOS
+### :apple: macOS
 
-    ![macOS](images/screenshot_macOS.png)
+![macOS](images/screenshot_macOS.png)
 
-  - ### :window: [Cygwin](https://www.cygwin.com/)
+### :window: [Cygwin](https://www.cygwin.com/)
 
-    ![Cygwin](images/screenshot_Cygwin.png)
+![Cygwin](images/screenshot_Cygwin.png)
 
-  - ### :window: [Git Bash](https://git-scm.com/download/win)
+### :window: [Git Bash](https://git-scm.com/download/win)
 
-    ![GitBash](images/screenshot_GitBash.png)
+![GitBash](images/screenshot_GitBash.png)
 
-  - ### :penguin: Linux
+### :penguin: Linux
 
-    ![Linux](images/screenshot_Linux.png)
+![Linux](images/screenshot_Linux.png)
 
-  - ### :window: [PowerShell](https://learn.microsoft.com/es-es/powershell/scripting/install/installing-powershell-on-windows?view=powershell-7.5)
+### :window: [PowerShell](https://learn.microsoft.com/es-es/powershell/scripting/install/installing-powershell-on-windows?view=powershell-7.5)
 
-    ![PowerShell](images/screenshot_PowerShell.png)
+![PowerShell](images/screenshot_PowerShell.png)
 
-- ## :art: Styles
+---
 
-  - ### :bulb: Colors change according to
+## :art: Styles
 
-    - #### :computer: Server type
+### :bulb: Colors change according to
 
-      - ##### :green_book: **Developer**
+#### :computer: Server type
 
-      - ##### :closed_book: **Production**
+- ##### :green_book: **Developer**
 
-    - #### :bust_in_silhouette: User type
+- ##### :closed_book: **Production**
 
-      - ##### :necktie: root (**`#`**)
+#### :bust_in_silhouette: User type
 
-      - ##### :tshirt: normal user (**`$`**)
+- ##### :necktie: root (**`#`**)
 
-- ## :floppy_disk: Acquire
+- ##### :tshirt: normal user (**`$`**)
 
-  ```bash
-  cd /usr/local
-  git clone https://github.com/nelbren/yafp.git
-  ```
+---
 
-- ## :eyes: Preview
+## I. :floppy_disk: Acquire
 
-  ```bash
-  source /usr/local/yafp/yafp-ps1.bash
-  ```
+### 👤 Local acquire
 
-- ## :heavy_check_mark: Install
+#### ⌨ Commands to acquire local
 
-  ```bash
-  echo "source /usr/local/yafp/yafp-ps1.bash" | tee -a ~/.bashrc /etc/skel/.bashrc
-  ```
+```bash
+cd
+git clone https://github.com/nelbren/yafp.git
+```
+
+#### 👁️ Example of acquire local
+
+![screenshot_macOS_Acquire_Local](images/screenshot_macOS_Acquire_Local.png)
+
+### 🌐 Global acquire
+
+#### ⌨ Commands to acquire globally
+
+```bash
+sudo su -
+cd /usr/local
+git clone https://github.com/nelbren/yafp.git
+```
+
+#### 👁️ Example of acquire globally
+
+![screenshot_macOS_Acquire_Global](images/screenshot_macOS_Acquire_Global.png)
+
+## II :gear: Configure
+
+### 👤 Local settings
+
+#### ⌨ Commands to configure locally
+
+```bash
+cd ~/yafp
+cp yafp-cfg.bash.example yafp-cfg.bash
+```
+
+#### 👁️ Example of local configuration
+
+![screenshot_macOS_Configure_Local](images/screenshot_macOS_Configure_Local.png)
+
+### 🌐 Global settings
+
+#### ⌨ Commands to configure globally
+
+```bash
+cd /usr/local/yafp
+cp yafp-cfg.bash.example yafp-cfg.bash
+```
+
+#### 👁️ Example of global configuration
+
+![screenshot_macOS_Configure_Global](images/screenshot_macOS_Configure_Global.png)
+
+## III. :eyes: Preview
+
+### 👤 Local preview
+
+#### ⌨ Commands for local preview
+
+```bash
+source ~/yafp/yafp-ps1.bash
+```
+
+#### 👁️ Example of local preview
+
+![screenshot_macOS_Preview_Local](images/screenshot_macOS_Preview_Local.png)
+
+### 🌐 Global preview
+
+#### ⌨ Commands for global preview
+
+```bash
+source /usr/local/yafp/yafp-ps1.bash
+```
+
+#### 👁️ Example of global preview
+
+![screenshot_macOS_Preview_Global](images/screenshot_macOS_Preview_Global.png)
+
+## IV. :heavy_check_mark: Install
+
+### 👤 Local install
+
+#### ⌨ Commands for local install
+
+```bash
+echo source ~/yafp/yafp-ps1.bash >> ~/.bash_profile 
+```
+
+#### 👁️ Example of local install
+
+![screenshot_macOS_Install_Local](images/screenshot_macOS_Install_Local.png)
+
+### 🌐 Global install
+
+#### ⌨ Commands for global installation
+
+```bash
+echo source /usr/local/yafp/yafp-ps1.bash >> ~/.bash_profile 
+```
+
+#### 👁️ Example of global installation
+
+![screenshot_macOS_Install_Global](images/screenshot_macOS_Install_Global.png)

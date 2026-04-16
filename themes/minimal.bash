@@ -14,7 +14,8 @@ YAFP_COLOR_GIT_CHANGE_ATTRS=""
 theme_render_general_block() {
     local cUserPS1
     local cHostPS1
-    local cNormalPS1local cDirPS1
+    local cNormalPS1
+    local cDirPS1
     local cClientPS1
     local cCountryPS1
     local emojiClient

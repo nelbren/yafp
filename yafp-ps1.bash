@@ -5,6 +5,8 @@
 # Main engine of YAFP
 #
 
+YAFP_VERSION=0.3.1
+
 # Customize in themes...
 
 # Base colors
@@ -977,7 +979,13 @@ SCRIPT_DIR=$(
 
 cfg="${SCRIPT_DIR}/yafp-cfg.bash"
 
-[ -f "$cfg" ] || return 1
+if [ ! -f "$cfg" ]; then
+    printf '%s\n' \
+        "Missing configuration file: $cfg" \
+        "Run: cp ${SCRIPT_DIR}/yafp-cfg.bash.example ${SCRIPT_DIR}/yafp-cfg.bash" \
+        >&2
+    return 1
+fi
 . "$cfg"
 
 load_vars
