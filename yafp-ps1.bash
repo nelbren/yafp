@@ -395,9 +395,12 @@ theme_render_main_block() {
         theme_render_venv_block
     fi
 
-    theme_render_timestamp
+    if [ "${YAFP_CLOCK:-0}" -eq 1 ] ; then
+        theme_render_timestamp
+    fi
 
-    if [ "$yafp_ctx_show_status" = "1" ]; then
+    if [ "${YAFP_ERROR:-0}" -eq 1 -a \
+         "$yafp_ctx_show_status" = "1" ]; then
         if [ "$yafp_ctx_exit" == "0" ]; then
             theme_render_status_ok_block
         else
@@ -967,7 +970,10 @@ yaft_general_context() {
     yafp_ctx_user="$USER"
     yafp_ctx_host="$HOSTNAME"
     yafp_ctx_pwd="$PWD"
-    yafp_ctx_timestamp="$(date +'%Y-%m-%d %H:%M:%S')"
+
+    if [ "${YAFP_CLOCK:-0}" -eq 1 ] ; then
+        yafp_ctx_timestamp="$(date +'%Y-%m-%d %H:%M:%S')"
+    fi
 
 
     yafp_ctx_is_root=0
@@ -1113,7 +1119,9 @@ yafp_err_context() {
     yafp_ctx_previous_command="$previous_command"
     yafp_ctx_previous_timestamp="$previous_timestamp"
 
-    previous_timestamp="$yafp_ctx_timestamp"
+    if [ "${YAFP_CLOCK:-0}" -eq 1 ] ; then
+        previous_timestamp="$yafp_ctx_timestamp"
+    fi
 
     if [ -z "$yafp_ctx_previous_command" ]; then
         yafp_ctx_exit=0
