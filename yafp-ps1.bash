@@ -130,6 +130,33 @@ YAFP_SYMBOL_GIT_NEW="+"
 YAFP_SYMBOL_VENV_EMOJI="🐍"
 
 
+# Semantic command blocks / OSC 133
+YAFP_OSC133=${YAFP_OSC133:-1}
+YAFP_COMMAND_BLOCK_STATE="Idle"
+YAFP_COMMAND_BLOCK_ID=0
+YAFP_COMMAND_BLOCK_CURRENT_ID=""
+YAFP_COMMAND_BLOCK_PROMPT_TEXT=""
+YAFP_COMMAND_BLOCK_COMMAND_TEXT=""
+YAFP_COMMAND_BLOCK_STDOUT_TEXT=""
+YAFP_COMMAND_BLOCK_STDERR_TEXT=""
+YAFP_COMMAND_BLOCK_EXIT_CODE=""
+YAFP_COMMAND_BLOCK_STARTED_AT=""
+YAFP_COMMAND_BLOCK_FINISHED_AT=""
+YAFP_COMMAND_BLOCK_DURATION_MS=""
+YAFP_COMMAND_BLOCK_STATUS="unknown"
+YAFP_COMMAND_BLOCK_START_BUFFER_POSITION=""
+YAFP_COMMAND_BLOCK_END_BUFFER_POSITION=""
+YAFP_COMMAND_BLOCK_LAST_ID=""
+YAFP_COMMAND_BLOCK_LAST_COMMAND_TEXT=""
+YAFP_COMMAND_BLOCK_LAST_EXIT_CODE=""
+YAFP_COMMAND_BLOCK_LAST_STARTED_AT=""
+YAFP_COMMAND_BLOCK_LAST_FINISHED_AT=""
+YAFP_COMMAND_BLOCK_LAST_DURATION_MS=""
+YAFP_COMMAND_BLOCK_LAST_STATUS="unknown"
+YAFP_COMMAND_BLOCK_LAST_START_BUFFER_POSITION=""
+YAFP_COMMAND_BLOCK_LAST_END_BUFFER_POSITION=""
+
+
 # Theme build
 theme_build() {
     cNormal="$(theme_color \
@@ -423,6 +450,251 @@ yafp_now_ms() {
     esac
 
     printf -v "$__outvar" '%s' "$__value"
+}
+
+
+yafp_wall_ms() {
+    local __outvar="$1"
+    local __value
+
+    case "${YAFP_TIMER_BACKEND:-}" in
+        EPOCHREALTIME)
+            local t="${EPOCHREALTIME/,/.}"
+            local sec="${t%.*}"
+            local frac="${t#*.}"
+            [ "$sec" = "$t" ] && sec="$t" && frac="000"
+            frac="${frac:0:3}"
+            while [ ${#frac} -lt 3 ]; do
+                frac="${frac}0"
+            done
+            __value="$(printf '%s%03d' "$sec" "$((10#$frac))")"
+            ;;
+        python3)
+            __value="$(python3 -c \
+                'import time; print(int(time.time() * 1000))')"
+            ;;
+        perl)
+            __value="$(perl -MTime::HiRes=time -e \
+                'printf("%.0f\n", time() * 1000)')"
+            ;;
+        *)
+            __value="$(date +%s)000"
+            ;;
+    esac
+
+    printf -v "$__outvar" '%s' "$__value"
+}
+
+
+yafp_osc133_sequence() {
+    [ "${YAFP_OSC133:-1}" -eq 1 ] || return 0
+    printf '\033]133;%s\007' "$1"
+}
+
+
+yafp_osc133_ps1_sequence() {
+    [ "${YAFP_OSC133:-1}" -eq 1 ] || return 0
+    ps1_wrap "$(printf '\033]133;%s\007' "$1")"
+}
+
+
+yafp_osc133_parse() {
+    local input="$1"
+    local payload
+    local rest
+    local code
+
+    YAFP_OSC133_EVENT=""
+    YAFP_OSC133_EXIT_CODE=""
+
+    case "$input" in
+        $'\033]133;'*)
+            payload="${input#$'\033]133;'}"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    if [[ "$payload" == *$'\007'* ]]; then
+        payload="${payload%%$'\007'*}"
+    elif [[ "$payload" == *$'\033\\'* ]]; then
+        payload="${payload%%$'\033'*}"
+    else
+        return 1
+    fi
+
+    YAFP_OSC133_EVENT="${payload%%;*}"
+    rest="$payload"
+    [ "$rest" != "$YAFP_OSC133_EVENT" ] && rest="${rest#*;}" || rest=""
+
+    case "$YAFP_OSC133_EVENT" in
+        A|B|C)
+            return 0
+            ;;
+        D)
+            code="${rest%%;*}"
+            if [[ "$code" =~ ^[0-9]+$ ]]; then
+                YAFP_OSC133_EXIT_CODE="$code"
+            fi
+            return 0
+            ;;
+        *)
+            YAFP_OSC133_EVENT=""
+            return 1
+            ;;
+    esac
+}
+
+
+yafp_command_block_reset_current() {
+    YAFP_COMMAND_BLOCK_CURRENT_ID=""
+    YAFP_COMMAND_BLOCK_PROMPT_TEXT=""
+    YAFP_COMMAND_BLOCK_COMMAND_TEXT=""
+    YAFP_COMMAND_BLOCK_STDOUT_TEXT=""
+    YAFP_COMMAND_BLOCK_STDERR_TEXT=""
+    YAFP_COMMAND_BLOCK_EXIT_CODE=""
+    YAFP_COMMAND_BLOCK_STARTED_AT=""
+    YAFP_COMMAND_BLOCK_FINISHED_AT=""
+    YAFP_COMMAND_BLOCK_DURATION_MS=""
+    YAFP_COMMAND_BLOCK_STATUS="unknown"
+    YAFP_COMMAND_BLOCK_START_BUFFER_POSITION=""
+    YAFP_COMMAND_BLOCK_END_BUFFER_POSITION=""
+}
+
+
+yafp_command_block_begin() {
+    YAFP_COMMAND_BLOCK_ID=$((YAFP_COMMAND_BLOCK_ID + 1))
+    YAFP_COMMAND_BLOCK_CURRENT_ID="$YAFP_COMMAND_BLOCK_ID"
+    YAFP_COMMAND_BLOCK_STATE="PromptStarted"
+    YAFP_COMMAND_BLOCK_STATUS="unknown"
+    YAFP_COMMAND_BLOCK_PROMPT_TEXT="${PS1:-}"
+    YAFP_COMMAND_BLOCK_COMMAND_TEXT=""
+    YAFP_COMMAND_BLOCK_EXIT_CODE=""
+    YAFP_COMMAND_BLOCK_STARTED_AT=""
+    YAFP_COMMAND_BLOCK_FINISHED_AT=""
+    YAFP_COMMAND_BLOCK_DURATION_MS=""
+    YAFP_COMMAND_BLOCK_START_BUFFER_POSITION="${HISTCMD:-}"
+    YAFP_COMMAND_BLOCK_END_BUFFER_POSITION=""
+}
+
+
+yafp_command_block_prompt_end() {
+    if [ "$YAFP_COMMAND_BLOCK_STATE" = "Idle" ]; then
+        yafp_command_block_begin
+    fi
+    YAFP_COMMAND_BLOCK_STATE="PromptEnded"
+}
+
+
+yafp_command_block_command_start() {
+    local command_text="$1"
+
+    if [ "$YAFP_COMMAND_BLOCK_STATE" = "Idle" ]; then
+        yafp_command_block_begin
+    fi
+
+    if [ "$YAFP_COMMAND_BLOCK_STATE" != "CommandRunning" ]; then
+        yafp_wall_ms YAFP_COMMAND_BLOCK_STARTED_AT
+        YAFP_COMMAND_BLOCK_COMMAND_TEXT="$command_text"
+        YAFP_COMMAND_BLOCK_STATE="CommandRunning"
+        YAFP_COMMAND_BLOCK_STATUS="unknown"
+    fi
+}
+
+
+yafp_command_block_finish() {
+    local exit_code="$1"
+
+    if [ "$YAFP_COMMAND_BLOCK_STATE" = "Idle" ]; then
+        return
+    fi
+
+    YAFP_COMMAND_BLOCK_EXIT_CODE="$exit_code"
+    yafp_wall_ms YAFP_COMMAND_BLOCK_FINISHED_AT
+    if [ -n "$YAFP_COMMAND_BLOCK_STARTED_AT" ]; then
+        YAFP_COMMAND_BLOCK_DURATION_MS=$(( \
+            ${YAFP_COMMAND_BLOCK_FINISHED_AT:-0} - \
+            ${YAFP_COMMAND_BLOCK_STARTED_AT:-0} \
+        ))
+    fi
+
+    if [ "$exit_code" = "130" ]; then
+        YAFP_COMMAND_BLOCK_STATUS="cancelled"
+    elif [ "$exit_code" = "0" ]; then
+        YAFP_COMMAND_BLOCK_STATUS="success"
+    elif [[ "$exit_code" =~ ^[0-9]+$ ]]; then
+        YAFP_COMMAND_BLOCK_STATUS="error"
+    else
+        YAFP_COMMAND_BLOCK_STATUS="unknown"
+    fi
+
+    YAFP_COMMAND_BLOCK_END_BUFFER_POSITION="${HISTCMD:-}"
+    YAFP_COMMAND_BLOCK_LAST_ID="$YAFP_COMMAND_BLOCK_CURRENT_ID"
+    YAFP_COMMAND_BLOCK_LAST_COMMAND_TEXT="$YAFP_COMMAND_BLOCK_COMMAND_TEXT"
+    YAFP_COMMAND_BLOCK_LAST_EXIT_CODE="$YAFP_COMMAND_BLOCK_EXIT_CODE"
+    YAFP_COMMAND_BLOCK_LAST_STARTED_AT="$YAFP_COMMAND_BLOCK_STARTED_AT"
+    YAFP_COMMAND_BLOCK_LAST_FINISHED_AT="$YAFP_COMMAND_BLOCK_FINISHED_AT"
+    YAFP_COMMAND_BLOCK_LAST_DURATION_MS="$YAFP_COMMAND_BLOCK_DURATION_MS"
+    YAFP_COMMAND_BLOCK_LAST_STATUS="$YAFP_COMMAND_BLOCK_STATUS"
+    YAFP_COMMAND_BLOCK_LAST_START_BUFFER_POSITION="$YAFP_COMMAND_BLOCK_START_BUFFER_POSITION"
+    YAFP_COMMAND_BLOCK_LAST_END_BUFFER_POSITION="$YAFP_COMMAND_BLOCK_END_BUFFER_POSITION"
+
+    YAFP_COMMAND_BLOCK_STATE="Idle"
+}
+
+
+yafp_command_block_handle_osc133() {
+    local sequence="$1"
+
+    yafp_osc133_parse "$sequence" || return 1
+
+    case "$YAFP_OSC133_EVENT" in
+        A) yafp_command_block_begin ;;
+        B) yafp_command_block_prompt_end ;;
+        C) yafp_command_block_command_start "$this_command" ;;
+        D) yafp_command_block_finish "${YAFP_OSC133_EXIT_CODE:-}" ;;
+    esac
+}
+
+
+yafp_debug_trap() {
+    local command="$BASH_COMMAND"
+
+    [ "${YAFP_PROMPT_RENDERING:-0}" -eq 0 ] || return
+
+    case "$command" in
+        yafp_prompt_command*|PROMPT_COMMAND=*|trap\ *)
+            return
+            ;;
+    esac
+
+    previous_command="$this_command"
+    this_command="$command"
+
+    if [ "${YAFP_OSC133:-1}" -eq 1 ] &&
+       [ "$YAFP_COMMAND_BLOCK_STATE" != "CommandRunning" ]; then
+        yafp_command_block_command_start "$command"
+        yafp_osc133_sequence "C"
+    fi
+}
+
+
+yafp_install_debug_trap() {
+    trap 'yafp_debug_trap' DEBUG
+}
+
+
+yafp_install_prompt_command() {
+    if [ -n "${PROMPT_COMMAND:-}" ] &&
+       [ "${PROMPT_COMMAND:-}" != "yafp_prompt_command" ]; then
+        YAFP_PREVIOUS_PROMPT_COMMAND="$PROMPT_COMMAND"
+    else
+        YAFP_PREVIOUS_PROMPT_COMMAND=""
+    fi
+
+    PROMPT_COMMAND=yafp_prompt_command
+    export PROMPT_COMMAND
 }
 
 
@@ -952,12 +1224,26 @@ yafp_validate_ps1_strict() {
 
 yafp_prompt_command() {
     local last_exit=$? # Capture the exit code at the very beginning
+    YAFP_PROMPT_RENDERING=1
     yafp_now_ms t_all_begin
 
     yaft_general_context "$last_exit"
     yafp_git_context
     yafp_venv_context
     yafp_err_context "$last_exit"
+
+    if [ -n "${YAFP_PREVIOUS_PROMPT_COMMAND:-}" ]; then
+        eval "$YAFP_PREVIOUS_PROMPT_COMMAND"
+    fi
+
+    if [ "${YAFP_OSC133:-1}" -eq 1 ] &&
+       [ "$YAFP_COMMAND_BLOCK_STATE" = "CommandRunning" ]; then
+        if [ -n "${yafp_ctx_previous_command:-}" ]; then
+            YAFP_COMMAND_BLOCK_COMMAND_TEXT="$yafp_ctx_previous_command"
+        fi
+        yafp_command_block_finish "$last_exit"
+        yafp_osc133_sequence "D;$last_exit"
+    fi
 
     if [ "$YAFP_TITLE" = "1" ]; then
         title="[${yafp_ctx_previous_command} => exit code ${yafp_ctx_exit}]"
@@ -968,8 +1254,15 @@ yafp_prompt_command() {
     yafp_now_ms t_all_end
 
     ps1=$(theme_render_ps1)
-    PS1=$ps1
+    if [ "${YAFP_OSC133:-1}" -eq 1 ]; then
+        yafp_command_block_begin
+        PS1="$(yafp_osc133_ps1_sequence "A")${ps1}$(yafp_osc133_ps1_sequence "B")"
+        yafp_command_block_prompt_end
+    else
+        PS1=$ps1
+    fi
     #yafp_validate_ps1_strict $PS1
+    YAFP_PROMPT_RENDERING=0
 }
 
 
@@ -995,7 +1288,9 @@ theme_build
 previous_command=""
 this_command=""
 previous_timestamp=""
+YAFP_PROMPT_RENDERING=0
 
-trap 'previous_command=$this_command; this_command=$BASH_COMMAND' DEBUG
-PROMPT_COMMAND=yafp_prompt_command
-export PROMPT_COMMAND
+if [ "${YAFP_NO_INSTALL_HOOKS:-0}" -ne 1 ]; then
+    yafp_install_prompt_command
+    yafp_install_debug_trap
+fi

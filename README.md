@@ -152,3 +152,72 @@ echo source /usr/local/yafp/yafp-ps1.bash >> ~/.bash_profile
 #### 👁️ Example of global installation
 
 ![screenshot_macOS_Install_Global](images/screenshot_macOS_Install_Global.png)
+
+## V. Semantic command blocks with OSC 133
+
+YAFP is a Bash/PowerShell prompt project. It does not own the pseudo-terminal,
+ANSI parser, terminal renderer, or visible scrollback buffer. For terminals that
+understand shell integration markers, the Bash prompt emits OSC 133 sequences so
+each command can be identified as a semantic block:
+
+```text
+OSC 133 ; A  prompt start
+OSC 133 ; B  prompt end / user input start
+OSC 133 ; C  command start / output start
+OSC 133 ; D  command finished, with exit code
+```
+
+This is enabled by default in `yafp-cfg.bash.example`:
+
+```bash
+YAFP_OSC133=1
+```
+
+Set it to `0` if your terminal does not handle OSC 133 correctly:
+
+```bash
+YAFP_OSC133=0
+```
+
+YAFP preserves the visible prompt behavior when OSC 133 is disabled. When it is
+enabled, OSC markers are wrapped as non-printing prompt sequences, so they should
+not appear as visible text or disturb cursor positioning.
+
+### Bash integration details
+
+YAFP emits:
+
+- `OSC 133;A` and `OSC 133;B` inside `PS1`;
+- `OSC 133;C` from a Bash `DEBUG` trap when a user command starts;
+- `OSC 133;D;<exit_code>` at the beginning of the next `PROMPT_COMMAND`.
+
+Internally, the Bash implementation keeps a lightweight command-block model with
+fields for id, command text, exit code, start time, finish time, duration, status,
+and approximate history positions. The structure also reserves stdout/stderr
+fields for a future terminal-side integration, but Bash alone cannot separate or
+capture scrollback output without changing how commands are executed.
+
+### zsh and fish
+
+The current implementation is Bash-only. zsh and fish can use the same OSC 133
+protocol, but they need shell-native hooks such as `precmd`/`preexec` in zsh or
+fish event handlers. A future YAFP shell module can add those without inventing a
+new protocol.
+
+### Current limitations
+
+- YAFP cannot draw selectable visual borders around scrollback blocks because it
+  is not the terminal renderer.
+- stdout and stderr are not captured separately yet.
+- buffer positions are approximate Bash history positions, not terminal cell
+  coordinates.
+- Advanced actions such as copy command, copy output, or copy whole block belong
+  in a terminal UI layer or a future YAFP companion renderer.
+
+### Tests
+
+Run the OSC 133 parser and command-block lifecycle tests with:
+
+```bash
+bash tests/osc133_test.bash
+```
