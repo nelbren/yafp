@@ -189,7 +189,7 @@ git clone https://github.com/nelbren/yafp.git
 
 ## II :gear: Configure
 
-### 👤 Local settings
+### 👤 Local Bash settings
 
 #### ⌨ Commands to configure locally
 
@@ -201,6 +201,18 @@ cp yafp-cfg.bash.example yafp-cfg.bash
 #### 👁️ Example of local configuration
 
 ![screenshot_macOS_Configure_Local](images/screenshot_macOS_Configure_Local.png)
+
+### 🪟 Local PowerShell settings
+
+Create the personal configuration before loading the prompt:
+
+```powershell
+Copy-Item yafp-cfg.ps1.example yafp-cfg.ps1
+```
+
+Both `yafp-cfg.bash` and `yafp-cfg.ps1` are ignored by Git. Their `.example`
+files define the versioned defaults and can be copied again when new options
+are introduced.
 
 ### 🌐 Global settings
 
@@ -330,39 +342,39 @@ inventing a new protocol.
 
 ### Tests
 
-Run the OSC 133 parser and command-block lifecycle tests with:
+Run all Bash tests, syntax checks, and installed linters with:
 
 ```bash
-bash tests/osc133_test.bash
+bash scripts/unix/quality/check.bash
 ```
 
-Run the background remote-status integration test with:
+Run all PowerShell tests, parser checks, and installed linters with:
+
+```powershell
+pwsh -NoProfile -File scripts/windows/quality/check.ps1
+```
+
+The quality scripts use `shellcheck`, PSScriptAnalyzer, and `markdownlint` when
+they are available. Set `YAFP_REQUIRE_LINTERS=1` to make a missing analyzer an
+error, as continuous integration does. Successful lines use a green `✅`,
+warnings use a yellow `⚠️`, and failures use a red `❌`; all retain their
+textual meaning when color is unavailable.
+
+On Windows, run the Bash checks from a complete Git Bash session. When invoking
+Bash through a PowerShell shim, use login mode so Unix tools are on `PATH`:
 
 ```bash
-bash tests/remote_status_test.bash
+bash -lc 'cd /c/path/to/yafp && bash scripts/unix/quality/check.bash'
 ```
 
-PowerShell has an equivalent integration test:
-
-```powershell
-pwsh -NoProfile -File tests/remote_status_test.ps1
-```
-
-Run the PowerShell command-status regression test with:
-
-```powershell
-pwsh -NoProfile -File tests/powershell_status_test.ps1
-```
-
-Run the PowerShell development-timing regression test with:
-
-```powershell
-pwsh -NoProfile -File tests/powershell_devel_test.ps1
-```
+GitHub Actions runs the same checks on Linux, macOS, and Windows. See
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for component boundaries,
+runtime invariants, and the safe modularization strategy.
 
 ---
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-12 13:23:46 🪟 | 🤖 CODEX 🧠 GPT-5
+📆 2026-09-12 17:03:10 🪟 NDEV-DPC-02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-5.6 Sol Medium & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

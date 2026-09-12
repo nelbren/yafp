@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  bash-quality:
+    name: Bash quality on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Install linters
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck
+          npm install --global markdownlint-cli@0.49.1
+      - name: Run Unix checks
+        env:
+          YAFP_REQUIRE_LINTERS: 1
+        run: bash scripts/unix/quality/check.bash
+
+  bash-macos:
+    name: Bash tests on macOS
+    runs-on: macos-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Run Unix checks
+        run: bash scripts/unix/quality/check.bash
+
+  powershell-windows:
+    name: PowerShell quality on Windows
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Install linters
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 `
+            -Scope CurrentUser -Force -ErrorAction Stop
+          npm install --global markdownlint-cli@0.49.1
+      - name: Run Windows checks
+        shell: pwsh
+        env:
+          YAFP_REQUIRE_LINTERS: 1
+        run: pwsh -NoProfile -File scripts/windows/quality/check.ps1

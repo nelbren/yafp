@@ -395,19 +395,19 @@ theme_render_remote_warning() {
     local message
     local reset
     local unit="commits"
-    local verb="faltan"
+    local verb="are missing"
 
     if [ "${yafp_ctx_git_behind:-0}" -eq 1 ]; then
         unit="commit"
-        verb="falta"
+        verb="is missing"
     fi
 
     case "${yafp_ctx_git_remote_state:-}" in
         behind)
-            message="REPOSITORIO DESACTUALIZADO: ${verb} ${yafp_ctx_git_behind} ${unit} de ${yafp_ctx_git_upstream}"
+            message="OUTDATED REPOSITORY: ${yafp_ctx_git_behind} ${unit} ${verb} from ${yafp_ctx_git_upstream}"
             ;;
         diverged)
-            message="REPOSITORIO DIVERGIÓ: local +${yafp_ctx_git_ahead} / remoto +${yafp_ctx_git_behind} respecto a ${yafp_ctx_git_upstream}"
+            message="DIVERGED REPOSITORY: local +${yafp_ctx_git_ahead} / remote +${yafp_ctx_git_behind} relative to ${yafp_ctx_git_upstream}"
             ;;
         *)
             return 0
@@ -1467,7 +1467,7 @@ yafp_err_context() {
     # Escape '%' to avoid prompt expansion issues
     previous_command="${previous_command//%/%%}"
 
-    # Optional: truncate long commands (para no romper el prompt)
+    # Optional: truncate long commands to avoid breaking the prompt
     local max_len=60
     if (( ${#previous_command} > max_len )); then
         previous_command="${previous_command:0:max_len}..."
@@ -1562,26 +1562,26 @@ yafp_validate_ps1_strict() {
         ((errors++))
     fi
 
-    # 2. ANSI fuera de bloques \[ \]
+    # 2. ANSI outside \[ \] blocks
     local cleaned
     cleaned=$(sed 's/\\\[[^\\\]]*\\\]//g' <<< "$ps1")
 
     if grep -q $'\033\[' <<< "$cleaned"; then
-        echo "⚠️ ANSI fuera de \\[ \\]"
+        echo "⚠️ ANSI outside \\[ \\] blocks"
         ((errors++))
     fi
 
-    # 3. Reset final
+    # 3. Final reset
     if ! grep -q $'\033\[0m' <<< "$ps1"; then
-        echo "⚠️ Falta reset global \\033[0m"
+        echo "⚠️ Missing global reset \\033[0m"
     fi
 
-    # 4. Resultado
+    # 4. Result
     if (( errors == 0 )); then
-        echo "✅ PS1 limpio como código en revisión de tesis"
+        echo "✅ PS1 is clean enough for a thesis code review"
         return 0
     else
-        echo "💀 PS1 sospechoso… revisa antes de que rompa el cursor"
+        echo "💀 Suspicious PS1… review it before it breaks the cursor"
         return 1
     fi
 }

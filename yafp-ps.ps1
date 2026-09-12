@@ -12,6 +12,12 @@ if (Test-Path -LiteralPath $cfg -PathType Leaf) {
     . $cfg
 }
 
+if (-not (Get-Variable DEV -Scope Global -ErrorAction Ignore)) {
+    $global:DEV = 'ndev-'
+}
+if (-not (Get-Variable PRO -Scope Global -ErrorAction Ignore)) {
+    $global:PRO = 'npro-'
+}
 if (-not (Get-Variable YAFP_REPOS -Scope Global -ErrorAction Ignore)) {
     $global:YAFP_REPOS = 1
 }
@@ -20,6 +26,12 @@ if (-not (Get-Variable YAFP_PVENV -Scope Global -ErrorAction Ignore)) {
 }
 if (-not (Get-Variable YAFP_ERROR -Scope Global -ErrorAction Ignore)) {
     $global:YAFP_ERROR = 1
+}
+if (-not (Get-Variable YAFP_TITLE -Scope Global -ErrorAction Ignore)) {
+    $global:YAFP_TITLE = 1
+}
+if (-not (Get-Variable YAFP_DARKC -Scope Global -ErrorAction Ignore)) {
+    $global:YAFP_DARKC = 1
 }
 if (-not (Get-Variable YAFP_THEME -Scope Global -ErrorAction Ignore)) {
     $global:YAFP_THEME = 'default'
@@ -162,6 +174,11 @@ function Test-LastInputWasEmpty {
 }
 
 function Get-LastCommandStatus {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidUsingEmptyCatchBlock',
+        '',
+        Justification = 'YAFP is an interactive prompt: unavailable history is optional context and must degrade silently instead of interrupting or adding noise to the console.'
+    )]
     param(
         [bool]$PreviousSucceeded,
         [int]$NativeExitCode,
@@ -231,6 +248,11 @@ function Clear-YafpRemoteJobs {
 }
 
 function Start-YafpRemoteCheck {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidUsingEmptyCatchBlock',
+        '',
+        Justification = 'YAFP remote status is a best-effort background feature by design; worker failures must not block or write into the interactive prompt, and cleanup is handled by finally.'
+    )]
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
         [Parameter(Mandatory)][string]$LocalRef,
@@ -337,6 +359,11 @@ function Start-YafpRemoteCheck {
 }
 
 function Test-YafpGitSyncCommand {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidUsingEmptyCatchBlock',
+        '',
+        Justification = 'YAFP treats command-history text that PowerShell cannot parse as a non-Git command by design, without surfacing parser noise in the prompt.'
+    )]
     param([AllowEmptyString()][string]$CommandLine)
 
     if ([string]::IsNullOrWhiteSpace($CommandLine)) {
@@ -388,6 +415,11 @@ function Test-YafpGitSyncCommand {
 }
 
 function Get-YafpRemoteContext {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidUsingEmptyCatchBlock',
+        '',
+        Justification = 'YAFP is designed to keep rendering when optional remote cache reads or background checks fail; the remote state falls back to unavailable or error without polluting the console.'
+    )]
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
         [Parameter(Mandatory)][string]$Branch,
@@ -541,11 +573,11 @@ function Write-YafpRemoteWarning {
     $remote = $Context.Git.RemoteStatus
     if ($remote.State -eq 'behind') {
         $unit = if ($remote.Behind -eq 1) { 'commit' } else { 'commits' }
-        $verb = if ($remote.Behind -eq 1) { 'falta' } else { 'faltan' }
-        $message = "REPOSITORIO DESACTUALIZADO: $verb $($remote.Behind) $unit de $($remote.Upstream)"
+        $verb = if ($remote.Behind -eq 1) { 'is missing' } else { 'are missing' }
+        $message = "OUTDATED REPOSITORY: $($remote.Behind) $unit $verb from $($remote.Upstream)"
     }
     elseif ($remote.State -eq 'diverged') {
-        $message = "REPOSITORIO DIVERGIÓ: local +$($remote.Ahead) / remoto +$($remote.Behind) respecto a $($remote.Upstream)"
+        $message = "DIVERGED REPOSITORY: local +$($remote.Ahead) / remote +$($remote.Behind) relative to $($remote.Upstream)"
     }
     else {
         return

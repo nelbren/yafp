@@ -39,6 +39,8 @@ Assert-Status -Status $emptyInput -HadError $false -Code 0 `
     -Label 'empty input'
 
 $global:YAFP_REPOS = 0
+$global:YAFP_THEME = 'light'
+Import-YafpTheme
 $script:promptRan = $false
 $global:LASTEXITCODE = 141
 $renderedPrompt = prompt 6>&1 | Out-String

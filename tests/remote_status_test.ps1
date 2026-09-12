@@ -21,14 +21,15 @@ try {
 
     & git init --quiet --bare --initial-branch=main $origin
     & git -C $origin config maintenance.auto false
-    & git clone --quiet $origin $writer
+    & git init --quiet --initial-branch=main $writer
     & git -C $writer config user.name 'YAFP Test'
     & git -C $writer config user.email 'yafp@example.invalid'
     & git -C $writer config maintenance.auto false
+    & git -C $writer remote add origin $origin
     Set-Content -LiteralPath (Join-Path $writer 'file.txt') -Value 'initial'
     & git -C $writer add file.txt
     & git -C $writer commit --quiet -m initial
-    & git -C $writer push --quiet origin main
+    & git -C $writer push --quiet --set-upstream origin main
 
     & git clone --quiet $origin $local
     & git -C $local config maintenance.auto false
@@ -117,8 +118,8 @@ try {
         Git = [pscustomobject]@{ RemoteStatus = $remote }
     }
     $warning = Write-YafpRemoteWarning -Context $context 6>&1 | Out-String
-    if ($warning -notmatch 'REPOSITORIO DESACTUALIZADO' -or
-        $warning -notmatch '1 commit de origin/main') {
+    if ($warning -notmatch 'OUTDATED REPOSITORY' -or
+        $warning -notmatch '1 commit is missing from origin/main') {
         throw 'behind warning was not rendered'
     }
 

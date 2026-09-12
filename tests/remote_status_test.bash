@@ -39,14 +39,15 @@ assert_git_sync_command() {
 }
 
 git init --quiet --bare --initial-branch=main "$TEST_ROOT/origin.git"
-git clone --quiet "$TEST_ROOT/origin.git" "$TEST_ROOT/writer"
+git init --quiet --initial-branch=main "$TEST_ROOT/writer"
 git -C "$TEST_ROOT/writer" config user.name 'YAFP Test'
 git -C "$TEST_ROOT/writer" config user.email 'yafp@example.invalid'
 git -C "$TEST_ROOT/writer" config maintenance.auto false
+git -C "$TEST_ROOT/writer" remote add origin "$TEST_ROOT/origin.git"
 printf 'initial\n' > "$TEST_ROOT/writer/file.txt"
 git -C "$TEST_ROOT/writer" add file.txt
 git -C "$TEST_ROOT/writer" commit --quiet -m initial
-git -C "$TEST_ROOT/writer" push --quiet origin main
+git -C "$TEST_ROOT/writer" push --quiet --set-upstream origin main
 
 git clone --quiet "$TEST_ROOT/origin.git" "$TEST_ROOT/local"
 git -C "$TEST_ROOT/local" config maintenance.auto false
@@ -155,7 +156,7 @@ set +u
 warning="$(theme_render_remote_warning)"
 set -u
 case "$warning" in
-    *'REPOSITORIO DESACTUALIZADO'*'falta 1 commit de origin/main'*) ;;
+    *'OUTDATED REPOSITORY'*'1 commit is missing from origin/main'*) ;;
     *) fail 'behind warning was not rendered' ;;
 esac
 assert_eq '\n' "${warning: -2}" 'warning line break'
