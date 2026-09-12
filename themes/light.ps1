@@ -23,6 +23,8 @@ $script:blueColorForeground = 'Blue'
 function script:Write-YafpTheme {
     param([Parameter(Mandatory)][object]$Context)
 
+    Write-YafpRemoteWarning -Context $Context
+
     Write-YafpText -Text '🪟 ' -ForegroundColor White `
         -BackgroundColor $null -NoNewline
     $userColor = if ($Context.IsAdmin) { 'Red' } else { 'Cyan' }
@@ -39,6 +41,7 @@ function script:Write-YafpTheme {
     if ($Context.Git) {
         $remoteSymbol = if ($Context.Git.Remote -eq 'remote') { '↯' } else { '⇣' }
         Write-Host '  ' -ForegroundColor White -NoNewline
+        Write-YafpGitRemoteStatus -Git $Context.Git
         Write-YafpText -Text $Context.Git.Branch -ForegroundColor Blue `
             -BackgroundColor $null -NoNewline
         Write-Host $remoteSymbol -ForegroundColor White -NoNewline

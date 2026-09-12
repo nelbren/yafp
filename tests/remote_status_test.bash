@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null && pwd)"
+TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/yafp-remote-test.XXXXXX")"
+export TERM="${TERM:-xterm-256color}"
+export YAFP_NO_INSTALL_HOOKS=1
+
+cleanup() {
+    rm -rf -- "$TEST_ROOT"
+}
+trap cleanup EXIT
+
+fail() {
+    printf 'not ok - %s\n' "$1" >&2
+    exit 1
+}
+
+assert_eq() {
+    local expected="$1"
+    local actual="$2"
+    local label="$3"
+
+    [ "$expected" = "$actual" ] || \
+        fail "$label: expected [$expected], got [$actual]"
+}
+
+git init --quiet --bare --initial-branch=main "$TEST_ROOT/origin.git"
+git clone --quiet "$TEST_ROOT/origin.git" "$TEST_ROOT/writer"
+git -C "$TEST_ROOT/writer" config user.name 'YAFP Test'
+git -C "$TEST_ROOT/writer" config user.email 'yafp@example.invalid'
+git -C "$TEST_ROOT/writer" config maintenance.auto false
+printf 'initial\n' > "$TEST_ROOT/writer/file.txt"
+git -C "$TEST_ROOT/writer" add file.txt
+git -C "$TEST_ROOT/writer" commit --quiet -m initial
+git -C "$TEST_ROOT/writer" push --quiet origin main
+
+git clone --quiet "$TEST_ROOT/origin.git" "$TEST_ROOT/local"
+git -C "$TEST_ROOT/local" config maintenance.auto false
+printf 'remote change\n' >> "$TEST_ROOT/writer/file.txt"
+git -C "$TEST_ROOT/writer" commit --quiet -am remote-change
+git -C "$TEST_ROOT/writer" push --quiet origin main
+
+# shellcheck source=../yafp-ps1.bash
+set +u
+. "$ROOT_DIR/yafp-ps1.bash"
+set -u
+trap - DEBUG
+PROMPT_COMMAND=
+
+cache_file="$TEST_ROOT/local/.git/yafp-remote-status"
+YAFP_REMOTE_CHECK_INTERVAL=300
+yafp_remote_context "$TEST_ROOT/local" main
+assert_eq checking "$yafp_ctx_git_remote_state" 'initial asynchronous state'
+set +u
+indicator="$(theme_render_git_remote_status)"
+set -u
+case "$indicator" in
+    *'…'*) ;;
+    *) fail 'checking indicator was not rendered' ;;
+esac
+
+for _ in {1..100}; do
+    [ -r "$cache_file" ] && break
+    sleep 0.05
+done
+[ -r "$cache_file" ] || fail 'background check did not create its cache'
+
+yafp_remote_context "$TEST_ROOT/local" main
+assert_eq behind "$yafp_ctx_git_remote_state" 'remote state'
+assert_eq 1 "$yafp_ctx_git_behind" 'behind count'
+assert_eq origin/main "$yafp_ctx_git_upstream" 'upstream name'
+set +u
+indicator="$(theme_render_git_remote_status)"
+set -u
+case "$indicator" in
+    *'⇣1'*) ;;
+    *) fail 'behind indicator was not rendered' ;;
+esac
+
+yafp_ctx_git_remote_state=current
+set +u
+indicator="$(theme_render_git_remote_status)"
+set -u
+case "$indicator" in
+    *'✓'*) ;;
+    *) fail 'current indicator was not rendered' ;;
+esac
+
+yafp_ctx_git_remote_state=ahead
+yafp_ctx_git_ahead=2
+set +u
+indicator="$(theme_render_git_remote_status)"
+set -u
+case "$indicator" in
+    *'⇡2'*) ;;
+    *) fail 'ahead indicator was not rendered' ;;
+esac
+
+yafp_ctx_git_remote_state=behind
+yafp_ctx_git_ahead=0
+
+set +u
+warning="$(theme_render_remote_warning)"
+set -u
+case "$warning" in
+    *'REPOSITORIO DESACTUALIZADO'*'falta 1 commit de origin/main'*) ;;
+    *) fail 'behind warning was not rendered' ;;
+esac
+assert_eq '\n' "${warning: -2}" 'warning line break'
+
+git -C "$TEST_ROOT/local" config user.name 'YAFP Test'
+git -C "$TEST_ROOT/local" config user.email 'yafp@example.invalid'
+printf 'local change\n' > "$TEST_ROOT/local/local.txt"
+git -C "$TEST_ROOT/local" add local.txt
+git -C "$TEST_ROOT/local" commit --quiet -m local-change
+(
+    yafp_remote_check_worker \
+        "$TEST_ROOT/local" refs/heads/main origin/main origin \
+        "$cache_file" "${cache_file}.lock"
+)
+yafp_remote_context "$TEST_ROOT/local" main
+assert_eq diverged "$yafp_ctx_git_remote_state" 'diverged state'
+assert_eq 1 "$yafp_ctx_git_ahead" 'ahead count'
+assert_eq 1 "$yafp_ctx_git_behind" 'diverged behind count'
+set +u
+indicator="$(theme_render_git_remote_status)"
+set -u
+case "$indicator" in
+    *'⇡1⇣1'*) ;;
+    *) fail 'diverged indicator was not rendered' ;;
+esac
+
+YAFP_REMOTE_CHECK_INTERVAL=0
+yafp_remote_context "$TEST_ROOT/local" main
+assert_eq '' "$yafp_ctx_git_remote_state" 'disabled state'
+
+printf 'ok - asynchronous remote status and disabled interval\n'

@@ -1,6 +1,16 @@
 # :computer: Yet Another Fancy Prompt
 
-[![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/) [![made-with-powershell](https://img.shields.io/badge/Made%20with-PowerShell-5391FE.svg?logo=powershell)](https://docs.microsoft.com/powershell/) ![version](https://img.shields.io/badge/version-0.3.1-green) ![themes](https://img.shields.io/badge/themes-8A2BE2?logo=educative)
+[![made-with-bash][badge-bash]][bash]
+[![made-with-powershell][badge-powershell]][powershell]
+![version][badge-version]
+![themes][badge-themes]
+
+[badge-bash]: https://img.shields.io/badge/Made%20with-Bash-1f425f.svg
+[badge-powershell]: https://img.shields.io/badge/Made%20with-PowerShell-5391FE.svg?logo=powershell
+[badge-version]: https://img.shields.io/badge/version-0.3.1-green
+[badge-themes]: https://img.shields.io/badge/themes-8A2BE2?logo=educative
+[bash]: https://www.gnu.org/software/bash/
+[powershell]: https://docs.microsoft.com/powershell/
 
 ## :soon: Insert here the most beautiful screenshots
 
@@ -52,6 +62,51 @@ $global:YAFP_THEME = 'minimal'
 ```
 
 If the selected theme does not exist, YAFP falls back to the `default` theme.
+
+### Remote repository checks
+
+YAFP can periodically refresh the configured upstream without blocking the
+prompt. Configure the cache lifetime in seconds before loading the prompt:
+
+| Value             | Behavior                                      |
+| ----------------- | --------------------------------------------- |
+| `0`               | Disables remote checks completely             |
+| Positive integer  | Enables checks using that interval in seconds |
+| Not configured    | Defaults to 300 seconds                       |
+
+For Bash, set the value in `yafp-cfg.bash`:
+
+```bash
+YAFP_REMOTE_CHECK_INTERVAL=300
+```
+
+For PowerShell, set the value in `yafp-cfg.ps1`:
+
+```powershell
+$global:YAFP_REMOTE_CHECK_INTERVAL = 300
+```
+
+When the cached result expires, YAFP starts a non-interactive `git fetch` in
+the background. A later prompt render reads the result. Repositories without
+an upstream do not produce a false outdated warning.
+
+#### Remote status indicators
+
+The compact indicator appears immediately to the left of the branch name:
+
+| Indicator | Color       | State and meaning                              |
+| --------- | ----------- | ---------------------------------------------- |
+| `✓`       | Green       | Current: local matches its upstream            |
+| `⇡N`      | Green       | Ahead: `N` local commits are ready to push     |
+| `…`       | Yellow      | Checking: the first check is still running     |
+| `⟳`       | Yellow      | Refreshing: updating the previous cached state |
+| `⇣N`      | Intense red | Behind: `N` remote commits must be integrated  |
+| `⇡N⇣M`    | Intense red | Diverged: both histories have unique commits   |
+| `!`       | Intense red | Error: the remote check failed                 |
+
+The `⟳` indicator can precede the last known state while YAFP refreshes it,
+for example `⟳✓` or `⟳⇣2`. Behind and diverged states also retain the prominent
+warning banner.
 
 ---
 
@@ -212,8 +267,8 @@ capture scrollback output without changing how commands are executed.
 
 The current implementation is Bash-only. zsh and fish can use the same OSC 133
 protocol, but they need shell-native hooks such as `precmd`/`preexec` in zsh or
-fish event handlers. A future YAFP shell module can add those without inventing a
-new protocol.
+fish event handlers. A future YAFP shell module can add those without
+inventing a new protocol.
 
 ### Current limitations
 
@@ -233,9 +288,27 @@ Run the OSC 133 parser and command-block lifecycle tests with:
 bash tests/osc133_test.bash
 ```
 
+Run the background remote-status integration test with:
+
+```bash
+bash tests/remote_status_test.bash
+```
+
+PowerShell has an equivalent integration test:
+
+```powershell
+pwsh -NoProfile -File tests/remote_status_test.ps1
+```
+
+Run the PowerShell command-status regression test with:
+
+```powershell
+pwsh -NoProfile -File tests/powershell_status_test.ps1
+```
+
 ---
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-12 03:44:25 🪟 | 🤖 CODEX 🧠 GPT-5
+📆 2026-09-12 12:54:01 🪟 | 🤖 CODEX 🧠 GPT-5
 </div>

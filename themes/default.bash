@@ -9,9 +9,12 @@ YAFP_THEME_VERSION="2.2"
 
 theme_render_git_block() {
     local remote_symbol
+    local remote_status
     local counts
 
     counts="$(theme_render_git_counts)"
+    remote_status="$(theme_render_git_remote_status)"
+    [ -z "$remote_status" ] || remote_status+=" "
 
     if [ "$yafp_ctx_git_remote" = "remote" ]; then
         remote_symbol="$YAFP_SYMBOL_REMOTE"
@@ -26,6 +29,7 @@ theme_render_git_block() {
         "$YAFP_SYMBOL_GIT_REPO"
         "$yafp_ctx_git_repo"
         "$YAFP_SYMBOL_GIT_SEP"
+        "$remote_status"
         "$yafp_ctx_git_branch"
         "$YAFP_SYMBOL_GIT_DIR${remote_symbol}${counts}"
         "$cGit]"
@@ -171,6 +175,7 @@ theme_render_ps1() {
     promptMark="$(theme_ps1_prompt_mark)"
 
     [[ "${YAFP_DEVEL:-0}" -eq 1 ]] && ps1+="$(yafp_dev_segment)"
+    ps1+="$(theme_render_remote_warning)"
     ps1+="${main}"
     ps1+="${promptMark}${cFullResetPS1} "
 

@@ -8,6 +8,8 @@ $script:YafpThemeVersion = '2.2'
 function script:Write-YafpTheme {
     param([Parameter(Mandatory)][object]$Context)
 
+    Write-YafpRemoteWarning -Context $Context
+
     $userIcon = if ($Context.IsAdmin) { '💀' } else { '👤' }
     Write-Host "🪟 $userIcon " -ForegroundColor White -NoNewline
     $userColor = if ($Context.IsAdmin) { $redColorForeground } else { $cyanColorForeground }
@@ -26,7 +28,11 @@ function script:Write-YafpTheme {
     if ($Context.Git) {
         $remoteSymbol = if ($Context.Git.Remote -eq 'remote') { '⚡' } else { '⇣' }
         Write-Host ' on ' -ForegroundColor White -NoNewline
-        Write-YafpText -Text "$($Context.Git.Branch)💻$remoteSymbol" `
+        Write-YafpText -Text '' `
+            -ForegroundColor $blueColorForeground `
+            -BackgroundColor $blueColorBackground -NoNewline
+        Write-YafpGitRemoteStatus -Git $Context.Git
+        Write-YafpText -Text "$($Context.Git.Branch)💻$remoteSymbol" `
             -ForegroundColor $blueColorForeground `
             -BackgroundColor $blueColorBackground -NoNewline
         $hasChanges = (

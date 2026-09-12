@@ -68,9 +68,15 @@ function script:Write-YafpGitCounts {
 function script:Write-YafpTheme {
     param([Parameter(Mandatory)][object]$Context)
 
+    Write-YafpRemoteWarning -Context $Context
+
     if ($Context.Git) {
         $remoteSymbol = if ($Context.Git.Remote -eq 'remote') { '⚡' } else { '⇣' }
-        Write-YafpText -Text "[🔛$($Context.Git.LastTimestamp)💾$($Context.Git.Repository)ᚼ$($Context.Git.Branch)💻$remoteSymbol" `
+        Write-YafpText -Text "[🔛$($Context.Git.LastTimestamp)💾$($Context.Git.Repository)ᚼ" `
+            -ForegroundColor $grayColorForeground `
+            -BackgroundColor $grayColorBackground -NoNewline
+        Write-YafpGitRemoteStatus -Git $Context.Git
+        Write-YafpText -Text "$($Context.Git.Branch)💻$remoteSymbol" `
             -ForegroundColor $grayColorForeground `
             -BackgroundColor $grayColorBackground -NoNewline
         Write-YafpGitCounts -Git $Context.Git

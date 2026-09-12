@@ -57,6 +57,7 @@ theme_render_general_block() {
 
 theme_render_git_block() {
     local remote_symbol
+    local remote_status
     local counts
     local cGitBranchPS1
     local cNormalPS1
@@ -64,6 +65,8 @@ theme_render_git_block() {
     [ "$yafp_ctx_git_has_repo" = "1" ] || return
 
     counts="$(theme_render_git_counts)"
+    remote_status="$(theme_render_git_remote_status)"
+    [ -z "$remote_status" ] || remote_status+=" "
     cGitBranchPS1="$(ps1_wrap "$cGitBranch")"
     cNormalPS1="$(theme_ps1_reset)"
 
@@ -83,6 +86,7 @@ theme_render_git_block() {
         "$cSeparator on "
         "$cGitBranchPS1"
         "$YAFP_SYMBOL_GIT_EMOJI"
+        "$remote_status"
         "$yafp_ctx_git_branch"
         "$YAFP_SYMBOL_GIT_DIR"
         "$remote_symbol"
@@ -178,7 +182,7 @@ theme_render_ps1() {
     main="$(theme_render_main_block)"
     promptMark="$(theme_ps1_prompt_mark)"
 
-    ps1="${main}\n"
+    ps1="$(theme_render_remote_warning)${main}\n"
     [[ "${YAFP_DEVEL:-0}" -eq 1 ]] && ps1+="$(yafp_dev_segment)"
     # ps1+="${promptMark}\[\e[0m\e[K\] "
     ps1+="${promptMark}${cFullResetPS1} "

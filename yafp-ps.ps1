@@ -24,6 +24,9 @@ if (-not (Get-Variable YAFP_ERROR -Scope Global -ErrorAction Ignore)) {
 if (-not (Get-Variable YAFP_THEME -Scope Global -ErrorAction Ignore)) {
     $global:YAFP_THEME = 'default'
 }
+if (-not (Get-Variable YAFP_REMOTE_CHECK_INTERVAL -Scope Global -ErrorAction Ignore)) {
+    $global:YAFP_REMOTE_CHECK_INTERVAL = 300
+}
 
 function Write-YafpText {
     param(
@@ -97,6 +100,9 @@ if (-not (Get-Variable promptRan -Scope Script -ErrorAction Ignore)) {
 }
 if (-not (Get-Variable previous_timestamp -Scope Script -ErrorAction Ignore)) {
     $script:previous_timestamp = ''
+}
+if (-not (Get-Variable YafpRemoteJobs -Scope Script -ErrorAction Ignore)) {
+    $script:YafpRemoteJobs = @{}
 }
 
 function Get-VarSafe {
@@ -172,9 +178,6 @@ function Get-LastCommandStatus {
     if ($errorForLastCommand) {
         return [pscustomobject]@{ HadError = $true; Code = $DefaultInternalCode }
     }
-    if ($NativeExitCode -ne 0) {
-        return [pscustomobject]@{ HadError = $true; Code = $NativeExitCode }
-    }
 
     return [pscustomobject]@{ HadError = $false; Code = 0 }
 }
@@ -184,6 +187,274 @@ function Get-YafpVenvContext {
         return $null
     }
     return Split-Path $env:VIRTUAL_ENV -Leaf
+}
+
+function Clear-YafpRemoteJobs {
+    foreach ($key in @($script:YafpRemoteJobs.Keys)) {
+        $knownJob = $script:YafpRemoteJobs[$key]
+        if ($knownJob.State -in @('Completed', 'Failed', 'Stopped')) {
+            Remove-Job -Job $knownJob -Force -ErrorAction Ignore
+            $script:YafpRemoteJobs.Remove($key)
+        }
+    }
+}
+
+function Start-YafpRemoteCheck {
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string]$LocalRef,
+        [Parameter(Mandatory)][string]$Upstream,
+        [Parameter(Mandatory)][string]$RemoteName,
+        [Parameter(Mandatory)][string]$CacheFile
+    )
+
+    Clear-YafpRemoteJobs
+
+    if ($script:YafpRemoteJobs.ContainsKey($CacheFile)) {
+        return
+    }
+
+    $lockDir = "$CacheFile.lock"
+    if (Test-Path -LiteralPath $lockDir -PathType Container) {
+        $staleAfter = [Math]::Max(
+            [int]$global:YAFP_REMOTE_CHECK_INTERVAL * 2,
+            600
+        )
+        $lockAge = ([DateTime]::UtcNow -
+            (Get-Item -LiteralPath $lockDir).LastWriteTimeUtc).TotalSeconds
+        if ($lockAge -lt $staleAfter) {
+            return
+        }
+        Remove-Item -LiteralPath $lockDir -Force -ErrorAction Ignore
+        if (Test-Path -LiteralPath $lockDir) {
+            return
+        }
+    }
+
+    $job = Start-Job -ScriptBlock {
+        param($repoRoot, $localRef, $upstream, $remoteName, $cacheFile)
+
+        $lockDir = "$cacheFile.lock"
+        $hasLock = $false
+        $tempFile = $null
+        try {
+            $null = New-Item -ItemType Directory -Path $lockDir `
+                -ErrorAction Stop
+            $hasLock = $true
+
+            $env:GIT_TERMINAL_PROMPT = '0'
+            $env:GIT_ASKPASS = ''
+            $null = & git -C $repoRoot -c credential.interactive=never `
+                fetch --quiet --no-tags -- $remoteName 2>$null
+            $fetchSucceeded = $LASTEXITCODE -eq 0
+
+            $ahead = 0
+            $behind = 0
+            $state = 'error'
+            if ($fetchSucceeded) {
+                $rawCounts = & git -C $repoRoot rev-list --left-right `
+                    --count "$localRef...$upstream" 2>$null
+                if ($LASTEXITCODE -eq 0 -and
+                    "$rawCounts" -match '^\s*(\d+)\s+(\d+)\s*$') {
+                    $ahead = [int]$Matches[1]
+                    $behind = [int]$Matches[2]
+                    if ($ahead -gt 0 -and $behind -gt 0) {
+                        $state = 'diverged'
+                    }
+                    elseif ($behind -gt 0) {
+                        $state = 'behind'
+                    }
+                    elseif ($ahead -gt 0) {
+                        $state = 'ahead'
+                    }
+                    else {
+                        $state = 'current'
+                    }
+                }
+            }
+
+            $currentOid = & git -C $repoRoot rev-parse $localRef 2>$null
+            $checkedAt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+            $line = @(
+                $checkedAt
+                $state
+                $ahead
+                $behind
+                $localRef
+                $upstream
+                "$currentOid"
+            ) -join "`t"
+
+            $tempFile = "$cacheFile.$([guid]::NewGuid().ToString('N')).tmp"
+            $encoding = [Text.UTF8Encoding]::new($false)
+            [IO.File]::WriteAllText($tempFile, "$line`n", $encoding)
+            Move-Item -LiteralPath $tempFile -Destination $cacheFile -Force
+            $tempFile = $null
+        }
+        catch {}
+        finally {
+            if ($tempFile -and (Test-Path -LiteralPath $tempFile)) {
+                Remove-Item -LiteralPath $tempFile -Force -ErrorAction Ignore
+            }
+            if ($hasLock) {
+                Remove-Item -LiteralPath $lockDir -Force -ErrorAction Ignore
+            }
+        }
+    } -ArgumentList $RepoRoot, $LocalRef, $Upstream, $RemoteName, $CacheFile
+
+    $script:YafpRemoteJobs[$CacheFile] = $job
+}
+
+function Get-YafpRemoteContext {
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string]$Branch
+    )
+
+    Clear-YafpRemoteJobs
+
+    $interval = 0
+    if (-not [int]::TryParse(
+        "$global:YAFP_REMOTE_CHECK_INTERVAL",
+        [ref]$interval
+    ) -or $interval -le 0) {
+        return $null
+    }
+
+    $localRef = git -C $RepoRoot symbolic-ref -q HEAD 2>$null
+    $upstream = git -C $RepoRoot rev-parse --abbrev-ref `
+        --symbolic-full-name '@{upstream}' 2>$null
+    $remoteName = git -C $RepoRoot config --get `
+        "branch.$Branch.remote" 2>$null
+    if (-not $localRef -or -not $upstream -or
+        -not $remoteName -or $remoteName -eq '.') {
+        return $null
+    }
+
+    $gitDir = git -C $RepoRoot rev-parse --absolute-git-dir 2>$null
+    $currentOid = git -C $RepoRoot rev-parse $localRef 2>$null
+    if (-not $gitDir -or -not $currentOid) {
+        return $null
+    }
+
+    $cacheFile = Join-Path "$gitDir" 'yafp-remote-status'
+    $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    $checkedAt = 0L
+    $remoteContext = $null
+
+    if (Test-Path -LiteralPath $cacheFile -PathType Leaf) {
+        try {
+            $fields = ([IO.File]::ReadAllText($cacheFile).TrimEnd()) -split "`t", 7
+            if ($fields.Count -eq 7 -and
+                [long]::TryParse($fields[0], [ref]$checkedAt) -and
+                $fields[2] -match '^\d+$' -and $fields[3] -match '^\d+$' -and
+                $fields[4] -eq "$localRef" -and
+                $fields[5] -eq "$upstream" -and
+                $fields[6] -eq "$currentOid") {
+                $remoteContext = [pscustomobject]@{
+                    State = $fields[1]
+                    Ahead = [int]$fields[2]
+                    Behind = [int]$fields[3]
+                    Upstream = $fields[5]
+                    CheckedAt = $checkedAt
+                    Refreshing = $false
+                }
+            }
+        }
+        catch {}
+    }
+
+    if (-not $remoteContext -or ($now - $checkedAt) -ge $interval) {
+        $checkRequested = $false
+        try {
+            Start-YafpRemoteCheck -RepoRoot $RepoRoot -LocalRef "$localRef" `
+                -Upstream "$upstream" -RemoteName "$remoteName" `
+                -CacheFile $cacheFile
+            $checkRequested = $true
+        }
+        catch {}
+
+        if (-not $remoteContext) {
+            $remoteContext = [pscustomobject]@{
+                State = if ($checkRequested) { 'checking' } else { 'error' }
+                Ahead = 0
+                Behind = 0
+                Upstream = "$upstream"
+                CheckedAt = 0L
+                Refreshing = $false
+            }
+        }
+        elseif ($checkRequested) {
+            $remoteContext.Refreshing = $true
+        }
+    }
+
+    return $remoteContext
+}
+
+function Write-YafpGitRemoteStatus {
+    param([Parameter(Mandatory)][object]$Git)
+
+    $remote = $Git.RemoteStatus
+    if (-not $remote) {
+        return
+    }
+
+    if ($remote.Refreshing) {
+        Write-YafpText -Text '⟳' -ForegroundColor Yellow `
+            -BackgroundColor $null -NoNewline
+    }
+
+    $text = switch ($remote.State) {
+        'current' { '✓' }
+        'ahead' { "⇡$($remote.Ahead)" }
+        'behind' { "⇣$($remote.Behind)" }
+        'diverged' { "⇡$($remote.Ahead)⇣$($remote.Behind)" }
+        'checking' { '…' }
+        'error' { '!' }
+        default { '' }
+    }
+    if (-not $text) {
+        return
+    }
+
+    if ($remote.State -in @('current', 'ahead')) {
+        Write-YafpText -Text $text -ForegroundColor Green `
+            -BackgroundColor $null -NoNewline
+    }
+    elseif ($remote.State -eq 'checking') {
+        Write-YafpText -Text $text -ForegroundColor Yellow `
+            -BackgroundColor $null -NoNewline
+    }
+    else {
+        Write-YafpText -Text $text -ForegroundColor White `
+            -BackgroundColor Red -NoNewline
+    }
+    Write-Host ' ' -NoNewline
+}
+
+function Write-YafpRemoteWarning {
+    param([Parameter(Mandatory)][object]$Context)
+
+    if (-not $Context.Git -or -not $Context.Git.RemoteStatus) {
+        return
+    }
+
+    $remote = $Context.Git.RemoteStatus
+    if ($remote.State -eq 'behind') {
+        $unit = if ($remote.Behind -eq 1) { 'commit' } else { 'commits' }
+        $verb = if ($remote.Behind -eq 1) { 'falta' } else { 'faltan' }
+        $message = "REPOSITORIO DESACTUALIZADO: $verb $($remote.Behind) $unit de $($remote.Upstream)"
+    }
+    elseif ($remote.State -eq 'diverged') {
+        $message = "REPOSITORIO DIVERGIÓ: local +$($remote.Ahead) / remoto +$($remote.Behind) respecto a $($remote.Upstream)"
+    }
+    else {
+        return
+    }
+
+    Write-YafpText -Text "🚨 $message 🚨" -ForegroundColor White `
+        -BackgroundColor DarkRed
 }
 
 function Get-YafpGitContext {
@@ -197,9 +468,9 @@ function Get-YafpGitContext {
             return $null
         }
 
+        $top = git rev-parse --show-toplevel 2>$null
         $gitRepoUrl = git remote get-url origin 2>$null
         if ([string]::IsNullOrWhiteSpace($gitRepoUrl)) {
-            $top = git rev-parse --show-toplevel 2>$null
             $repo = Split-Path $top -Leaf
             $remote = 'local'
         }
@@ -225,6 +496,9 @@ function Get-YafpGitContext {
         if ($LASTEXITCODE -ne 0) {
             return $null
         }
+
+        $remoteStatus = Get-YafpRemoteContext -RepoRoot "$top" `
+            -Branch "$branch"
 
         $delete = 0
         $change = 0
@@ -258,6 +532,7 @@ function Get-YafpGitContext {
             DeleteCount = $delete
             ChangeCount = $change
             NewCount = $new
+            RemoteStatus = $remoteStatus
         }
     }
     catch {
