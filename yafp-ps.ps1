@@ -27,6 +27,9 @@ if (-not (Get-Variable YAFP_THEME -Scope Global -ErrorAction Ignore)) {
 if (-not (Get-Variable YAFP_REMOTE_CHECK_INTERVAL -Scope Global -ErrorAction Ignore)) {
     $global:YAFP_REMOTE_CHECK_INTERVAL = 300
 }
+if (-not (Get-Variable YAFP_DEVEL -Scope Global -ErrorAction Ignore)) {
+    $global:YAFP_DEVEL = 0
+}
 
 function Write-YafpText {
     param(
@@ -100,6 +103,34 @@ if (-not (Get-Variable promptRan -Scope Script -ErrorAction Ignore)) {
 }
 if (-not (Get-Variable previous_timestamp -Scope Script -ErrorAction Ignore)) {
     $script:previous_timestamp = ''
+}
+
+function Write-YafpDevelopmentMetrics {
+    param(
+        [Parameter(Mandatory)]
+        [object]$Development
+    )
+
+    if ($Development.Total -lt 50) {
+        $icon = '🚀'
+        $color = 'Green'
+    }
+    elseif ($Development.Total -lt 200) {
+        $icon = '⏱️'
+        $color = 'Yellow'
+    }
+    else {
+        $icon = '🐢'
+        $color = 'Red'
+    }
+
+    $text = "$icon$($Development.Total)ms | " +
+        "⚙️$($Development.General) " +
+        "🌱$($Development.Git) " +
+        "🐍$($Development.Venv) " +
+        "❌$($Development.Error) " +
+        "⚡$($Development.Timer)"
+    Write-YafpText -Text $text -ForegroundColor $color -BackgroundColor $null
 }
 if (-not (Get-Variable YafpRemoteJobs -Scope Script -ErrorAction Ignore)) {
     $script:YafpRemoteJobs = @{}
@@ -305,10 +336,62 @@ function Start-YafpRemoteCheck {
     $script:YafpRemoteJobs[$CacheFile] = $job
 }
 
+function Test-YafpGitSyncCommand {
+    param([AllowEmptyString()][string]$CommandLine)
+
+    if ([string]::IsNullOrWhiteSpace($CommandLine)) {
+        return $false
+    }
+
+    try {
+        $tokens = $null
+        $parseErrors = $null
+        $ast = [Management.Automation.Language.Parser]::ParseInput(
+            $CommandLine,
+            [ref]$tokens,
+            [ref]$parseErrors
+        )
+        if ($parseErrors.Count -gt 0) {
+            return $false
+        }
+
+        $commands = $ast.FindAll({
+            param($node)
+            $node -is [Management.Automation.Language.CommandAst]
+        }, $true)
+
+        foreach ($command in $commands) {
+            if ($command.GetCommandName() -notin @('git', 'git.exe')) {
+                continue
+            }
+
+            $elements = @($command.CommandElements | Select-Object -Skip 1)
+            for ($index = 0; $index -lt $elements.Count; $index++) {
+                $argument = $elements[$index].Extent.Text.Trim("'`"")
+                if ($argument -in @(
+                    '-C', '-c', '--git-dir', '--work-tree',
+                    '--namespace', '--exec-path'
+                )) {
+                    $index++
+                    continue
+                }
+                if ($argument.StartsWith('-')) {
+                    continue
+                }
+                return $argument -in @('push', 'fetch', 'pull')
+            }
+        }
+    }
+    catch {}
+
+    return $false
+}
+
 function Get-YafpRemoteContext {
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
-        [Parameter(Mandatory)][string]$Branch
+        [Parameter(Mandatory)][string]$Branch,
+        [switch]$ForceRefresh
     )
 
     Clear-YafpRemoteJobs
@@ -351,6 +434,7 @@ function Get-YafpRemoteContext {
                 $fields[4] -eq "$localRef" -and
                 $fields[5] -eq "$upstream" -and
                 $fields[6] -eq "$currentOid") {
+                $cacheAge = [Math]::Max(0L, $now - $checkedAt)
                 $remoteContext = [pscustomobject]@{
                     State = $fields[1]
                     Ahead = [int]$fields[2]
@@ -358,13 +442,18 @@ function Get-YafpRemoteContext {
                     Upstream = $fields[5]
                     CheckedAt = $checkedAt
                     Refreshing = $false
+                    RefreshIn = [Math]::Max(
+                        0L,
+                        [long]$interval - $cacheAge
+                    )
                 }
             }
         }
         catch {}
     }
 
-    if (-not $remoteContext -or ($now - $checkedAt) -ge $interval) {
+    if ($ForceRefresh -or -not $remoteContext -or
+        ($now - $checkedAt) -ge $interval) {
         $checkRequested = $false
         try {
             Start-YafpRemoteCheck -RepoRoot $RepoRoot -LocalRef "$localRef" `
@@ -382,10 +471,12 @@ function Get-YafpRemoteContext {
                 Upstream = "$upstream"
                 CheckedAt = 0L
                 Refreshing = $false
+                RefreshIn = $null
             }
         }
         elseif ($checkRequested) {
             $remoteContext.Refreshing = $true
+            $remoteContext.RefreshIn = 0L
         }
     }
 
@@ -398,6 +489,13 @@ function Write-YafpGitRemoteStatus {
     $remote = $Git.RemoteStatus
     if (-not $remote) {
         return
+    }
+
+    Write-Host ' ' -NoNewline
+
+    if ($null -ne $remote.RefreshIn) {
+        Write-YafpText -Text "($($remote.RefreshIn)) " `
+            -ForegroundColor DarkGray -BackgroundColor $null -NoNewline
     }
 
     if ($remote.Refreshing) {
@@ -458,6 +556,8 @@ function Write-YafpRemoteWarning {
 }
 
 function Get-YafpGitContext {
+    param([switch]$ForceRemoteRefresh)
+
     if ($global:YAFP_REPOS -ne 1) {
         return $null
     }
@@ -498,7 +598,7 @@ function Get-YafpGitContext {
         }
 
         $remoteStatus = Get-YafpRemoteContext -RepoRoot "$top" `
-            -Branch "$branch"
+            -Branch "$branch" -ForceRefresh:$ForceRemoteRefresh
 
         $delete = 0
         $change = 0
@@ -563,33 +663,89 @@ Import-YafpTheme
 function prompt {
     $previousSucceeded = $?
     $nativeExitCode = [int](Get-VarSafe 'LASTEXITCODE' 'Global' 0)
+
+    $developmentEnabled = $global:YAFP_DEVEL -eq 1
+    if ($developmentEnabled) {
+        $totalTimer = [Diagnostics.Stopwatch]::StartNew()
+        $errorTimer = [Diagnostics.Stopwatch]::StartNew()
+    }
     $wasEmpty = Test-LastInputWasEmpty
     $status = Get-LastCommandStatus `
         -PreviousSucceeded $previousSucceeded `
         -NativeExitCode $nativeExitCode `
         -WasEmpty $wasEmpty
+    if ($developmentEnabled) {
+        $errorTimer.Stop()
+        $generalTimer = [Diagnostics.Stopwatch]::StartNew()
+    }
 
     $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
     $previousCommand = ''
     if (@(Get-History).Count -gt 0) {
         $previousCommand = (Get-History)[-1].CommandLine
     }
+    $forceRemoteRefresh = (
+        -not $wasEmpty -and
+        -not $status.HadError -and
+        (Test-YafpGitSyncCommand -CommandLine $previousCommand)
+    )
 
     $computerName = $env:COMPUTERNAME
+    $displayPath = Get-YafpDisplayPath
+    $isAdmin = Test-YafpAdministrator
+    $daySymbol = Get-YafpDaySymbol -Hour (Get-Date).Hour
+    if ($developmentEnabled) {
+        $generalTimer.Stop()
+        $gitTimer = [Diagnostics.Stopwatch]::StartNew()
+    }
+    $gitContext = Get-YafpGitContext -ForceRemoteRefresh:$forceRemoteRefresh
+    if ($developmentEnabled) {
+        $gitTimer.Stop()
+        $venvTimer = [Diagnostics.Stopwatch]::StartNew()
+    }
+    $venvContext = Get-YafpVenvContext
+    if ($developmentEnabled) {
+        $venvTimer.Stop()
+        $totalTimer.Stop()
+
+        $totalMilliseconds = [int]$totalTimer.Elapsed.TotalMilliseconds
+        $generalMilliseconds = [int]$generalTimer.Elapsed.TotalMilliseconds
+        $gitMilliseconds = [int]$gitTimer.Elapsed.TotalMilliseconds
+        $venvMilliseconds = [int]$venvTimer.Elapsed.TotalMilliseconds
+        $errorMilliseconds = [int]$errorTimer.Elapsed.TotalMilliseconds
+        $timerMilliseconds = [Math]::Max(
+            0,
+            $totalMilliseconds - $generalMilliseconds - $gitMilliseconds -
+                $venvMilliseconds - $errorMilliseconds
+        )
+        $development = [pscustomobject]@{
+            Total = $totalMilliseconds
+            General = $generalMilliseconds
+            Git = $gitMilliseconds
+            Venv = $venvMilliseconds
+            Error = $errorMilliseconds
+            Timer = $timerMilliseconds
+        }
+    }
+    else {
+        $development = $null
+    }
+
     $context = [pscustomobject]@{
         User = $env:USERNAME
         Computer = $computerName
-        Path = Get-YafpDisplayPath
-        IsAdmin = Test-YafpAdministrator
+        Path = $displayPath
+        IsAdmin = $isAdmin
         IsDevelopment = -not $computerName.StartsWith($global:PRO)
         Timestamp = $timestamp
         PreviousTimestamp = $script:previous_timestamp
         PreviousCommand = $previousCommand
         ExitCode = $status.Code
         HadError = $status.HadError
-        DaySymbol = Get-YafpDaySymbol -Hour (Get-Date).Hour
-        Git = Get-YafpGitContext
-        Venv = Get-YafpVenvContext
+        DaySymbol = $daySymbol
+        Git = $gitContext
+        Venv = $venvContext
+        Development = $development
     }
 
     $promptMark = Write-YafpTheme -Context $context

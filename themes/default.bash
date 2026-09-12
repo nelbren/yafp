@@ -14,7 +14,7 @@ theme_render_git_block() {
 
     counts="$(theme_render_git_counts)"
     remote_status="$(theme_render_git_remote_status)"
-    [ -z "$remote_status" ] || remote_status+=" "
+    [ -z "$remote_status" ] || remote_status=" ${remote_status} "
 
     if [ "$yafp_ctx_git_remote" = "remote" ]; then
         remote_symbol="$YAFP_SYMBOL_REMOTE"

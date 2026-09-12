@@ -54,12 +54,40 @@ try {
     Assert-Equal behind $remote.State 'remote state'
     Assert-Equal 1 $remote.Behind 'behind count'
     Assert-Equal origin/main $remote.Upstream 'upstream name'
+    if ($remote.RefreshIn -lt 0 -or $remote.RefreshIn -gt 300) {
+        throw 'refresh countdown is outside the configured interval'
+    }
 
     $gitContext = [pscustomobject]@{ RemoteStatus = $remote }
     $indicator = Write-YafpGitRemoteStatus -Git $gitContext 6>&1 |
         Out-String
-    if ($indicator -notmatch '⇣1') {
+    if ($indicator -notmatch '\(\d+\)\s+⇣1') {
         throw 'behind indicator was not rendered'
+    }
+
+    foreach ($commandCase in @(
+        @{ Command = 'git push'; Expected = $true }
+        @{ Command = 'git fetch origin'; Expected = $true }
+        @{ Command = 'git pull --ff-only'; Expected = $true }
+        @{ Command = 'git -C other-repo push'; Expected = $true }
+        @{ Command = 'git status'; Expected = $false }
+        @{ Command = 'Write-Output "git push"'; Expected = $false }
+    )) {
+        $detected = Test-YafpGitSyncCommand -CommandLine $commandCase.Command
+        Assert-Equal $commandCase.Expected $detected `
+            "sync command: $($commandCase.Command)"
+    }
+
+    $forced = Get-YafpRemoteContext -RepoRoot $local -Branch main `
+        -ForceRefresh
+    Assert-Equal $true $forced.Refreshing 'forced refresh state'
+    Assert-Equal 0 $forced.RefreshIn 'forced refresh countdown'
+    $job = $script:YafpRemoteJobs[$cacheFile]
+    $null = Wait-Job -Job $job -Timeout 30
+    Assert-Equal Completed $job.State 'forced refresh background job state'
+    $remote = Get-YafpRemoteContext -RepoRoot $local -Branch main
+    if ($remote.RefreshIn -le 0) {
+        throw 'forced refresh did not reset the countdown'
     }
 
     foreach ($indicatorCase in @(
@@ -75,6 +103,7 @@ try {
             Upstream = 'origin/main'
             CheckedAt = 0L
             Refreshing = $false
+            RefreshIn = 300L
         }
         $gitContext = [pscustomobject]@{ RemoteStatus = $status }
         $indicator = Write-YafpGitRemoteStatus -Git $gitContext 6>&1 |

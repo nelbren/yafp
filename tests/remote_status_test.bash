@@ -25,6 +25,19 @@ assert_eq() {
         fail "$label: expected [$expected], got [$actual]"
 }
 
+assert_git_sync_command() {
+    local command_text="$1"
+    local expected="$2"
+    local actual
+
+    if yafp_is_git_sync_command "$command_text"; then
+        actual=1
+    else
+        actual=0
+    fi
+    assert_eq "$expected" "$actual" "sync command: $command_text"
+}
+
 git init --quiet --bare --initial-branch=main "$TEST_ROOT/origin.git"
 git clone --quiet "$TEST_ROOT/origin.git" "$TEST_ROOT/writer"
 git -C "$TEST_ROOT/writer" config user.name 'YAFP Test'
@@ -70,13 +83,51 @@ yafp_remote_context "$TEST_ROOT/local" main
 assert_eq behind "$yafp_ctx_git_remote_state" 'remote state'
 assert_eq 1 "$yafp_ctx_git_behind" 'behind count'
 assert_eq origin/main "$yafp_ctx_git_upstream" 'upstream name'
+[[ "$yafp_ctx_git_remote_refresh_in" =~ ^[0-9]+$ ]] ||
+    fail 'refresh countdown was not calculated'
+[ "$yafp_ctx_git_remote_refresh_in" -le 300 ] ||
+    fail 'refresh countdown exceeds the configured interval'
 set +u
 indicator="$(theme_render_git_remote_status)"
 set -u
 case "$indicator" in
-    *'⇣1'*) ;;
+    *'('*') '*'⇣1'*) ;;
     *) fail 'behind indicator was not rendered' ;;
 esac
+
+assert_git_sync_command 'git push' 1
+assert_git_sync_command 'git fetch origin' 1
+assert_git_sync_command 'git pull --ff-only' 1
+assert_git_sync_command 'git -C other-repo push' 1
+assert_git_sync_command 'command git fetch' 1
+assert_git_sync_command 'git status' 0
+assert_git_sync_command 'echo "git push"' 0
+
+YAFP_GIT_SYNC_LAST_COMMAND_KEY=""
+yafp_should_force_remote_refresh 'git push' 0 ||
+    fail 'successful push did not request a refresh'
+if yafp_should_force_remote_refresh 'git push' 0; then
+    fail 'the same push requested a second refresh'
+fi
+YAFP_GIT_SYNC_LAST_COMMAND_KEY=""
+if yafp_should_force_remote_refresh 'git pull' 1; then
+    fail 'failed pull requested a refresh'
+fi
+if yafp_should_force_remote_refresh 'git pull' 0; then
+    fail 'failed pull was refreshed later by an empty prompt'
+fi
+
+yafp_remote_context "$TEST_ROOT/local" main 1
+assert_eq 1 "$yafp_ctx_git_remote_refreshing" 'forced refresh state'
+assert_eq 0 "$yafp_ctx_git_remote_refresh_in" 'forced refresh countdown'
+for _ in {1..100}; do
+    [ ! -d "${cache_file}.lock" ] && break
+    sleep 0.05
+done
+[ ! -d "${cache_file}.lock" ] || fail 'forced refresh did not complete'
+yafp_remote_context "$TEST_ROOT/local" main
+[ "$yafp_ctx_git_remote_refresh_in" -gt 0 ] ||
+    fail 'forced refresh did not reset the countdown'
 
 yafp_ctx_git_remote_state=current
 set +u

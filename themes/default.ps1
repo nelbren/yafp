@@ -68,6 +68,9 @@ function script:Write-YafpGitCounts {
 function script:Write-YafpTheme {
     param([Parameter(Mandatory)][object]$Context)
 
+    if ($Context.Development) {
+        Write-YafpDevelopmentMetrics -Development $Context.Development
+    }
     Write-YafpRemoteWarning -Context $Context
 
     if ($Context.Git) {

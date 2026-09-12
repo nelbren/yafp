@@ -428,6 +428,12 @@ theme_render_git_remote_status() {
     local out=""
     local reset
 
+    if [[ "${yafp_ctx_git_remote_refresh_in:-}" =~ ^[0-9]+$ ]]; then
+        out+="$(ps1_wrap "$cSeparator")"
+        out+="(${yafp_ctx_git_remote_refresh_in}) "
+        out+="$(theme_ps1_reset)"
+    fi
+
     if [ "${yafp_ctx_git_remote_refreshing:-0}" -eq 1 ]; then
         out+="$(ps1_wrap "$cRemotePending")⟳"
     fi
@@ -1197,13 +1203,70 @@ yafp_remote_check_start() {
 }
 
 
+yafp_is_git_sync_command() {
+    local command_text="$1"
+    local index=0
+    local words=()
+
+    read -r -a words <<< "$command_text"
+    [ "${#words[@]}" -gt 1 ] || return 1
+
+    if [ "${words[0]}" = "command" ]; then
+        index=1
+    fi
+    case "${words[$index]:-}" in
+        git|git.exe) ;;
+        *) return 1 ;;
+    esac
+    index=$((index + 1))
+
+    while [ "$index" -lt "${#words[@]}" ]; do
+        case "${words[$index]}" in
+            -C|-c|--git-dir|--work-tree|--namespace|--exec-path)
+                index=$((index + 2))
+                ;;
+            --git-dir=*|--work-tree=*|--namespace=*|--exec-path=*|--bare|--no-pager)
+                index=$((index + 1))
+                ;;
+            -*)
+                index=$((index + 1))
+                ;;
+            push|fetch|pull)
+                return 0
+                ;;
+            *)
+                return 1
+                ;;
+        esac
+    done
+
+    return 1
+}
+
+
+yafp_should_force_remote_refresh() {
+    local command_text="$1"
+    local exit_code="$2"
+    local command_key
+
+    yafp_is_git_sync_command "$command_text" || return 1
+    command_key="${HISTCMD:-0}:${command_text}"
+    [ "$command_key" != "${YAFP_GIT_SYNC_LAST_COMMAND_KEY:-}" ] || return 1
+    YAFP_GIT_SYNC_LAST_COMMAND_KEY="$command_key"
+
+    [ "$exit_code" -eq 0 ]
+}
+
+
 yafp_remote_context() {
     local repo_root="$1"
     local branch="$2"
+    local force_refresh="${3:-0}"
     local interval="${YAFP_REMOTE_CHECK_INTERVAL:-300}"
     local ahead
     local behind
     local cache_file
+    local cache_age=0
     local cached_local_ref
     local cached_oid
     local cached_upstream
@@ -1222,6 +1285,7 @@ yafp_remote_context() {
     yafp_ctx_git_behind=0
     yafp_ctx_git_upstream=""
     yafp_ctx_git_remote_refreshing=0
+    yafp_ctx_git_remote_refresh_in=""
 
     [[ "$interval" =~ ^[0-9]+$ ]] && [ "$interval" -gt 0 ] || return 0
     [ -n "$branch" ] && [ "$branch" != "unnamed" ] || return 0
@@ -1255,10 +1319,17 @@ yafp_remote_context() {
             yafp_ctx_git_ahead="$ahead"
             yafp_ctx_git_behind="$behind"
             yafp_ctx_git_upstream="$upstream"
+            cache_age=$((now - checked_at))
+            [ "$cache_age" -ge 0 ] || cache_age=0
+            yafp_ctx_git_remote_refresh_in=$((interval - cache_age))
+            if [ "$yafp_ctx_git_remote_refresh_in" -lt 0 ]; then
+                yafp_ctx_git_remote_refresh_in=0
+            fi
         fi
     fi
 
-    if [ "$valid_cache" -eq 0 ] ||
+    if [ "$force_refresh" -eq 1 ] ||
+       [ "$valid_cache" -eq 0 ] ||
        [ $((now - checked_at)) -ge "$interval" ]; then
         yafp_remote_check_start \
             "$repo_root" "$local_ref" "$upstream" "$remote_name" \
@@ -1268,12 +1339,16 @@ yafp_remote_context() {
             yafp_ctx_git_upstream="$upstream"
         else
             yafp_ctx_git_remote_refreshing=1
+            yafp_ctx_git_remote_refresh_in=0
         fi
     fi
 }
 
 
 yafp_git_context() {
+    local last_exit="${1:-0}"
+    local force_remote_refresh=0
+
     yafp_now_ms t_git_begin
     if [ "${YAFP_REPOS:-0}" -eq 0 ]; then
         yafp_now_ms t_git_end
@@ -1306,9 +1381,14 @@ yafp_git_context() {
     yafp_ctx_git_behind=0
     yafp_ctx_git_upstream=""
     yafp_ctx_git_remote_refreshing=0
+    yafp_ctx_git_remote_refresh_in=""
 
     yafp_ctx_git_has_repo=1
     repo_root="$(git rev-parse --show-toplevel 2>/dev/null)"
+
+    if yafp_should_force_remote_refresh "${this_command:-}" "$last_exit"; then
+        force_remote_refresh=1
+    fi
 
     git_repo_url=$(git remote get-url origin 2>/dev/null)
 
@@ -1334,7 +1414,8 @@ yafp_git_context() {
     )
     yafp_ctx_git_last_ts="$(echo $yafp_ctx_git_last_ts)"
 
-    yafp_remote_context "$repo_root" "$yafp_ctx_git_branch"
+    yafp_remote_context \
+        "$repo_root" "$yafp_ctx_git_branch" "$force_remote_refresh"
 
     gitstatus="$(git status --porcelain 2>/dev/null)"
 
@@ -1512,7 +1593,7 @@ yafp_prompt_command() {
     yafp_now_ms t_all_begin
 
     yaft_general_context "$last_exit"
-    yafp_git_context
+    yafp_git_context "$last_exit"
     yafp_venv_context
     yafp_err_context "$last_exit"
 
@@ -1575,6 +1656,7 @@ previous_command=""
 this_command=""
 previous_timestamp=""
 YAFP_PROMPT_RENDERING=0
+YAFP_GIT_SYNC_LAST_COMMAND_KEY=""
 
 if [ "${YAFP_NO_INSTALL_HOOKS:-0}" -ne 1 ]; then
     yafp_install_prompt_command

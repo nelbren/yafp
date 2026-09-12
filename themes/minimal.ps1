@@ -8,6 +8,9 @@ $script:YafpThemeVersion = '2.2'
 function script:Write-YafpTheme {
     param([Parameter(Mandatory)][object]$Context)
 
+    if ($Context.Development) {
+        Write-YafpDevelopmentMetrics -Development $Context.Development
+    }
     Write-YafpRemoteWarning -Context $Context
 
     $userIcon = if ($Context.IsAdmin) { '💀' } else { '👤' }

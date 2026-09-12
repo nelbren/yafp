@@ -63,6 +63,40 @@ $global:YAFP_THEME = 'minimal'
 
 If the selected theme does not exist, YAFP falls back to the `default` theme.
 
+### Development timing
+
+Set `YAFP_DEVEL` to `1` to display the prompt construction time. A value of `0`
+or an unset variable disables it. It works with every Bash and PowerShell theme.
+
+For Bash, set the value in `yafp-cfg.bash`:
+
+```bash
+YAFP_DEVEL=1
+```
+
+For PowerShell, set the value in `yafp-cfg.ps1`:
+
+```powershell
+$global:YAFP_DEVEL = 1
+```
+
+The diagnostic line uses the same fields on both shells:
+
+| Field     | Meaning                                      |
+| --------- | -------------------------------------------- |
+| `Total`   | Total prompt construction time               |
+| `General` | General context time                         |
+| `Git`     | Git context time                             |
+| `Venv`    | Python virtual environment context time      |
+| `Error`   | Previous command status calculation time     |
+| `Timer`   | Remaining timer and orchestration overhead   |
+
+The output maps those fields to `Total ms | ⚙️General 🌱Git 🐍Venv ❌Error
+⚡Timer`.
+
+Totals below 50 ms use `🚀` in green, totals from 50 through 199 ms use
+`⏱️` in yellow, and totals of 200 ms or more use `🐢` in red.
+
 ### Remote repository checks
 
 YAFP can periodically refresh the configured upstream without blocking the
@@ -92,10 +126,12 @@ an upstream do not produce a false outdated warning.
 
 #### Remote status indicators
 
-The compact indicator appears immediately to the left of the branch name:
+The refresh countdown and compact indicator appear immediately to the right
+of the branch symbol and to the left of the branch name:
 
 | Indicator | Color       | State and meaning                              |
 | --------- | ----------- | ---------------------------------------------- |
+| `(N)`     | Neutral     | Countdown: `N` seconds until the next check    |
 | `✓`       | Green       | Current: local matches its upstream            |
 | `⇡N`      | Green       | Ahead: `N` local commits are ready to push     |
 | `…`       | Yellow      | Checking: the first check is still running     |
@@ -107,6 +143,18 @@ The compact indicator appears immediately to the left of the branch name:
 The `⟳` indicator can precede the last known state while YAFP refreshes it,
 for example `⟳✓` or `⟳⇣2`. Behind and diverged states also retain the prominent
 warning banner.
+
+For example, ` (250) ⇡1 master` means that the local branch is one commit
+ahead and the next remote check will run in 250 seconds. When the countdown
+reaches zero, the display can temporarily become ` (0) ⟳⇡1 master` while the
+background refresh completes.
+
+A successful `git push`, `git fetch`, or `git pull` bypasses the remaining
+countdown and requests an immediate background refresh. The prompt temporarily
+shows `(0) ⟳` with the last known state; after the worker completes, the next
+prompt displays the new state and restarts the configured countdown. Failed
+commands and incidental text such as `echo "git push"` do not reset it. This
+behavior is also disabled when `YAFP_REMOTE_CHECK_INTERVAL` is `0`.
 
 ---
 
@@ -306,9 +354,15 @@ Run the PowerShell command-status regression test with:
 pwsh -NoProfile -File tests/powershell_status_test.ps1
 ```
 
+Run the PowerShell development-timing regression test with:
+
+```powershell
+pwsh -NoProfile -File tests/powershell_devel_test.ps1
+```
+
 ---
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-12 12:54:01 🪟 | 🤖 CODEX 🧠 GPT-5
+📆 2026-09-12 13:23:46 🪟 | 🤖 CODEX 🧠 GPT-5
 </div>
