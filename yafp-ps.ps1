@@ -1,354 +1,325 @@
-﻿# Yet Another Fancy Prompt for PowerShell
+# Yet Another Fancy Prompt for PowerShell
 #
-# v0.2.2 - 2025-08-10 - nelbren@nelbren.com
+# v0.3.1 - 2026-09-12 - nelbren@nelbren.com
 #
-# Provides a colored prompt with git and Python virtual environment information.
+# Provides a themed prompt with Git and Python virtual environment information.
 
 Set-StrictMode -Version Latest
 
-# Load optional configuration
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $cfg = Join-Path $ScriptDir 'yafp-cfg.ps1'
-if (Test-Path $cfg) {
+if (Test-Path -LiteralPath $cfg -PathType Leaf) {
     . $cfg
 }
 
-if (-not (Get-Variable YAFP_REPOS -Scope Global -ErrorAction SilentlyContinue)) {
+if (-not (Get-Variable YAFP_REPOS -Scope Global -ErrorAction Ignore)) {
     $global:YAFP_REPOS = 1
 }
-if (-not (Get-Variable YAFP_PVENV -Scope Global -ErrorAction SilentlyContinue)) {
+if (-not (Get-Variable YAFP_PVENV -Scope Global -ErrorAction Ignore)) {
     $global:YAFP_PVENV = 1
 }
-
-# Inicialización segura (solo la primera vez)
-if (-not (Get-Variable -Name prevHistCount -Scope Script -ErrorAction SilentlyContinue)) {
-    try { $script:prevHistCount = (Get-History).Count } catch { $script:prevHistCount = 0 }
+if (-not (Get-Variable YAFP_ERROR -Scope Global -ErrorAction Ignore)) {
+    $global:YAFP_ERROR = 1
 }
-if (-not (Get-Variable -Name promptRan -Scope Script -ErrorAction SilentlyContinue)) {
+if (-not (Get-Variable YAFP_THEME -Scope Global -ErrorAction Ignore)) {
+    $global:YAFP_THEME = 'default'
+}
+
+function Write-YafpText {
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string]$Text,
+        [Parameter(Mandatory)]
+        [string]$ForegroundColor,
+        [AllowNull()]
+        [object]$BackgroundColor,
+        [switch]$NoNewline
+    )
+
+    $writeHostParams = @{
+        Object = $Text
+        ForegroundColor = $ForegroundColor
+        NoNewline = $true
+    }
+    if (-not [string]::IsNullOrEmpty($BackgroundColor)) {
+        $writeHostParams.BackgroundColor = $BackgroundColor
+    }
+    Write-Host @writeHostParams
+    if (-not $NoNewline) {
+        # Reset the colors before scrolling creates a new terminal row.
+        Write-Host
+    }
+}
+
+function Get-YafpDisplayPath {
+    $currentPath = "$(Get-Location)"
+    $homePath = "$HOME".TrimEnd('\', '/')
+    $comparison = [StringComparison]::OrdinalIgnoreCase
+
+    if ($currentPath.Equals($homePath, $comparison)) {
+        return '~'
+    }
+
+    if ($currentPath.Length -gt $homePath.Length -and
+        $currentPath.StartsWith($homePath, $comparison)) {
+        $separator = $currentPath[$homePath.Length]
+        if ($separator -eq '\' -or $separator -eq '/') {
+            return "~$($currentPath.Substring($homePath.Length))"
+        }
+    }
+
+    return $currentPath
+}
+
+function Import-YafpTheme {
+    $themeFile = Join-Path $ScriptDir "themes/$($global:YAFP_THEME).ps1"
+    if (-not (Test-Path -LiteralPath $themeFile -PathType Leaf)) {
+        $themeFile = Join-Path $ScriptDir 'themes/default.ps1'
+    }
+    if (-not (Test-Path -LiteralPath $themeFile -PathType Leaf)) {
+        throw "YAFP theme file not found: $themeFile"
+    }
+
+    . $themeFile
+}
+
+if (-not (Get-Variable prevHistCount -Scope Script -ErrorAction Ignore)) {
+    try {
+        $script:prevHistCount = @(Get-History).Count
+    }
+    catch {
+        $script:prevHistCount = 0
+    }
+}
+if (-not (Get-Variable promptRan -Scope Script -ErrorAction Ignore)) {
     $script:promptRan = $false
 }
-
-# Detectar si PSStyle está disponible (solo en PowerShell 7+)
-$script:HasPSStyle = $false
-try {
-    if ($PSVersionTable.PSEdition -eq 'Core' -and (Get-Variable PSStyle -ErrorAction Stop)) {
-        $script:HasPSStyle = $true
-    }
-} catch {}
-
-# $global:YAFP_DARKC = 0  # 4Testing
-
-if ($global:YAFP_DARKC -eq 1) {
-    $greenColorBackground = 'DarkGreen'
-    $greenColorForeground = 'Black'
-    $redColorBackground = 'DarkRed'
-    $redColorForeground = 'White'
-    $cyanColorBackground = 'DarkCyan'
-    $cyanColorForeground = 'Black'
-    $magentaColorBackground = 'DarkMagenta'
-    $magentaColorForeground = 'Black'
-    $yellowColorBackground = 'DarkYellow'
-    $yellowColorForeground = 'Black'
-    $grayColorBackground = 'Gray'
-    $grayColorForeground = 'Black'
-    $blueColorBackground = 'DarkBlue'
-    $blueColorForeground = 'White'
-} else {
-    $greenColorBackground = 'Green'
-    $greenColorForeground = 'Black'
-    $redColorBackground = 'Red'
-    $redColorForeground = 'Black'
-    $cyanColorBackground = 'Cyan'
-    $cyanColorForeground = 'Black'
-    $magentaColorBackground = 'Magenta'
-    $magentaColorForeground = 'Black'
-    $yellowColorBackground = 'Yellow'
-    $yellowColorForeground = 'Black'
-    $grayColorBackground = 'White'
-    $grayColorForeground = 'Black'
-    $blueColorBackground = 'Blue'
-    $blueColorForeground = 'White'
-}
-function Get-YafpVenv {
-    try {
-        if ($global:YAFP_PVENV -eq 1 -and $env:VIRTUAL_ENV) {
-            return "[🐍$(Split-Path $env:VIRTUAL_ENV -Leaf)]"
-        }
-        return ""
-    }
-    catch {
-        return ""
-    }
-}
-
-function Get-YafpGit {
-    try {
-        # ¿Estamos en un repo git?
-        $null = git -C . rev-parse 1>$null 2>$null
-        if ($LASTEXITCODE -eq 128) {
-            return ""
-        }
-
-        # Repo / remoto
-        $gitRepoUrl = git remote get-url origin 2>$null
-        if ([string]::IsNullOrWhiteSpace($gitRepoUrl)) {
-            $top = git rev-parse --show-toplevel 2>$null
-            $repo = Split-Path $top -Leaf
-            $remo = "⇣"
-        }
-        else {
-            $lastPart = ($gitRepoUrl -split '[\\/]' | Select-Object -Last 1)
-            $repo = ($lastPart -replace '\.git$','')
-            if (-not $repo) { $repo = "unknown" }
-            $remo = "⚡"
-        }
-
-        # Branch
-        $branch = git symbolic-ref --short HEAD 2>$null
-        if (-not $branch) { $branch = git rev-parse --short HEAD 2>$null }
-
-        # Último commit: timestamp
-        $lastGitTS = git log -1 `
-            --date=format:'%Y-%m-%d %H:%M:%S' `
-            --pretty=format:%cd 2>$null
-
-        # Cambios
-        $gitstatus = git status --porcelain 2>$null
-        if ($LASTEXITCODE -ne 0) { return "" }
-
-        $delete = 0; $change = 0; $new = 0
-        foreach ($raw in ($gitstatus -split "`n")) {
-            $line = $raw.TrimEnd()
-            if ($line.Length -lt 2) { continue }
-            if ($line.StartsWith("??")) { $new++; continue }
-            $i = $line[0]; $w = $line[1]
-            if ($i -eq 'D' -or $w -eq 'D') { $delete++; continue }
-            if ($i -eq 'M' -or $w -eq 'M') { $change++; continue }
-        }
-
-        # Símbolos
-        $symbols = ""
-        if ($delete -gt 0) { $symbols += "-$delete🟥" }
-        if ($change -gt 0) { $symbols += "±$change🟨" }
-        if ($new    -gt 0) { $symbols += "+$new🟦" }
-        if ($symbols -eq "") { $symbols = "✅≡" }
-
-        # Segmento final
-        return "[🔛$lastGitTS💾${repo}ᚼ$branch💻$remo📁$symbols]"
-    }
-    catch {
-        return ""
-    }
+if (-not (Get-Variable previous_timestamp -Scope Script -ErrorAction Ignore)) {
+    $script:previous_timestamp = ''
 }
 
 function Get-VarSafe {
     param($Name, $Scope, $Default)
-    if (Get-Variable -Name $Name -Scope $Scope -ErrorAction SilentlyContinue) {
-        Get-Variable -Name $Name -Scope $Scope -ValueOnly
+
+    $variable = Get-Variable -Name $Name -Scope $Scope -ErrorAction Ignore
+    if ($variable) {
+        return $variable.Value
     }
-    else {
-        $Default
-    }
+    return $Default
 }
+
 function Test-LastInputWasEmpty {
-    # Devuelve $true si el usuario solo presionó Enter sin comando
     $cur = 0
-    try { $cur = (Get-History).Count } catch { $cur = 0 }
+    try {
+        $cur = @(Get-History).Count
+    }
+    catch {
+        $cur = 0
+    }
+
     $justEnter = $script:promptRan -and ($cur -eq $script:prevHistCount)
     $script:prevHistCount = $cur
     $script:promptRan = $true
     return $justEnter
 }
 
-function Ansi { param([string]$s) "$([char]27)[$s" }
 function Get-LastCommandStatus {
-    param([int]$defaultInternalCode = 1)
-    # Write-Host "001"  -ForegroundColor Black -BackgroundColor Yellow
+    param(
+        [bool]$PreviousSucceeded,
+        [int]$NativeExitCode,
+        [bool]$WasEmpty,
+        [int]$DefaultInternalCode = 1
+    )
 
-    # $origLast = if ($null -ne $global:LASTEXITCODE) { $global:LASTEXITCODE } else { 0 }
-    #$origLast = Get-VarSafe "LASTEXITCODE" "Global" 0
-
-    $prevOk   = $?
-    $hadError = $false
-    $code     = 0
-    # Write-Host "002"  -ForegroundColor Black -BackgroundColor Yellow
-
-    # Último HistoryId (puede no existir al inicio)
-    $lastId = $null
-    try {
-        $h = Get-History -Count 1 -ErrorAction Stop
-        if ($h) { $lastId = $h.Id }
-    } catch {
-        Write-Host "Catch 1 EX: $($_.Exception.Message)" -ForegroundColor White -BackgroundColor Red
+    if ($WasEmpty) {
+        return [pscustomobject]@{ HadError = $false; Code = 0 }
     }
 
-    # Buscar error NO terminante del ÚLTIMO comando
-    $errForLastCmd = $null
+    $lastId = $null
+    try {
+        $history = Get-History -Count 1 -ErrorAction Stop
+        if ($history) {
+            $lastId = $history.Id
+        }
+    }
+    catch {}
+
+    $errorForLastCommand = $null
     if ($lastId -and $Error.Count -gt 0) {
-        foreach ($e in @($Error)) {
-            if ($e -isnot [System.Management.Automation.ErrorRecord]) { continue }
-            $inv = $e.InvocationInfo
-            if ($null -eq $inv) { continue }
-            # HistoryId puede ser -1 cuando no hay vínculo válido
-            # Write-Host "${inv} $lastId"  -ForegroundColor Black -BackgroundColor Yellow
-            try {
-                if ($inv.HistoryId -ge 0 -and $inv.HistoryId -eq $lastId) {
-                    $errForLastCmd = $e
-                    break
-                }
-            } catch {
-                Write-Host "Catch 2 EX: $($_.Exception.Message)" -ForegroundColor White -BackgroundColor Red
+        foreach ($record in @($Error)) {
+            if ($record -isnot [System.Management.Automation.ErrorRecord]) {
+                continue
+            }
+            if ($record.InvocationInfo -and
+                $record.InvocationInfo.HistoryId -ge 0 -and
+                $record.InvocationInfo.HistoryId -eq $lastId) {
+                $errorForLastCommand = $record
+                break
             }
         }
     }
 
-    # Write-Host "($prevOK) ($errForLastCmd) ($origLast)" -ForegroundColor White -BackgroundColor Red
-
-    if (-not $prevOk -and -not $wasEmpty) {
-        # Error terminante (interno o externo)
-        # Write-Host "CASO 1"  -ForegroundColor Black -BackgroundColor Yellow
-        $hadError = $true
-        $code = if ($origLast -ne 0) { $origLast } else { $defaultInternalCode }
+    if (-not $PreviousSucceeded) {
+        $code = if ($NativeExitCode -ne 0) {
+            $NativeExitCode
+        }
+        else {
+            $DefaultInternalCode
+        }
+        return [pscustomobject]@{ HadError = $true; Code = $code }
     }
-    elseif ($errForLastCmd -and -not $wasEmpty) {
-        # Error NO terminante del último cmdlet (p.ej. dir noexiste)
-        # Write-Host "CASO 2"  -ForegroundColor Black -BackgroundColor Yellow
-        $hadError = $true
-        $code = $defaultInternalCode
+    if ($errorForLastCommand) {
+        return [pscustomobject]@{ HadError = $true; Code = $DefaultInternalCode }
     }
-    elseif ($origLast -ne 0) {
-        # Error de comando externo
-        # Write-Host "CASO 3"  -ForegroundColor Black -BackgroundColor Yellow
-        $hadError = $true
-        $code = $origLast
+    if ($NativeExitCode -ne 0) {
+        return [pscustomobject]@{ HadError = $true; Code = $NativeExitCode }
     }
 
-    [pscustomobject]@{
-        HadError = $hadError
-        Code     = $code
-        LastCode = $origLast
+    return [pscustomobject]@{ HadError = $false; Code = 0 }
+}
+
+function Get-YafpVenvContext {
+    if ($global:YAFP_PVENV -ne 1 -or -not $env:VIRTUAL_ENV) {
+        return $null
+    }
+    return Split-Path $env:VIRTUAL_ENV -Leaf
+}
+
+function Get-YafpGitContext {
+    if ($global:YAFP_REPOS -ne 1) {
+        return $null
+    }
+
+    try {
+        $null = git rev-parse --is-inside-work-tree 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            return $null
+        }
+
+        $gitRepoUrl = git remote get-url origin 2>$null
+        if ([string]::IsNullOrWhiteSpace($gitRepoUrl)) {
+            $top = git rev-parse --show-toplevel 2>$null
+            $repo = Split-Path $top -Leaf
+            $remote = 'local'
+        }
+        else {
+            $lastPart = $gitRepoUrl -split '[\\/]' | Select-Object -Last 1
+            $repo = $lastPart -replace '\.git$', ''
+            if (-not $repo) {
+                $repo = 'unknown'
+            }
+            $remote = 'remote'
+        }
+
+        $branch = git symbolic-ref --short HEAD 2>$null
+        if (-not $branch) {
+            $branch = git rev-parse --short HEAD 2>$null
+        }
+
+        $lastGitTimestamp = git log -1 `
+            --date=format:'%Y-%m-%d %H:%M:%S' `
+            --pretty=format:%cd 2>$null
+
+        $gitStatus = git status --porcelain 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            return $null
+        }
+
+        $delete = 0
+        $change = 0
+        $new = 0
+        foreach ($raw in @($gitStatus)) {
+            $line = "$raw".TrimEnd()
+            if ($line.Length -lt 2) {
+                continue
+            }
+            if ($line.StartsWith('??')) {
+                $new++
+                continue
+            }
+
+            $indexState = $line[0]
+            $workTreeState = $line[1]
+            if ($indexState -eq 'D' -or $workTreeState -eq 'D') {
+                $delete++
+                continue
+            }
+            if ($indexState -eq 'M' -or $workTreeState -eq 'M') {
+                $change++
+            }
+        }
+
+        return [pscustomobject]@{
+            Repository = $repo
+            Branch = $branch
+            Remote = $remote
+            LastTimestamp = $lastGitTimestamp
+            DeleteCount = $delete
+            ChangeCount = $change
+            NewCount = $new
+        }
+    }
+    catch {
+        return $null
     }
 }
 
-function prompt {
-    $wasEmpty = Test-LastInputWasEmpty
-    $origLast = Get-VarSafe "LASTEXITCODE" "Global" 0
-    if ($wasEmpty) {
-        $origLast = 0
-    }
-    # Write-Host "origLast -> $origLast"  -ForegroundColor Black -BackgroundColor Yellow
-    $status = Get-LastCommandStatus
-    # Write-Host "status -> $status"  -ForegroundColor Black -BackgroundColor Yellow
-    if ($status.HadError) {
-        if ($status.Code -eq 0) {
-            $last = 1
-        } else {
-            $last = $status.Code
-        }
-    } else {
-        $last = 0
-    }
-    $script:previous_timestamp = Get-VarSafe "timestamp" "Script" ""
-    $script:timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-    $hour = (Get-Date).Hour
-    $user = $env:USERNAME
-    $comp = $env:COMPUTERNAME
-    $dev = if ($env:COMPUTERNAME.StartsWith($PRO)) { 0 } else { 1 }
-    $path = Get-Location
+function Get-YafpDaySymbol {
+    param([int]$Hour)
 
-    $venv = ""
-    if ($global:YAFP_PVENV -eq 1 -and $env:VIRTUAL_ENV) {
-        $venv = Get-YafpVenv
-        if ($venv) { 
-            Write-Host "$venv" `
-                -ForegroundColor $blueColorForeground `
-                -BackgroundColor $blueColorBackground -NoNewline
-        }
+    if ($Hour -gt 6 -and $Hour -lt 12) {
+        return '🌅'
     }
+    if ($Hour -ge 12 -and $Hour -lt 18) {
+        return '🌇'
+    }
+    return '🌃'
+}
 
-    $git = ""
-    if ($global:YAFP_REPOS -eq 1) {
-        $git = Get-YafpGit
-        if ($git) { 
-            Write-Host "$git" `
-                -ForegroundColor $grayColorForeground `
-                -BackgroundColor $grayColorBackground
-        }
-    }
-
-    $previous_command = ""
-    if ((Get-History).Count -gt 0) {
-        $previous_command = (Get-History)[-1].CommandLine
-    } 
-
-    if ($last -ne 0) {
-        Write-Host "[🔚${previous_timestamp}🚀$previous_command→⚠️" `
-            -ForegroundColor $redColorForeground `
-            -BackgroundColor $redColorBackground -NoNewline
-        Write-Host "$last" `
-            -ForegroundColor Yellow `
-            -BackgroundColor $redColorBackground -NoNewline
-        Write-Host "]" `
-            -ForegroundColor $redColorForeground `
-            -BackgroundColor $redColorBackground -NoNewline
-    } else {
-        Write-Host "[🔚${previous_timestamp}🚀${previous_command}→✅]" `
-            -ForegroundColor $greenColorForeground `
-            -BackgroundColor $greenColorBackground -NoNewline
-    }
-
-    if ($hour -gt 6 -and $hour -lt 12) {
-        $day = "🌇"
-    }
-    elseif ($hour -ge 12 -and $hour -lt 18) {
-        $day = "🌆"
-    }
-    else {
-        $day = "🌃"
-    }
-
-    $isAdmin = ([Security.Principal.WindowsPrincipal] `
+function Test-YafpAdministrator {
+    return ([Security.Principal.WindowsPrincipal] `
         [Security.Principal.WindowsIdentity]::GetCurrent() `
     ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
 
-    Write-Host "[🔜$script:timestamp$day]" `
-        -ForegroundColor $cyanColorForeground `
-        -BackgroundColor $cyanColorBackground
+Import-YafpTheme
 
-    Write-Host "[" -ForegroundColor White -NoNewline
-    if ($isAdmin) {
-        Write-Host "$user" `
-            -ForegroundColor White `
-            -BackgroundColor Red -NoNewline
-        $promptMark='#'
-    } else {
-        Write-Host "$user" `
-            -ForegroundColor $cyanColorForeground `
-            -BackgroundColor $cyanColorBackground -NoNewline
-        $promptMark='$'
-    }
-    Write-Host "@" -ForegroundColor White -NoNewline
-    if ($dev -eq 1) {
-        Write-Host "$comp" `
-            -ForegroundColor $greenColorForeground `
-            -BackgroundColor $greenColorBackground -NoNewline
-    } else {
-        Write-Host "$comp" `
-            -ForegroundColor $magentaColorForeground `
-            -BackgroundColor $magentaColorBackground -NoNewline
+function prompt {
+    $previousSucceeded = $?
+    $nativeExitCode = [int](Get-VarSafe 'LASTEXITCODE' 'Global' 0)
+    $wasEmpty = Test-LastInputWasEmpty
+    $status = Get-LastCommandStatus `
+        -PreviousSucceeded $previousSucceeded `
+        -NativeExitCode $nativeExitCode `
+        -WasEmpty $wasEmpty
+
+    $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    $previousCommand = ''
+    if (@(Get-History).Count -gt 0) {
+        $previousCommand = (Get-History)[-1].CommandLine
     }
 
-    Write-Host ":" -ForegroundColor White -NoNewline
-    Write-Host "$path" `
-        -ForegroundColor $yellowColorForeground `
-        -BackgroundColor $yellowColorBackground -NoNewline
-    Write-Host "]" `
-        -ForegroundColor White `
-        -BackgroundColor Black -NoNewline
-    # Fixing color bug in last line
-    Write-Host "$(Ansi '106m')$(Ansi '30m')$(Ansi '0m')$(Ansi '0K')" -NoNewline
+    $computerName = $env:COMPUTERNAME
+    $context = [pscustomobject]@{
+        User = $env:USERNAME
+        Computer = $computerName
+        Path = Get-YafpDisplayPath
+        IsAdmin = Test-YafpAdministrator
+        IsDevelopment = -not $computerName.StartsWith($global:PRO)
+        Timestamp = $timestamp
+        PreviousTimestamp = $script:previous_timestamp
+        PreviousCommand = $previousCommand
+        ExitCode = $status.Code
+        HadError = $status.HadError
+        DaySymbol = Get-YafpDaySymbol -Hour (Get-Date).Hour
+        Git = Get-YafpGitContext
+        Venv = Get-YafpVenvContext
+    }
 
-    $global:LASTEXITCODE = $origLast
+    $promptMark = Write-YafpTheme -Context $context
+    $script:previous_timestamp = $timestamp
+    $global:LASTEXITCODE = $nativeExitCode
 
     return "$promptMark "
 }

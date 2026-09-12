@@ -42,6 +42,17 @@
 
 - ##### :tshirt: normal user (**`$`**)
 
+### :window: PowerShell themes
+
+PowerShell now supports the `default`, `minimal`, and `light` themes. Select
+one in `yafp-cfg.ps1` before loading `yafp-ps.ps1`:
+
+```powershell
+$global:YAFP_THEME = 'minimal'
+```
+
+If the selected theme does not exist, YAFP falls back to the `default` theme.
+
 ---
 
 ## I. :floppy_disk: Acquire
@@ -221,3 +232,10 @@ Run the OSC 133 parser and command-block lifecycle tests with:
 ```bash
 bash tests/osc133_test.bash
 ```
+
+---
+
+<!-- markdownlint-disable MD033 -->
+<div style="text-align: right; font-size: 12px;">
+📆 2026-09-12 03:44:25 🪟 | 🤖 CODEX 🧠 GPT-5
+</div>
