@@ -81,7 +81,8 @@ YAFP_DARKC=1
 $global:YAFP_DARKC = 1
 ```
 
-The option does not affect `light`, which renders without colored backgrounds.
+The option does not affect `light`, which renders without colored backgrounds,
+including the separator spaces between prompt segments.
 
 ### Git repository identity
 

@@ -8,6 +8,9 @@ YAFP_THEME_VERSION="1.0"
 
 # Base colors
 
+YAFP_COLOR_NORMAL_BG="transparent"
+YAFP_COLOR_NORMAL_FG="white"
+
 YAFP_COLOR_DIR_BG="transparent"
 YAFP_COLOR_DIR_FG="YELLOW"
 

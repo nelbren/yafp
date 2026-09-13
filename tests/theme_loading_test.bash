@@ -83,6 +83,8 @@ expected_repo_segment="${YAFP_SYMBOL_GIT_REPO}<repo>yafp<git>${YAFP_SYMBOL_GIT_S
     fail 'default theme does not color only the repository name'
 
 assert_theme light light
+[ "$YAFP_COLOR_NORMAL_BG" = 'transparent' ] ||
+    fail 'light theme normal reset can paint separator spaces'
 cGitBranch='<branch>'
 cRemoteNeutral='<timer>'
 yafp_ctx_git_remote_refresh_in=42
