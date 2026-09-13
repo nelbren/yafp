@@ -38,6 +38,20 @@ function Write-QualityError {
 
 Push-Location $rootDir
 try {
+    & pwsh -NoProfile -File scripts/windows/setup/quality.ps1 -DryRun |
+        Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Windows quality setup plan failed'
+    }
+    Write-QualityLine 'ok - Windows quality setup plan'
+
+    & pwsh -NoProfile -File scripts/windows/doctor/check.ps1 `
+        -ConfigPath yafp-cfg.ps1.example | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Windows environment doctor failed'
+    }
+    Write-QualityLine 'ok - Windows environment doctor'
+
     $files = @(
         Get-ChildItem -File -Recurse |
             Where-Object Extension -In @('.ps1', '.psd1')

@@ -18,6 +18,8 @@ be preserved when changing or modularizing the project.
 | `yafp-cfg.bash.example`       | Bash configuration template                            |
 | `yafp-cfg.ps1.example`        | PowerShell configuration template                      |
 | `tests/`                      | Logic and integration tests                            |
+| `scripts/*/setup/quality.*`   | Platform-specific quality tool installation            |
+| `scripts/*/doctor/check.*`    | Environment and configuration diagnostics              |
 | `scripts/*/quality/`          | Reproducible validation entry points                   |
 | `.github/workflows/ci.yml`    | Automated Linux, macOS, and Windows matrix             |
 
@@ -129,6 +131,33 @@ processes during every prompt.
 
 ## Validation
 
+Install the quality tools for the current platform with:
+
+```bash
+bash scripts/unix/setup/quality.bash
+```
+
+```powershell
+pwsh -NoProfile -File scripts/windows/setup/quality.ps1
+```
+
+Both installers support a non-mutating setup-plan mode through `--dry-run` on
+Unix and `-DryRun` on Windows.
+
+Inspect the local environment without changing it with:
+
+```bash
+bash scripts/unix/doctor/check.bash
+```
+
+```powershell
+pwsh -NoProfile -File scripts/windows/doctor/check.ps1
+```
+
+The doctors check required runtimes, optional quality tools, personal
+configuration, supported values, theme pairing, and shell profile loading.
+Strict mode (`--strict` or `-Strict`) also treats warnings as failures.
+
 The canonical entry points are:
 
 ```bash
@@ -146,6 +175,6 @@ missing optional analyzer into an error.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-12 19:19:45 🪟 NDEV-DPC-02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-5.6 Sol Medium & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-09-12 22:02:49 🪟 NDEV-DPC-02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-5 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

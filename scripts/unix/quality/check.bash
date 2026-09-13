@@ -93,6 +93,12 @@ run_optional() {
 require_command bash
 require_command git
 
+bash scripts/unix/setup/quality.bash --dry-run >/dev/null
+print_quality_line 'ok - Unix quality setup plan'
+bash scripts/unix/doctor/check.bash \
+    --config yafp-cfg.bash.example >/dev/null
+print_quality_line 'ok - Unix environment doctor'
+
 while IFS= read -r -d '' file; do
     bash -n "$file"
 done < <(find . -type f -name '*.bash' -print0)

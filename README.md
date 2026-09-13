@@ -421,6 +421,52 @@ add those without inventing a new protocol.
 
 ### Tests
 
+Install the complete local quality environment for Linux or macOS:
+
+```bash
+bash scripts/unix/setup/quality.bash
+```
+
+On Windows, install ShellCheck, PSScriptAnalyzer, and markdownlint with:
+
+```powershell
+pwsh -NoProfile -File scripts/windows/setup/quality.ps1
+```
+
+The Windows setup prefers Scoop, then WinGet, then Chocolatey. ShellCheck is
+included so the Bash validation can also run from Git Bash. Preview the
+installation commands without changing the system with `--dry-run` on Unix or
+`-DryRun` on Windows. Use `-PackageManager scoop`, `winget`, or `choco` to
+override automatic selection.
+
+<!-- markdownlint-disable MD013 -->
+
+| Platform | Package managers                            | Installed tools                            |
+| -------- | ------------------------------------------- | ------------------------------------------ |
+| Linux    | APT, DNF, Pacman, or Zypper                 | ShellCheck and markdownlint                |
+| macOS    | Homebrew                                    | ShellCheck and markdownlint                |
+| Windows  | Scoop, WinGet, or Chocolatey; PowerShellGet | ShellCheck, PSScriptAnalyzer, markdownlint |
+
+<!-- markdownlint-enable MD013 -->
+
+Git Bash delegates environment installation to the Windows setup script. The
+quality runners verify each setup plan before running their platform tests.
+
+Diagnose missing commands, personal configuration, invalid option values,
+theme pairs, and shell profile integration without changing the system:
+
+```bash
+bash scripts/unix/doctor/check.bash
+```
+
+```powershell
+pwsh -NoProfile -File scripts/windows/doctor/check.ps1
+```
+
+Use `--strict` on Unix or `-Strict` on Windows when warnings such as missing
+optional linters should also produce a failing exit code. For an alternate
+configuration file, use `--config PATH` or `-ConfigPath PATH`.
+
 Run all Bash tests, syntax checks, and installed linters with:
 
 ```bash
@@ -454,6 +500,6 @@ runtime invariants, and the safe modularization strategy.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-12 20:20:02 🪟 NDEV-DPC-02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-5.6 Sol Medium & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-09-12 22:02:49 🪟 NDEV-DPC-02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-5 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>
