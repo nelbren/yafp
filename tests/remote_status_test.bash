@@ -112,6 +112,13 @@ set -u
 set -e
 assert_eq 1 "$YAFP_INITIAL_REMOTE_CHECK_PENDING" \
     'non-repository prompt preserved initial refresh'
+assert_eq '' "$yafp_ctx_git_remote_state" \
+    'non-repository prompt cleared remote state'
+set +u
+warning="$(theme_render_remote_warning)"
+set -u
+assert_eq '' "$warning" \
+    'non-repository prompt cleared remote warning'
 
 cd "$TEST_ROOT/local"
 this_command=''

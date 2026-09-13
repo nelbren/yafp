@@ -1447,26 +1447,8 @@ yafp_git_context() {
     local last_exit="${1:-0}"
     local force_remote_refresh=0
 
-    yafp_now_ms t_git_begin
-    if [ "${YAFP_REPOS:-0}" -eq 0 ]; then
-        yafp_now_ms t_git_end
-        return
-    fi
-
     yafp_git_segment=""
     yafp_ctx_git_has_repo=0
-    yafp_git_check
-
-    if [ "${YAFP_GIT_INSIDE}" -eq 0 ]; then
-        yafp_now_ms t_git_end
-        return 0
-    fi
-
-    local git_repo_url
-    local gitstatus
-    local repo_root
-    local line
-
     yafp_ctx_git_repo=""
     yafp_ctx_git_branch=""
     yafp_ctx_git_remote=""
@@ -1480,6 +1462,24 @@ yafp_git_context() {
     yafp_ctx_git_upstream=""
     yafp_ctx_git_remote_refreshing=0
     yafp_ctx_git_remote_refresh_in=""
+
+    yafp_now_ms t_git_begin
+    if [ "${YAFP_REPOS:-0}" -eq 0 ]; then
+        yafp_now_ms t_git_end
+        return
+    fi
+
+    yafp_git_check
+
+    if [ "${YAFP_GIT_INSIDE}" -eq 0 ]; then
+        yafp_now_ms t_git_end
+        return 0
+    fi
+
+    local git_repo_url
+    local gitstatus
+    local repo_root
+    local line
 
     yafp_ctx_git_has_repo=1
     repo_root="$(git rev-parse --show-toplevel 2>/dev/null)"

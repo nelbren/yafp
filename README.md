@@ -200,6 +200,7 @@ The `⟳` indicator can precede the last known state while YAFP refreshes it,
 for example `⟳✓` or `⟳⇣2`. Behind and diverged states retain the prominent red
 warning banner. An ahead state adds a yellow banner surrounded by `⚠️` to make
 clear that local commits have not yet been pushed to the configured upstream.
+These banners are cleared immediately when the prompt leaves the repository.
 
 For example, ` (250) ⇡1 master` means that the local branch is one commit
 ahead and the next remote check will run in 250 seconds. When the countdown
@@ -503,6 +504,6 @@ runtime invariants, and the safe modularization strategy.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-13 00:38:05 🪟 NDEV-DPC-02 |
+📆 2026-09-13 00:48:36 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-5.6 Sol Medium & 👨🏻‍💻 Nelbren ©️ 2026
 </div>
