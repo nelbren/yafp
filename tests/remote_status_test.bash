@@ -187,6 +187,15 @@ case "$indicator" in
     *) fail 'ahead indicator was not rendered' ;;
 esac
 
+set +u
+warning="$(theme_render_remote_warning)"
+set -u
+case "$warning" in
+    *'⚠️ REMOTE NOT UPDATED: 2 local commits have not been pushed to origin/main ⚠️'*) ;;
+    *) fail 'ahead warning was not rendered' ;;
+esac
+assert_eq '\n' "${warning: -2}" 'ahead warning line break'
+
 yafp_ctx_git_remote_state=behind
 yafp_ctx_git_ahead=0
 

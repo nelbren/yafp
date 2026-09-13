@@ -154,6 +154,27 @@ try {
         throw 'behind warning was not rendered'
     }
 
+    $aheadStatus = [pscustomobject]@{
+        State = 'ahead'
+        Ahead = 2
+        Behind = 0
+        Upstream = 'origin/main'
+        CheckedAt = 0L
+        Refreshing = $false
+        RefreshIn = 300L
+    }
+    $aheadContext = [pscustomobject]@{
+        Git = [pscustomobject]@{ RemoteStatus = $aheadStatus }
+    }
+    $warning = Write-YafpRemoteWarning -Context $aheadContext 6>&1 |
+        Out-String
+    if ($warning -notmatch (
+        '⚠️ REMOTE NOT UPDATED: 2 local commits have not been pushed ' +
+        'to origin/main ⚠️'
+    )) {
+        throw 'ahead warning was not rendered'
+    }
+
     & git -C $local config user.name 'YAFP Test'
     & git -C $local config user.email 'yafp@example.invalid'
     Set-Content -LiteralPath (Join-Path $local 'local.txt') `

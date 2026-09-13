@@ -401,31 +401,44 @@ theme_render_remote_warning() {
     local color
     local message
     local reset
-    local unit="commits"
-    local verb="are missing"
-
-    if [ "${yafp_ctx_git_behind:-0}" -eq 1 ]; then
-        unit="commit"
-        verb="is missing"
-    fi
+    local symbol="$YAFP_SYMBOL_REMOTE_WARNING"
+    local unit
+    local verb
 
     case "${yafp_ctx_git_remote_state:-}" in
+        ahead)
+            unit="commits"
+            verb="have"
+            if [ "${yafp_ctx_git_ahead:-0}" -eq 1 ]; then
+                unit="commit"
+                verb="has"
+            fi
+            message="REMOTE NOT UPDATED: ${yafp_ctx_git_ahead} local ${unit} ${verb} not been pushed to ${yafp_ctx_git_upstream}"
+            color="$(ps1_wrap "$cRemotePending")"
+            symbol="⚠️"
+            ;;
         behind)
+            unit="commits"
+            verb="are missing"
+            if [ "${yafp_ctx_git_behind:-0}" -eq 1 ]; then
+                unit="commit"
+                verb="is missing"
+            fi
             message="OUTDATED REPOSITORY: ${yafp_ctx_git_behind} ${unit} ${verb} from ${yafp_ctx_git_upstream}"
+            color="$(ps1_wrap "$cStatusError")"
             ;;
         diverged)
             message="DIVERGED REPOSITORY: local +${yafp_ctx_git_ahead} / remote +${yafp_ctx_git_behind} relative to ${yafp_ctx_git_upstream}"
+            color="$(ps1_wrap "$cStatusError")"
             ;;
         *)
             return 0
             ;;
     esac
 
-    color="$(ps1_wrap "$cStatusError")"
     reset="$(theme_ps1_reset)"
     printf '%s%s %s %s%s\\n' \
-        "$color" "$YAFP_SYMBOL_REMOTE_WARNING" "$message" \
-        "$YAFP_SYMBOL_REMOTE_WARNING" "$reset"
+        "$color" "$symbol" "$message" "$symbol" "$reset"
 }
 
 

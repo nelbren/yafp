@@ -600,7 +600,18 @@ function Write-YafpRemoteWarning {
     }
 
     $remote = $Context.Git.RemoteStatus
-    if ($remote.State -eq 'behind') {
+    $symbol = '🚨'
+    $foreground = 'White'
+    $background = 'DarkRed'
+    if ($remote.State -eq 'ahead') {
+        $unit = if ($remote.Ahead -eq 1) { 'commit' } else { 'commits' }
+        $verb = if ($remote.Ahead -eq 1) { 'has' } else { 'have' }
+        $message = "REMOTE NOT UPDATED: $($remote.Ahead) local $unit $verb not been pushed to $($remote.Upstream)"
+        $symbol = '⚠️'
+        $foreground = 'Yellow'
+        $background = $null
+    }
+    elseif ($remote.State -eq 'behind') {
         $unit = if ($remote.Behind -eq 1) { 'commit' } else { 'commits' }
         $verb = if ($remote.Behind -eq 1) { 'is missing' } else { 'are missing' }
         $message = "OUTDATED REPOSITORY: $($remote.Behind) $unit $verb from $($remote.Upstream)"
@@ -612,8 +623,8 @@ function Write-YafpRemoteWarning {
         return
     }
 
-    Write-YafpText -Text "🚨 $message 🚨" -ForegroundColor White `
-        -BackgroundColor DarkRed
+    Write-YafpText -Text "$symbol $message $symbol" `
+        -ForegroundColor $foreground -BackgroundColor $background
 }
 
 function Get-YafpGitContext {
