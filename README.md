@@ -1,4 +1,4 @@
-# :computer: Yet Another Fancy Prompt
+# :computer: Yet Another Fancy Prompt 🖥️
 
 [![made-with-bash][badge-bash]][bash]
 [![made-with-powershell][badge-powershell]][powershell]
@@ -7,32 +7,38 @@
 
 [badge-bash]: https://img.shields.io/badge/Made%20with-Bash-1f425f.svg
 [badge-powershell]: https://img.shields.io/badge/Made%20with-PowerShell-5391FE.svg?logo=powershell
-[badge-version]: https://img.shields.io/badge/version-0.3.1-green
+[badge-version]: https://img.shields.io/badge/version-0.3.2-green
 [badge-themes]: https://img.shields.io/badge/themes-8A2BE2?logo=educative
 [bash]: https://www.gnu.org/software/bash/
 [powershell]: https://docs.microsoft.com/powershell/
 
-## :soon: Insert here the most beautiful screenshots
+## What is yafp?
 
-### :apple: [macOS](https://www.apple.com/la/os/macos/)
+![This is yafp!](docs/images/yafp-retro-command-room-light.png)
 
-![macOS](images/screenshot_macOS.png)
+### UNIX™️
 
-### :window: [Cygwin](https://www.cygwin.com/)
+#### :penguin: [Linux](https://kernel.org/)
 
-![Cygwin](images/screenshot_Cygwin.png)
+![Linux](docs/images/linux.png)
 
-### :window: [Git Bash](https://git-scm.com/download/win)
+#### :apple: [macOS](https://www.apple.com/la/os/macos/)
 
-![GitBash](images/screenshot_GitBash.png)
+![macOS](docs/images/apple_bash.png)
 
-### :penguin: Linux
+### WINDOWS
 
-![Linux](images/screenshot_Linux.png)
+#### :window: [Cygwin](https://www.cygwin.com/)
 
-### :window: [PowerShell](https://learn.microsoft.com/es-es/powershell/scripting/install/installing-powershell-on-windows?view=powershell-7.5)
+![Cygwin](docs/images/windows_cygwin.png)
 
-![PowerShell](images/screenshot_PowerShell.png)
+#### :window: [Git Bash](https://git-scm.com/download/win)
+
+![GitBash](docs/images/windows_git_bash.png)
+
+#### :window: [PowerShell](https://learn.microsoft.com/es-es/powershell/scripting/install/installing-powershell-on-windows?view=powershell-7.5)
+
+![PowerShell](docs/images/windows_powershell.png)
 
 ---
 
@@ -504,6 +510,6 @@ runtime invariants, and the safe modularization strategy.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-13 00:48:36 🪟 NDEV-DPC-02 |
+📆 2026-09-13 01:09:36 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-5.6 Sol Medium & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

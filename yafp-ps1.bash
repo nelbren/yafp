@@ -5,7 +5,7 @@
 # Main engine of YAFP
 #
 
-YAFP_VERSION=0.3.1
+YAFP_VERSION=0.3.2
 
 # Customize in themes...
 
@@ -520,7 +520,7 @@ theme_render_main_block() {
     if [ "$yafp_ctx_git_has_repo" = "1" ]; then
         theme_render_git_block
     fi
-    
+
     if [ -n "$yafp_venv_segment" ]; then
         theme_render_venv_block
     fi
@@ -1617,7 +1617,7 @@ yafp_dev_segment() {
     local t_all=$((t_all_end - t_all_begin))
     local t_general=$((t_general_end - t_general_begin))
     local t_git=$((t_git_end - t_git_begin))
-    local t_venv=$((t_venv_end - t_venv_begin)) 
+    local t_venv=$((t_venv_end - t_venv_begin))
     local t_err=$((t_err_end - t_err_begin))
     local t_timer=$((t_all - t_general - t_git - t_venv - t_err))
     local icon=""
