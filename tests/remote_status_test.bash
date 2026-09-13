@@ -55,9 +55,15 @@ printf 'remote change\n' >> "$TEST_ROOT/writer/file.txt"
 git -C "$TEST_ROOT/writer" commit --quiet -am remote-change
 git -C "$TEST_ROOT/writer" push --quiet origin main
 
+YAFP_RUNTIME="$TEST_ROOT/runtime"
+mkdir -p "$YAFP_RUNTIME"
+cp "$ROOT_DIR/yafp-ps1.bash" "$YAFP_RUNTIME/yafp-ps1.bash"
+cp "$ROOT_DIR/yafp-cfg.bash.example" "$YAFP_RUNTIME/yafp-cfg.bash"
+cp -R "$ROOT_DIR/themes" "$YAFP_RUNTIME/themes"
+
 # shellcheck source=../yafp-ps1.bash
 set +u
-. "$ROOT_DIR/yafp-ps1.bash"
+. "$YAFP_RUNTIME/yafp-ps1.bash"
 set -u
 trap - DEBUG
 PROMPT_COMMAND=

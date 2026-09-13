@@ -5,8 +5,22 @@ ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null && pwd)"
 export TERM="${TERM:-xterm-256color}"
 export YAFP_NO_INSTALL_HOOKS=1
 
+TEST_RUNTIME="$(mktemp -d "${TMPDIR:-/tmp}/yafp-theme-test.XXXXXX")"
+
+cleanup() {
+    if [ -n "${TEST_RUNTIME:-}" ] && [ -d "$TEST_RUNTIME" ]; then
+        rm -rf -- "$TEST_RUNTIME"
+    fi
+}
+
+trap cleanup EXIT
+cp "$ROOT_DIR/yafp-ps1.bash" "$TEST_RUNTIME/yafp-ps1.bash"
+cp "$ROOT_DIR/yafp-cfg.bash.example" "$TEST_RUNTIME/yafp-cfg.bash"
+cp -R "$ROOT_DIR/themes" "$TEST_RUNTIME/themes"
+
+# shellcheck source=../yafp-ps1.bash
 set +u
-. "$ROOT_DIR/yafp-ps1.bash"
+. "$TEST_RUNTIME/yafp-ps1.bash"
 set -u
 trap - DEBUG
 PROMPT_COMMAND=
