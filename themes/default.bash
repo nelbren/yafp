@@ -58,9 +58,9 @@ theme_render_venv_block() {
 
 theme_render_timestamp() {
     hour=${yafp_ctx_timestamp:11:2}
-    if [ "$hour" -gt "06" -a "$hour" -lt "12" ]; then
+    if [ "$hour" -gt "06" ] && [ "$hour" -lt "12" ]; then
         day=$YAFP_SYMBOL_MORNING
-    elif [ "$hour" -ge "12" -a "$hour" -lt "18" ]; then
+    elif [ "$hour" -ge "12" ] && [ "$hour" -lt "18" ]; then
         day=$YAFP_SYMBOL_AFTERNOON
     else
         day=$YAFP_SYMBOL_NIGHT
@@ -152,7 +152,7 @@ theme_render_main_block() {
 
     if [[ "$yafp_ctx_git_has_repo" = "1" ||
           -n "$yafp_venv_segment" ]]; then
-        printf "$cFullReset\n"
+        printf '%s\n' "$cFullReset"
     fi
 
     if [ "${YAFP_ERROR:-0}" -eq 1 ]; then
@@ -169,7 +169,9 @@ theme_render_ps1() {
     local ps1=""
     local main
     local promptMark
-    local cFullResetPS1="$(ps1_wrap "$cFullReset")"
+    local cFullResetPS1
+
+    cFullResetPS1="$(ps1_wrap "$cFullReset")"
 
     # ps1="${ps1}${cPromptPS1}${promptMark}\[\e[0m$(ps1k)\] "
 

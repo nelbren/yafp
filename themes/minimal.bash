@@ -178,7 +178,9 @@ theme_render_ps1() {
     local ps1
     local main
     local promptMark
-    local cFullResetPS1="$(ps1_wrap "$cFullReset")"
+    local cFullResetPS1
+
+    cFullResetPS1="$(ps1_wrap "$cFullReset")"
 
     main="$(theme_render_main_block)"
     promptMark="$(theme_ps1_prompt_mark)"

@@ -104,7 +104,9 @@ bash tests/remote_status_test.bash 2>&1 | colorize_quality_output
 
 if command -v shellcheck >/dev/null 2>&1; then
     while IFS= read -r -d '' file; do
-        shellcheck "$file"
+        # Themes and tests are sourced modules that intentionally exchange
+        # globals through dynamically selected paths.
+        shellcheck --exclude=SC1090,SC1091,SC2034,SC2154 "$file"
     done < <(git ls-files -z '*.bash')
 else
     run_optional shellcheck

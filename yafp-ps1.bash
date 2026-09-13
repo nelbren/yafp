@@ -516,8 +516,8 @@ theme_render_main_block() {
         theme_render_timestamp
     fi
 
-    if [ "${YAFP_ERROR:-0}" -eq 1 -a \
-         "$yafp_ctx_show_status" = "1" ]; then
+    if [ "${YAFP_ERROR:-0}" -eq 1 ] && \
+       [ "$yafp_ctx_show_status" = "1" ]; then
         if [ "$yafp_ctx_exit" == "0" ]; then
             theme_render_status_ok_block
         else
@@ -1175,9 +1175,11 @@ yafp_remote_check_worker() {
 
     mkdir "$lock_dir" 2>/dev/null || return 0
     printf -v quoted_lock_dir '%q' "$lock_dir"
-    trap "rmdir -- $quoted_lock_dir >/dev/null 2>&1" EXIT
+    # Expand the shell-escaped local path while it is still in scope.
+    # shellcheck disable=SC2064
+    trap "rmdir $quoted_lock_dir >/dev/null 2>&1" EXIT
 
-    if GIT_TERMINAL_PROMPT=0 GIT_ASKPASS= \
+    if GIT_TERMINAL_PROMPT=0 GIT_ASKPASS='' \
        git -C "$repo_root" -c credential.interactive=never \
            fetch --quiet --no-tags -- "$remote_name"; then
         counts="$(git -C "$repo_root" rev-list --left-right --count \
@@ -1458,7 +1460,8 @@ yafp_git_context() {
         | grep "^Date:" \
         | cut -d":" -f2-
     )
-    yafp_ctx_git_last_ts="$(echo $yafp_ctx_git_last_ts)"
+    yafp_ctx_git_last_ts="${yafp_ctx_git_last_ts#"${yafp_ctx_git_last_ts%%[![:space:]]*}"}"
+    yafp_ctx_git_last_ts="${yafp_ctx_git_last_ts%"${yafp_ctx_git_last_ts##*[![:space:]]}"}"
 
     yafp_remote_context \
         "$repo_root" "$yafp_ctx_git_branch" "$force_remote_refresh"
@@ -1604,30 +1607,32 @@ yafp_validate_ps1_strict() {
     close=$(grep -o '\\\]' <<< "$ps1" | wc -l)
 
     if (( open != close )); then
-        echo "❌ Error: \\[ ($open) != \\] ($close)"
+        printf '❌ Error: \\[ (%s) != \\] (%s)\n' "$open" "$close"
         ((errors++))
     fi
 
     # 2. ANSI outside \[ \] blocks
     local cleaned
+    # The bracket-aware regular expression is clearer than shell substitution.
+    # shellcheck disable=SC2001
     cleaned=$(sed 's/\\\[[^\\\]]*\\\]//g' <<< "$ps1")
 
     if grep -q $'\033\[' <<< "$cleaned"; then
-        echo "⚠️ ANSI outside \\[ \\] blocks"
+        printf '%s\n' '⚠️ ANSI outside \[ \] blocks'
         ((errors++))
     fi
 
     # 3. Final reset
     if ! grep -q $'\033\[0m' <<< "$ps1"; then
-        echo "⚠️ Missing global reset \\033[0m"
+        printf '%s\n' '⚠️ Missing global reset \033[0m'
     fi
 
     # 4. Result
     if (( errors == 0 )); then
-        echo "✅ PS1 is clean enough for a thesis code review"
+        printf '%s\n' '✅ PS1 is clean enough for a thesis code review'
         return 0
     else
-        echo "💀 Suspicious PS1… review it before it breaks the cursor"
+        printf '%s\n' '💀 Suspicious PS1… review it before it breaks the cursor'
         return 1
     fi
 }
