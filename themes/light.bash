@@ -169,12 +169,12 @@ theme_render_git_block() {
     fi
 
     local parts=(
-        "$cSeparator $YAFP_SYMBOL_GIT_EMOJI "
-        "$cGitBranchPS1"
+        "$cSeparator $YAFP_SYMBOL_GIT_EMOJI"
         "$remote_status"
+        "$cGitBranchPS1"
         "$yafp_ctx_git_branch"
+        "$cSeparator"
         "$remote_symbol"
-        "${cSeparator}"
         "$text"
     )
 

@@ -5,7 +5,16 @@ $global:YAFP_REPOS = 1
 $global:YAFP_TITLE = 1
 $global:YAFP_ERROR = 1
 $global:YAFP_PVENV = 1
+
+# Use darker background variants in the default and minimal themes.
+# The light theme has no colored backgrounds, so this setting does not apply.
 $global:YAFP_DARKC = 1
+
+# Display prompt timestamps; set to 0 to hide them in every theme.
+$global:YAFP_CLOCK = 1
+
+# Emit OSC 133 shell-integration markers for compatible terminals.
+$global:YAFP_OSC133 = 1
 
 # Check the configured upstream in the background. The value is the cache
 # lifetime in seconds; set it to 0 to disable remote checks completely.

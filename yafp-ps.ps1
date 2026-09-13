@@ -33,6 +33,12 @@ if (-not (Get-Variable YAFP_TITLE -Scope Global -ErrorAction Ignore)) {
 if (-not (Get-Variable YAFP_DARKC -Scope Global -ErrorAction Ignore)) {
     $global:YAFP_DARKC = 1
 }
+if (-not (Get-Variable YAFP_CLOCK -Scope Global -ErrorAction Ignore)) {
+    $global:YAFP_CLOCK = 1
+}
+if (-not (Get-Variable YAFP_OSC133 -Scope Global -ErrorAction Ignore)) {
+    $global:YAFP_OSC133 = 1
+}
 if (-not (Get-Variable YAFP_THEME -Scope Global -ErrorAction Ignore)) {
     $global:YAFP_THEME = 'default'
 }
@@ -67,6 +73,25 @@ function Write-YafpText {
     if (-not $NoNewline) {
         # Reset the colors before scrolling creates a new terminal row.
         Write-Host
+    }
+}
+
+function Get-YafpOsc133Sequence {
+    param([Parameter(Mandatory)][string]$Payload)
+
+    if ($global:YAFP_OSC133 -ne 1) {
+        return ''
+    }
+
+    return "$([char]27)]133;$Payload$([char]7)"
+}
+
+function Write-YafpOsc133Sequence {
+    param([Parameter(Mandatory)][string]$Payload)
+
+    $sequence = Get-YafpOsc133Sequence -Payload $Payload
+    if ($sequence) {
+        Write-Host $sequence -NoNewline
     }
 }
 
@@ -115,6 +140,10 @@ if (-not (Get-Variable promptRan -Scope Script -ErrorAction Ignore)) {
 }
 if (-not (Get-Variable previous_timestamp -Scope Script -ErrorAction Ignore)) {
     $script:previous_timestamp = ''
+}
+if (-not (Get-Variable YafpInitialRemoteCheckPending `
+        -Scope Script -ErrorAction Ignore)) {
+    $script:YafpInitialRemoteCheckPending = $true
 }
 
 function Write-YafpDevelopmentMetrics {
@@ -600,6 +629,11 @@ function Get-YafpGitContext {
             return $null
         }
 
+        $effectiveForceRefresh = (
+            $ForceRemoteRefresh -or $script:YafpInitialRemoteCheckPending
+        )
+        $script:YafpInitialRemoteCheckPending = $false
+
         $top = git rev-parse --show-toplevel 2>$null
         $gitRepoUrl = git remote get-url origin 2>$null
         if ([string]::IsNullOrWhiteSpace($gitRepoUrl)) {
@@ -630,7 +664,7 @@ function Get-YafpGitContext {
         }
 
         $remoteStatus = Get-YafpRemoteContext -RepoRoot "$top" `
-            -Branch "$branch" -ForceRefresh:$ForceRemoteRefresh
+            -Branch "$branch" -ForceRefresh:$effectiveForceRefresh
 
         $delete = 0
         $change = 0
@@ -695,6 +729,7 @@ Import-YafpTheme
 function prompt {
     $previousSucceeded = $?
     $nativeExitCode = [int](Get-VarSafe 'LASTEXITCODE' 'Global' 0)
+    $hadPreviousPrompt = $script:promptRan
 
     $developmentEnabled = $global:YAFP_DEVEL -eq 1
     if ($developmentEnabled) {
@@ -711,7 +746,16 @@ function prompt {
         $generalTimer = [Diagnostics.Stopwatch]::StartNew()
     }
 
-    $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    $clockEnabled = $global:YAFP_CLOCK -eq 1
+    if ($clockEnabled) {
+        $now = Get-Date
+        $timestamp = $now.ToString('yyyy-MM-dd HH:mm:ss')
+        $daySymbol = Get-YafpDaySymbol -Hour $now.Hour
+    }
+    else {
+        $timestamp = ''
+        $daySymbol = ''
+    }
     $previousCommand = ''
     if (@(Get-History).Count -gt 0) {
         $previousCommand = (Get-History)[-1].CommandLine
@@ -725,7 +769,6 @@ function prompt {
     $computerName = $env:COMPUTERNAME
     $displayPath = Get-YafpDisplayPath
     $isAdmin = Test-YafpAdministrator
-    $daySymbol = Get-YafpDaySymbol -Hour (Get-Date).Hour
     if ($developmentEnabled) {
         $generalTimer.Stop()
         $gitTimer = [Diagnostics.Stopwatch]::StartNew()
@@ -774,15 +817,29 @@ function prompt {
         PreviousCommand = $previousCommand
         ExitCode = $status.Code
         HadError = $status.HadError
+        ClockEnabled = $clockEnabled
         DaySymbol = $daySymbol
         Git = $gitContext
         Venv = $venvContext
         Development = $development
     }
 
+    if ($global:YAFP_OSC133 -eq 1) {
+        if ($hadPreviousPrompt) {
+            if ($wasEmpty) {
+                Write-YafpOsc133Sequence -Payload 'D'
+            }
+            else {
+                Write-YafpOsc133Sequence -Payload "D;$($status.Code)"
+            }
+        }
+        Write-YafpOsc133Sequence -Payload 'A'
+    }
+
     $promptMark = Write-YafpTheme -Context $context
-    $script:previous_timestamp = $timestamp
+    $script:previous_timestamp = if ($clockEnabled) { $timestamp } else { '' }
     $global:LASTEXITCODE = $nativeExitCode
 
-    return "$promptMark "
+    $promptEnd = Get-YafpOsc133Sequence -Payload 'B'
+    return "$promptMark $promptEnd"
 }

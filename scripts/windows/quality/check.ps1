@@ -61,6 +61,7 @@ try {
         'tests/powershell_status_test.ps1'
         'tests/powershell_devel_test.ps1'
         'tests/powershell_theme_loading_test.ps1'
+        'tests/osc133_test.ps1'
         'tests/remote_status_test.ps1'
     )) {
         & pwsh -NoProfile -File $test 2>&1 | ForEach-Object {

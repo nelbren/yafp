@@ -3,7 +3,7 @@
 . (Join-Path $PSScriptRoot 'default.ps1')
 
 $script:YafpThemeName = 'light'
-$script:YafpThemeVersion = '1.0'
+$script:YafpThemeVersion = '1.1'
 
 $script:greenColorBackground = $null
 $script:greenColorForeground = 'Green'
@@ -67,6 +67,12 @@ function script:Write-YafpTheme {
     if ($Context.Venv) {
         Write-Host ' 🐍 ' -ForegroundColor White -NoNewline
         Write-YafpText -Text $Context.Venv -ForegroundColor Magenta `
+            -BackgroundColor $null -NoNewline
+    }
+
+    if ($Context.ClockEnabled) {
+        Write-Host ' ⧖ ' -ForegroundColor White -NoNewline
+        Write-YafpText -Text $Context.Timestamp -ForegroundColor White `
             -BackgroundColor $null -NoNewline
     }
 

@@ -90,6 +90,9 @@ YAFP_COLOR_GIT_NEW_FG="BLACK"
 YAFP_COLOR_GIT_NEW_ATTRS="blink"
 
 # Remote synchronization status
+YAFP_COLOR_REMOTE_NEUTRAL_BG="transparent"
+YAFP_COLOR_REMOTE_NEUTRAL_FG="BLACK"
+
 YAFP_COLOR_REMOTE_OK_BG="transparent"
 YAFP_COLOR_REMOTE_OK_FG="green"
 
@@ -253,6 +256,10 @@ theme_build() {
     cRemoteOk="$(theme_color \
         "$YAFP_COLOR_REMOTE_OK_BG" \
         "$YAFP_COLOR_REMOTE_OK_FG")"
+
+    cRemoteNeutral="$(theme_color \
+        "$YAFP_COLOR_REMOTE_NEUTRAL_BG" \
+        "$YAFP_COLOR_REMOTE_NEUTRAL_FG")"
 
     cRemotePending="$(theme_color \
         "$YAFP_COLOR_REMOTE_PENDING_BG" \
@@ -429,7 +436,7 @@ theme_render_git_remote_status() {
     local reset
 
     if [[ "${yafp_ctx_git_remote_refresh_in:-}" =~ ^[0-9]+$ ]]; then
-        out+="$(ps1_wrap "$cSeparator")"
+        out+="$(ps1_wrap "$cRemoteNeutral")"
         out+="(${yafp_ctx_git_remote_refresh_in}) "
         out+="$(theme_ps1_reset)"
     fi
@@ -850,7 +857,7 @@ setColor() {
     local codes
     local atributo
 
-    colorBG="$1"
+    colorBG="$(yafp_theme_background_color "$1")"
     colorFG="$2"
 
     indexFG=$(getColorIndex "$colorFG")
@@ -887,6 +894,40 @@ setColor() {
 }
 
 
+yafp_theme_background_color() {
+    local color="$1"
+
+    case "$color" in
+        transparent) printf '%s' "$color"; return ;;
+        black|BLACK) color=black ;;
+        red|RED) color=red ;;
+        green|GREEN) color=green ;;
+        yellow|YELLOW) color=yellow ;;
+        blue|BLUE) color=blue ;;
+        magenta|MAGENTA) color=magenta ;;
+        cyan|CYAN) color=cyan ;;
+        white|WHITE) color=white ;;
+        *) printf '%s' "$color"; return ;;
+    esac
+
+    if [ "${YAFP_DARKC:-1}" -eq 1 ]; then
+        printf '%s' "$color"
+        return
+    fi
+
+    case "$color" in
+        black) printf 'BLACK' ;;
+        red) printf 'RED' ;;
+        green) printf 'GREEN' ;;
+        yellow) printf 'YELLOW' ;;
+        blue) printf 'BLUE' ;;
+        magenta) printf 'MAGENTA' ;;
+        cyan) printf 'CYAN' ;;
+        white) printf 'WHITE' ;;
+    esac
+}
+
+
 themeColor() {
     local bg
     local fg
@@ -894,7 +935,7 @@ themeColor() {
 
     bg="$1"
     fg="$2"
-    attrs="$3"
+    attrs="${3:-}"
 
     if [ -n "$attrs" ]; then
         # shellcheck disable=SC2086
@@ -1386,6 +1427,11 @@ yafp_git_context() {
     yafp_ctx_git_has_repo=1
     repo_root="$(git rev-parse --show-toplevel 2>/dev/null)"
 
+    if [ "${YAFP_INITIAL_REMOTE_CHECK_PENDING:-1}" -eq 1 ]; then
+        force_remote_refresh=1
+        YAFP_INITIAL_REMOTE_CHECK_PENDING=0
+    fi
+
     if yafp_should_force_remote_refresh "${this_command:-}" "$last_exit"; then
         force_remote_refresh=1
     fi
@@ -1647,6 +1693,8 @@ fi
 . "$cfg"
 
 YAFP_REMOTE_CHECK_INTERVAL=${YAFP_REMOTE_CHECK_INTERVAL:-300}
+YAFP_DARKC=${YAFP_DARKC:-1}
+YAFP_INITIAL_REMOTE_CHECK_PENDING=${YAFP_INITIAL_REMOTE_CHECK_PENDING:-1}
 
 load_vars
 load_theme || return 1

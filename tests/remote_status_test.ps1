@@ -66,6 +66,37 @@ try {
         throw 'behind indicator was not rendered'
     }
 
+    $script:YafpInitialRemoteCheckPending = $true
+    Push-Location $testRoot
+    try {
+        $outsideContext = Get-YafpGitContext
+    }
+    finally {
+        Pop-Location
+    }
+    Assert-Equal $null $outsideContext `
+        'non-repository prompt context'
+    Assert-Equal $true $script:YafpInitialRemoteCheckPending `
+        'non-repository prompt preserved initial refresh'
+
+    Push-Location $local
+    try {
+        $startupContext = Get-YafpGitContext
+    }
+    finally {
+        Pop-Location
+    }
+    Assert-Equal $false $script:YafpInitialRemoteCheckPending `
+        'repository prompt consumed initial refresh'
+    Assert-Equal $true $startupContext.RemoteStatus.Refreshing `
+        'repository startup forced a remote refresh'
+    Assert-Equal 0 $startupContext.RemoteStatus.RefreshIn `
+        'repository startup bypassed the cached countdown'
+    $job = $script:YafpRemoteJobs[$cacheFile]
+    $null = Wait-Job -Job $job -Timeout 30
+    Assert-Equal Completed $job.State `
+        'repository startup refresh background job state'
+
     foreach ($commandCase in @(
         @{ Command = 'git push'; Expected = $true }
         @{ Command = 'git fetch origin'; Expected = $true }

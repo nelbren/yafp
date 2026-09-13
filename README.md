@@ -14,7 +14,7 @@
 
 ## :soon: Insert here the most beautiful screenshots
 
-### :apple: macOS
+### :apple: [macOS](https://www.apple.com/la/os/macos/)
 
 ![macOS](images/screenshot_macOS.png)
 
@@ -62,6 +62,55 @@ $global:YAFP_THEME = 'minimal'
 ```
 
 If the selected theme does not exist, YAFP falls back to the `default` theme.
+
+Set `YAFP_DARKC` to `1` to use darker background variants in the Bash and
+PowerShell `default` and `minimal` themes. Set it to `0` for brighter
+backgrounds:
+
+```bash
+YAFP_DARKC=1
+```
+
+```powershell
+$global:YAFP_DARKC = 1
+```
+
+The option does not affect `light`, which renders without colored backgrounds.
+
+### Git repository identity
+
+In the Bash `default` theme, only the repository name uses the same yellow
+highlight as its directory representation in PowerShell. The surrounding Git
+symbols and metadata keep the Git block color.
+
+The origin symbol distinguishes repositories by configuration:
+
+| Symbol | Themes               | Meaning                                |
+| ------ | -------------------- | -------------------------------------- |
+| `↯`    | `light`              | The repository has a configured remote |
+| `⚡`   | `default`, `minimal` | The repository has a configured remote |
+| `⇣`    | All                  | The repository has no `origin` remote  |
+
+The `light` and `minimal` themes render the branch name in blue in both Bash
+and PowerShell, including when a remote countdown or status precedes it. In
+`light`, the adjacent repository-origin symbol keeps the neutral color.
+
+### Clock display
+
+Set `YAFP_CLOCK` to `1` to display prompt timestamps or to `0` to hide them.
+The option applies to every Bash and PowerShell theme.
+
+For Bash, set the value in `yafp-cfg.bash`:
+
+```bash
+YAFP_CLOCK=1
+```
+
+For PowerShell, set the value in `yafp-cfg.ps1`:
+
+```powershell
+$global:YAFP_CLOCK = 1
+```
 
 ### Development timing
 
@@ -124,6 +173,11 @@ When the cached result expires, YAFP starts a non-interactive `git fetch` in
 the background. A later prompt render reads the result. Repositories without
 an upstream do not produce a false outdated warning.
 
+The first prompt rendered inside a repository after YAFP loads always requests
+an immediate background refresh, even when a previous cache is still fresh.
+Starting outside a repository preserves that initial check until the first
+repository prompt. Rendering remains non-blocking.
+
 #### Remote status indicators
 
 The refresh countdown and compact indicator appear immediately to the right
@@ -131,7 +185,7 @@ of the branch symbol and to the left of the branch name:
 
 | Indicator | Color       | State and meaning                              |
 | --------- | ----------- | ---------------------------------------------- |
-| `(N)`     | Neutral     | Countdown: `N` seconds until the next check    |
+| `(N)`     | Dark gray   | Countdown: `N` seconds until the next check    |
 | `✓`       | Green       | Current: local matches its upstream            |
 | `⇡N`      | Green       | Ahead: `N` local commits are ready to push     |
 | `…`       | Yellow      | Checking: the first check is still running     |
@@ -283,8 +337,8 @@ echo source /usr/local/yafp/yafp-ps1.bash >> ~/.bash_profile
 
 YAFP is a Bash/PowerShell prompt project. It does not own the pseudo-terminal,
 ANSI parser, terminal renderer, or visible scrollback buffer. For terminals that
-understand shell integration markers, the Bash prompt emits OSC 133 sequences so
-each command can be identified as a semantic block:
+understand shell integration markers, both prompts emit OSC 133 sequences so
+commands can be identified as semantic blocks:
 
 ```text
 OSC 133 ; A  prompt start
@@ -293,16 +347,27 @@ OSC 133 ; C  command start / output start
 OSC 133 ; D  command finished, with exit code
 ```
 
-This is enabled by default in `yafp-cfg.bash.example`:
+For Windows Terminal and iTerm2 setup, including scrollbar marks and navigation
+shortcuts, see [`OSC133.md`](docs/OSC133.md).
+
+This is enabled by default in both configuration templates:
 
 ```bash
 YAFP_OSC133=1
+```
+
+```powershell
+$global:YAFP_OSC133 = 1
 ```
 
 Set it to `0` if your terminal does not handle OSC 133 correctly:
 
 ```bash
 YAFP_OSC133=0
+```
+
+```powershell
+$global:YAFP_OSC133 = 0
 ```
 
 YAFP preserves the visible prompt behavior when OSC 133 is disabled. When it is
@@ -323,12 +388,26 @@ and approximate history positions. The structure also reserves stdout/stderr
 fields for a future terminal-side integration, but Bash alone cannot separate or
 capture scrollback output without changing how commands are executed.
 
+### PowerShell integration details
+
+PowerShell follows the Windows Terminal integration model:
+
+- `OSC 133;A` is emitted immediately before the visible prompt;
+- `OSC 133;B` is returned immediately after the prompt mark;
+- `OSC 133;D;<exit_code>` closes a command with its preserved status;
+- `OSC 133;D` without an exit code represents empty input.
+
+PowerShell has no shell-native pre-execution hook equivalent to Bash's `DEBUG`
+trap, so YAFP does not replace PSReadLine key handlers merely to emit
+`OSC 133;C`. Compatible terminals can use `autoMarkPrompts` with the A, B, and D
+markers, following the documented Windows Terminal integration model.
+
 ### zsh and fish
 
-The current implementation is Bash-only. zsh and fish can use the same OSC 133
-protocol, but they need shell-native hooks such as `precmd`/`preexec` in zsh or
-fish event handlers. A future YAFP shell module can add those without
-inventing a new protocol.
+The current implementation supports Bash and PowerShell. zsh and fish can use
+the same OSC 133 protocol, but they need shell-native hooks such as
+`precmd`/`preexec` in zsh or fish event handlers. A future YAFP shell module can
+add those without inventing a new protocol.
 
 ### Current limitations
 
@@ -375,6 +454,6 @@ runtime invariants, and the safe modularization strategy.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-12 17:03:10 🪟 NDEV-DPC-02 |
+📆 2026-09-12 20:20:02 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-5.6 Sol Medium & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

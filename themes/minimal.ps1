@@ -3,7 +3,7 @@
 . (Join-Path $PSScriptRoot 'default.ps1')
 
 $script:YafpThemeName = 'minimal'
-$script:YafpThemeVersion = '2.2'
+$script:YafpThemeVersion = '2.3'
 
 function script:Write-YafpTheme {
     param([Parameter(Mandatory)][object]$Context)
@@ -55,10 +55,12 @@ function script:Write-YafpTheme {
             -BackgroundColor $magentaColorBackground -NoNewline
     }
 
-    Write-Host ' ⧖ ' -ForegroundColor White -NoNewline
-    Write-YafpText -Text $Context.Timestamp -ForegroundColor White `
-        -BackgroundColor $null -NoNewline
-    Write-Host " $($Context.DaySymbol)" -ForegroundColor White -NoNewline
+    if ($Context.ClockEnabled) {
+        Write-Host ' ⧖ ' -ForegroundColor White -NoNewline
+        Write-YafpText -Text $Context.Timestamp -ForegroundColor White `
+            -BackgroundColor $null -NoNewline
+        Write-Host " $($Context.DaySymbol)" -ForegroundColor White -NoNewline
+    }
     if ($Context.HadError) {
         Write-YafpText -Text " → ❌ $($Context.ExitCode)" -ForegroundColor Red `
             -BackgroundColor $null

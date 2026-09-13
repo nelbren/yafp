@@ -36,6 +36,8 @@ be preserved when changing or modularizing the project.
 
 The OSC 133 integration uses the `DEBUG` trap to mark the beginning of a
 command and `PROMPT_COMMAND` to close the block with its exit code.
+Background intensity is selected during color construction through
+`YAFP_DARKC`; transparent backgrounds remain unchanged.
 
 ## PowerShell loading flow
 
@@ -44,7 +46,13 @@ command and `PROMPT_COMMAND` to close the block with its exit code.
    options.
 3. It imports the requested theme, falling back to `default`.
 4. The global `prompt` function captures `$?` and `$LASTEXITCODE` first.
-5. It collects context, renders the theme, and restores `$LASTEXITCODE`.
+5. It collects context, emits OSC 133 lifecycle markers when enabled, renders
+   the theme, and restores `$LASTEXITCODE`.
+
+The PowerShell OSC 133 integration follows the Windows Terminal prompt model:
+it emits D for the prior command, A before visible prompt output, and B after
+the prompt mark. It deliberately avoids replacing PSReadLine key handlers to
+synthesize C, preserving existing interactive bindings and reload safety.
 
 ## Git context and remote status
 
@@ -55,6 +63,8 @@ foreground:
   directory.
 - PowerShell uses a background job and the same conceptual cache format.
 - A lock prevents concurrent workers and is removed when it becomes stale.
+- The first repository prompt after loading forces a background refresh; the
+  pending initial check is not consumed by prompts outside repositories.
 - The cache is invalidated by its interval, a reference change, or a local
   commit change.
 - A successful `push`, `fetch`, or `pull` requests an immediate refresh.
@@ -136,6 +146,6 @@ missing optional analyzer into an error.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-12 17:03:10 🪟 NDEV-DPC-02 |
+📆 2026-09-12 19:19:45 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-5.6 Sol Medium & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

@@ -87,6 +87,7 @@ theme_render_git_block() {
         "$cGitBranchPS1"
         "$YAFP_SYMBOL_GIT_EMOJI"
         "$remote_status"
+        "$cGitBranchPS1"
         "$yafp_ctx_git_branch"
         "$YAFP_SYMBOL_GIT_DIR"
         "$remote_symbol"

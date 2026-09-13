@@ -1,7 +1,7 @@
 # Default PowerShell theme
 
 $script:YafpThemeName = 'default'
-$script:YafpThemeVersion = '2.2'
+$script:YafpThemeVersion = '2.3'
 
 $useDarkColors = (
     (Get-Variable YAFP_DARKC -Scope Global -ErrorAction Ignore) -and
@@ -103,9 +103,11 @@ function script:Write-YafpTheme {
             -ForegroundColor $foreground -BackgroundColor $background -NoNewline
     }
 
-    Write-YafpText -Text "[🔜$($Context.Timestamp)$($Context.DaySymbol)]" `
-        -ForegroundColor $cyanColorForeground `
-        -BackgroundColor $cyanColorBackground
+    if ($Context.ClockEnabled) {
+        Write-YafpText -Text "[🔜$($Context.Timestamp)$($Context.DaySymbol)]" `
+            -ForegroundColor $cyanColorForeground `
+            -BackgroundColor $cyanColorBackground
+    }
 
     Write-Host '[' -ForegroundColor White -NoNewline
     $userForeground = if ($Context.IsAdmin) { 'White' } else { $cyanColorForeground }

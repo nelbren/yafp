@@ -96,6 +96,38 @@ case "$indicator" in
     *) fail 'behind indicator was not rendered' ;;
 esac
 
+original_dir="$PWD"
+YAFP_INITIAL_REMOTE_CHECK_PENDING=1
+cd "$TEST_ROOT"
+set +e
+set +u
+yafp_git_context 0
+set -u
+set -e
+assert_eq 1 "$YAFP_INITIAL_REMOTE_CHECK_PENDING" \
+    'non-repository prompt preserved initial refresh'
+
+cd "$TEST_ROOT/local"
+this_command=''
+set +e
+set +u
+yafp_git_context 0
+set -u
+set -e
+assert_eq 0 "$YAFP_INITIAL_REMOTE_CHECK_PENDING" \
+    'repository prompt consumed initial refresh'
+assert_eq 1 "$yafp_ctx_git_remote_refreshing" \
+    'repository startup forced a remote refresh'
+assert_eq 0 "$yafp_ctx_git_remote_refresh_in" \
+    'repository startup bypassed the cached countdown'
+cd "$original_dir"
+for _ in {1..100}; do
+    [ ! -d "${cache_file}.lock" ] && break
+    sleep 0.05
+done
+[ ! -d "${cache_file}.lock" ] ||
+    fail 'repository startup refresh did not complete'
+
 assert_git_sync_command 'git push' 1
 assert_git_sync_command 'git fetch origin' 1
 assert_git_sync_command 'git pull --ff-only' 1
