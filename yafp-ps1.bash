@@ -1172,6 +1172,7 @@ yafp_remote_check_worker() {
     local state="error"
     local temp_file
     local quoted_lock_dir
+    local write_status=0
 
     mkdir "$lock_dir" 2>/dev/null || return 0
     printf -v quoted_lock_dir '%q' "$lock_dir"
@@ -1207,7 +1208,11 @@ yafp_remote_check_worker() {
     printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
         "$checked_at" "$state" "$ahead" "$behind" \
         "$local_ref" "$upstream" "$current_oid" > "$temp_file" &&
-        mv -f "$temp_file" "$cache_file"
+        mv -f "$temp_file" "$cache_file" || write_status=$?
+
+    rmdir "$lock_dir" >/dev/null 2>&1 || true
+    trap - EXIT
+    return "$write_status"
 }
 
 
