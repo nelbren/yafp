@@ -1170,6 +1170,14 @@ yafp_git_check() {
 }
 
 
+yafp_remote_lock_cleanup() {
+    local lock_dir="$1"
+
+    rm -f "${lock_dir}/pid" >/dev/null 2>&1 || true
+    rmdir "$lock_dir" >/dev/null 2>&1 || true
+}
+
+
 yafp_remote_check_worker() {
     local repo_root="$1"
     local local_ref="$2"
@@ -1187,11 +1195,14 @@ yafp_remote_check_worker() {
     local quoted_lock_dir
     local write_status=0
 
-    mkdir "$lock_dir" 2>/dev/null || return 0
+    if [ ! -d "$lock_dir" ]; then
+        mkdir "$lock_dir" 2>/dev/null || return 0
+    fi
     printf -v quoted_lock_dir '%q' "$lock_dir"
     # Expand the shell-escaped local path while it is still in scope.
     # shellcheck disable=SC2064
-    trap "rmdir $quoted_lock_dir >/dev/null 2>&1" EXIT
+    trap "yafp_remote_lock_cleanup $quoted_lock_dir" EXIT
+    trap 'exit 1' HUP INT TERM
 
     if GIT_TERMINAL_PROMPT=0 GIT_ASKPASS='' \
        git -C "$repo_root" -c credential.interactive=never \
@@ -1223,8 +1234,8 @@ yafp_remote_check_worker() {
         "$local_ref" "$upstream" "$current_oid" > "$temp_file" &&
         mv -f "$temp_file" "$cache_file" || write_status=$?
 
-    rmdir "$lock_dir" >/dev/null 2>&1 || true
-    trap - EXIT
+    yafp_remote_lock_cleanup "$lock_dir"
+    trap - EXIT HUP INT TERM
     return "$write_status"
 }
 
@@ -1238,9 +1249,26 @@ yafp_remote_check_start() {
     local lock_dir="${cache_file}.lock"
     local interval="${YAFP_REMOTE_CHECK_INTERVAL:-300}"
     local lock_mtime=""
+    local lock_pid=""
+    local lock_pid_file="${lock_dir}/pid"
     local now
     local stale_after
     local worker_pid
+
+    if [ -d "$lock_dir" ]; then
+        if [ ! -r "$lock_pid_file" ]; then
+            yafp_remote_lock_cleanup "$lock_dir"
+        else
+            IFS= read -r lock_pid < "$lock_pid_file" || lock_pid=""
+            if [[ "$lock_pid" =~ ^[0-9]+$ ]] &&
+               ! kill -0 "$lock_pid" 2>/dev/null; then
+                yafp_remote_lock_cleanup "$lock_dir"
+            elif [ "$lock_pid" != 'starting' ] &&
+                 ! [[ "$lock_pid" =~ ^[0-9]+$ ]]; then
+                yafp_remote_lock_cleanup "$lock_dir"
+            fi
+        fi
+    fi
 
     if [ -d "$lock_dir" ]; then
         lock_mtime="$(stat -c %Y "$lock_dir" 2>/dev/null ||
@@ -1250,16 +1278,25 @@ yafp_remote_check_start() {
         [ "$stale_after" -ge 600 ] || stale_after=600
         if [[ "$lock_mtime" =~ ^[0-9]+$ ]] &&
            [ $((now - lock_mtime)) -ge "$stale_after" ]; then
-            rmdir "$lock_dir" 2>/dev/null || return 0
+            yafp_remote_lock_cleanup "$lock_dir"
         else
             return 0
         fi
     fi
 
+    mkdir "$lock_dir" 2>/dev/null || return 0
+    printf 'starting\n' 2>/dev/null > "$lock_pid_file" || {
+        yafp_remote_lock_cleanup "$lock_dir"
+        return 0
+    }
+
     yafp_remote_check_worker \
         "$repo_root" "$local_ref" "$upstream" "$remote_name" \
         "$cache_file" "$lock_dir" >/dev/null 2>&1 &
     worker_pid=$!
+    if [ -d "$lock_dir" ]; then
+        printf '%s\n' "$worker_pid" 2>/dev/null > "$lock_pid_file" || true
+    fi
     disown "$worker_pid" 2>/dev/null || true
 }
 

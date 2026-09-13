@@ -171,7 +171,9 @@ $global:YAFP_REMOTE_CHECK_INTERVAL = 300
 
 When the cached result expires, YAFP starts a non-interactive `git fetch` in
 the background. A later prompt render reads the result. Repositories without
-an upstream do not produce a false outdated warning.
+an upstream do not produce a false outdated warning. Bash records the worker
+PID in its refresh lock; if the worker exits without cleaning up, the next
+prompt render removes the abandoned lock and retries the refresh.
 
 The first prompt rendered inside a repository after YAFP loads always requests
 an immediate background refresh, even when a previous cache is still fresh.
@@ -501,6 +503,6 @@ runtime invariants, and the safe modularization strategy.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-12 23:16:13 🪟 NDEV-DPC-02 |
+📆 2026-09-13 00:38:05 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-5.6 Sol Medium & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

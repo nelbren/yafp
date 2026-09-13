@@ -156,6 +156,17 @@ if yafp_should_force_remote_refresh 'git pull' 0; then
     fail 'failed pull was refreshed later by an empty prompt'
 fi
 
+mkdir "${cache_file}.lock"
+yafp_remote_context "$TEST_ROOT/local" main 1
+for _ in {1..100}; do
+    [ ! -d "${cache_file}.lock" ] && break
+    sleep 0.05
+done
+[ ! -d "${cache_file}.lock" ] ||
+    fail 'legacy lock without a worker PID was not recovered'
+
+mkdir "${cache_file}.lock"
+printf '99999999\n' > "${cache_file}.lock/pid"
 yafp_remote_context "$TEST_ROOT/local" main 1
 assert_eq 1 "$yafp_ctx_git_remote_refreshing" 'forced refresh state'
 assert_eq 0 "$yafp_ctx_git_remote_refresh_in" 'forced refresh countdown'
