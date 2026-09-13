@@ -543,9 +543,6 @@ yafp_remote_countdown_indicator() {
         0) yafp_remote_countdown_tone="bright" ;;
         1) yafp_remote_countdown_tone="normal" ;;
     esac
-    yafp_remote_countdown_color_index=$((
-        (yafp_remote_countdown_color_index + 1) % 3
-    ))
 
     case "$level" in
         1) yafp_remote_countdown_text='⡀' ;;
@@ -557,6 +554,20 @@ yafp_remote_countdown_indicator() {
         7) yafp_remote_countdown_text='⣷' ;;
         8) yafp_remote_countdown_text='⣿' ;;
     esac
+}
+
+
+yafp_remote_countdown_advance_color() {
+    local remaining="${1:-}"
+    local interval="${YAFP_REMOTE_CHECK_INTERVAL:-300}"
+
+    [ "${YAFP_REMOTE_COUNTDOWN_STYLE:-numeric}" = "symbols" ] || return
+    [[ "$remaining" =~ ^[1-9][0-9]*$ ]] || return
+    [[ "$interval" =~ ^[1-9][0-9]*$ ]] || return
+
+    yafp_remote_countdown_color_index=$((
+        (yafp_remote_countdown_color_index + 1) % 3
+    ))
 }
 
 
@@ -1790,6 +1801,8 @@ yafp_prompt_command() {
     yafp_now_ms t_all_end
 
     ps1=$(theme_render_ps1)
+    yafp_remote_countdown_advance_color \
+        "${yafp_ctx_git_remote_refresh_in:-}"
     if [ "${YAFP_OSC133:-1}" -eq 1 ]; then
         yafp_command_block_begin
         PS1="$(yafp_osc133_ps1_sequence "A")${ps1}$(yafp_osc133_ps1_sequence "B")"

@@ -81,16 +81,21 @@ assert_eq '⣿' "$yafp_remote_countdown_text" \
     'full symbolic countdown indicator'
 assert_eq 'bright' "$yafp_remote_countdown_tone" \
     'initial symbolic countdown tone'
+yafp_remote_countdown_advance_color 300
+assert_eq 1 "$yafp_remote_countdown_color_index" \
+    'symbolic countdown color advances outside renderer subshell'
 yafp_remote_countdown_indicator 280
 assert_eq '⣿' "$yafp_remote_countdown_text" \
     'stable symbolic countdown indicator during color change'
 assert_eq 'normal' "$yafp_remote_countdown_tone" \
     'middle symbolic countdown tone'
+yafp_remote_countdown_advance_color 280
 yafp_remote_countdown_indicator 270
 assert_eq '⣿' "$yafp_remote_countdown_text" \
     'stable symbolic countdown indicator before next level'
 assert_eq 'dim' "$yafp_remote_countdown_tone" \
     'last symbolic countdown tone'
+yafp_remote_countdown_advance_color 270
 yafp_remote_countdown_indicator 250
 assert_eq '⣷' "$yafp_remote_countdown_text" \
     'decreasing symbolic countdown indicator'
@@ -283,6 +288,27 @@ case "$indicator" in
     *) fail 'diverged indicator was not rendered' ;;
 esac
 
+YAFP_REMOTE_COUNTDOWN_STYLE=symbols
+yafp_remote_countdown_color_index=0
+YAFP_OSC133=0
+YAFP_TITLE=0
+cd "$TEST_ROOT/local"
+set +e
+set +u
+yafp_prompt_command
+set -u
+set -e
+assert_eq 1 "$yafp_remote_countdown_color_index" \
+    'first prompt render persisted the symbolic countdown color'
+set +e
+set +u
+yafp_prompt_command
+set -u
+set -e
+assert_eq 2 "$yafp_remote_countdown_color_index" \
+    'second prompt render persisted the next symbolic countdown color'
+
+YAFP_REMOTE_COUNTDOWN_STYLE=numeric
 YAFP_REMOTE_CHECK_INTERVAL=0
 yafp_remote_context "$TEST_ROOT/local" main
 assert_eq '' "$yafp_ctx_git_remote_state" 'disabled state'
