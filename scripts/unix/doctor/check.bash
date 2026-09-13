@@ -17,7 +17,7 @@ doctor_pass() {
     local message
 
     PASS_COUNT=$((PASS_COUNT + 1))
-    message="$DOCTOR_PREFIX✅ $1"
+    message="${DOCTOR_PREFIX}✅ $1"
     if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
         printf '\033[32m%s\033[0m\n' "$message"
     else
@@ -29,7 +29,7 @@ doctor_warning() {
     local message
 
     WARNING_COUNT=$((WARNING_COUNT + 1))
-    message="$DOCTOR_PREFIX⚠️ $1"
+    message="${DOCTOR_PREFIX}⚠️ $1"
     if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
         printf '\033[33m%s\033[0m\n' "$message"
     else
@@ -41,7 +41,7 @@ doctor_error() {
     local message
 
     ERROR_COUNT=$((ERROR_COUNT + 1))
-    message="$DOCTOR_PREFIX❌ $1"
+    message="${DOCTOR_PREFIX}❌ $1"
     if [ -t 2 ] && [ -z "${NO_COLOR:-}" ]; then
         printf '\033[31m%s\033[0m\n' "$message" >&2
     else
