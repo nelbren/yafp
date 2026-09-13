@@ -85,6 +85,7 @@ check_configuration() {
     local clock=''
     local osc133=''
     local remote_interval=''
+    local remote_countdown_style=''
     local devel=''
     local theme=''
     local repos=''
@@ -129,6 +130,8 @@ check_configuration() {
         printf "__YAFP_OSC133=%s\n" "${YAFP_OSC133-}"
         printf "__YAFP_REMOTE_CHECK_INTERVAL=%s\n" \
             "${YAFP_REMOTE_CHECK_INTERVAL-}"
+        printf "__YAFP_REMOTE_COUNTDOWN_STYLE=%s\n" \
+            "${YAFP_REMOTE_COUNTDOWN_STYLE-}"
         printf "__YAFP_DEVEL=%s\n" "${YAFP_DEVEL-}"
         printf "__YAFP_THEME=%s\n" "${YAFP_THEME-}"
         printf "__YAFP_REPOS=%s\n" "${YAFP_REPOS-}"
@@ -149,6 +152,7 @@ check_configuration() {
             __YAFP_CLOCK) clock="$value" ;;
             __YAFP_OSC133) osc133="$value" ;;
             __YAFP_REMOTE_CHECK_INTERVAL) remote_interval="$value" ;;
+            __YAFP_REMOTE_COUNTDOWN_STYLE) remote_countdown_style="$value" ;;
             __YAFP_DEVEL) devel="$value" ;;
             __YAFP_THEME) theme="$value" ;;
             __YAFP_REPOS) repos="$value" ;;
@@ -180,6 +184,17 @@ check_configuration() {
     else
         doctor_error 'YAFP_REMOTE_CHECK_INTERVAL must be a non-negative integer'
     fi
+
+    case "${remote_countdown_style:-numeric}" in
+        numeric|symbols)
+            doctor_pass \
+                "YAFP_REMOTE_COUNTDOWN_STYLE is valid: ${remote_countdown_style:-numeric}"
+            ;;
+        *)
+            doctor_error \
+                'YAFP_REMOTE_COUNTDOWN_STYLE must be numeric or symbols'
+            ;;
+    esac
 
     DOCTOR_PREFIX='│       └── '
     if [ -n "$theme" ] && [ -f "$ROOT_DIR/themes/$theme.bash" ]; then

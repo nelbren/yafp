@@ -45,6 +45,9 @@ if (-not (Get-Variable YAFP_THEME -Scope Global -ErrorAction Ignore)) {
 if (-not (Get-Variable YAFP_REMOTE_CHECK_INTERVAL -Scope Global -ErrorAction Ignore)) {
     $global:YAFP_REMOTE_CHECK_INTERVAL = 300
 }
+if (-not (Get-Variable YAFP_REMOTE_COUNTDOWN_STYLE -Scope Global -ErrorAction Ignore)) {
+    $global:YAFP_REMOTE_COUNTDOWN_STYLE = 'numeric'
+}
 if (-not (Get-Variable YAFP_DEVEL -Scope Global -ErrorAction Ignore)) {
     $global:YAFP_DEVEL = 0
 }
@@ -175,6 +178,10 @@ function Write-YafpDevelopmentMetrics {
 }
 if (-not (Get-Variable YafpRemoteJobs -Scope Script -ErrorAction Ignore)) {
     $script:YafpRemoteJobs = @{}
+}
+if (-not (Get-Variable YafpRemoteCountdownColorIndex `
+        -Scope Script -ErrorAction Ignore)) {
+    $script:YafpRemoteCountdownColorIndex = 0
 }
 
 function Get-VarSafe {
@@ -555,8 +562,13 @@ function Write-YafpGitRemoteStatus {
     Write-Host ' ' -NoNewline
 
     if ($null -ne $remote.RefreshIn) {
-        Write-YafpText -Text "($($remote.RefreshIn)) " `
-            -ForegroundColor DarkGray -BackgroundColor $null -NoNewline
+        $countdown = Get-YafpRemoteCountdownIndicator `
+            -Remaining $remote.RefreshIn
+        if ($countdown) {
+            Write-YafpText -Text "$countdown " `
+                -ForegroundColor $script:YafpRemoteCountdownColor `
+                -BackgroundColor $null -NoNewline
+        }
     }
 
     if ($remote.Refreshing) {
@@ -590,6 +602,44 @@ function Write-YafpGitRemoteStatus {
             -BackgroundColor Red -NoNewline
     }
     Write-Host ' ' -NoNewline
+}
+
+function Get-YafpRemoteCountdownIndicator {
+    param([Parameter(Mandatory)][long]$Remaining)
+
+    $script:YafpRemoteCountdownColor = 'DarkGray'
+
+    if ($global:YAFP_REMOTE_COUNTDOWN_STYLE -ne 'symbols') {
+        return "($Remaining)"
+    }
+
+    $interval = 0
+    if ($Remaining -lt 0 -or -not [int]::TryParse(
+        "$global:YAFP_REMOTE_CHECK_INTERVAL",
+        [ref]$interval
+    ) -or $interval -le 0) {
+        return "($Remaining)"
+    }
+
+    if ($Remaining -eq 0) {
+        return ''
+    }
+
+    $level = [int][Math]::Min(
+        8,
+        [Math]::Ceiling(([double]$Remaining * 8) / $interval)
+    )
+    $script:YafpRemoteCountdownColor = switch (
+        $script:YafpRemoteCountdownColorIndex
+    ) {
+        0 { 'White' }
+        1 { 'Gray' }
+        default { 'DarkGray' }
+    }
+    $script:YafpRemoteCountdownColorIndex = (
+        $script:YafpRemoteCountdownColorIndex + 1
+    ) % 3
+    return @('', '⡀', '⣀', '⣄', '⣤', '⣦', '⣶', '⣷', '⣿')[$level]
 }
 
 function Write-YafpRemoteWarning {

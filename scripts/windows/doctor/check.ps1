@@ -109,6 +109,7 @@ function Get-ConfigurationValues {
         'YAFP_CLOCK',
         'YAFP_OSC133',
         'YAFP_REMOTE_CHECK_INTERVAL',
+        'YAFP_REMOTE_COUNTDOWN_STYLE',
         'YAFP_DEVEL',
         'YAFP_THEME',
         'YAFP_REPOS',
@@ -203,6 +204,21 @@ function Test-Configuration {
     else {
         Write-DoctorError (
             'YAFP_REMOTE_CHECK_INTERVAL must be a non-negative integer'
+        )
+    }
+
+    $countdownStyle = $values['YAFP_REMOTE_COUNTDOWN_STYLE']
+    if (-not $countdownStyle) {
+        $countdownStyle = 'numeric'
+    }
+    if ($countdownStyle -in @('numeric', 'symbols')) {
+        Write-DoctorPass (
+            "YAFP_REMOTE_COUNTDOWN_STYLE is valid: $countdownStyle"
+        )
+    }
+    else {
+        Write-DoctorError (
+            'YAFP_REMOTE_COUNTDOWN_STYLE must be numeric or symbols'
         )
     }
 

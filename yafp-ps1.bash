@@ -261,6 +261,14 @@ theme_build() {
         "$YAFP_COLOR_REMOTE_NEUTRAL_BG" \
         "$YAFP_COLOR_REMOTE_NEUTRAL_FG")"
 
+    cRemoteCountdownNormal="$(theme_color \
+        "$YAFP_COLOR_REMOTE_NEUTRAL_BG" \
+        white)"
+
+    cRemoteCountdownBright="$(theme_color \
+        "$YAFP_COLOR_REMOTE_NEUTRAL_BG" \
+        WHITE)"
+
     cRemotePending="$(theme_color \
         "$YAFP_COLOR_REMOTE_PENDING_BG" \
         "$YAFP_COLOR_REMOTE_PENDING_FG")"
@@ -444,14 +452,25 @@ theme_render_remote_warning() {
 
 theme_render_git_remote_status() {
     local color
+    local countdown
+    local countdown_color
     local indicator
     local out=""
     local reset
 
     if [[ "${yafp_ctx_git_remote_refresh_in:-}" =~ ^[0-9]+$ ]]; then
-        out+="$(ps1_wrap "$cRemoteNeutral")"
-        out+="(${yafp_ctx_git_remote_refresh_in}) "
-        out+="$(theme_ps1_reset)"
+        yafp_remote_countdown_indicator "$yafp_ctx_git_remote_refresh_in"
+        countdown="$yafp_remote_countdown_text"
+        if [ -n "$countdown" ]; then
+            case "$yafp_remote_countdown_tone" in
+                bright) countdown_color="$cRemoteCountdownBright" ;;
+                normal) countdown_color="$cRemoteCountdownNormal" ;;
+                *) countdown_color="$cRemoteNeutral" ;;
+            esac
+            out+="$(ps1_wrap "$countdown_color")"
+            out+="$countdown "
+            out+="$(theme_ps1_reset)"
+        fi
     fi
 
     if [ "${yafp_ctx_git_remote_refreshing:-0}" -eq 1 ]; then
@@ -492,6 +511,52 @@ theme_render_git_remote_status() {
     reset="$(theme_ps1_reset)"
     printf '%s%s%s%s' "$out" "$(ps1_wrap "$color")" \
         "$indicator" "$reset"
+}
+
+
+yafp_remote_countdown_indicator() {
+    local remaining="${1:-0}"
+    local interval="${YAFP_REMOTE_CHECK_INTERVAL:-300}"
+    local level
+
+    yafp_remote_countdown_text=""
+    yafp_remote_countdown_tone="dim"
+
+    if [ "${YAFP_REMOTE_COUNTDOWN_STYLE:-numeric}" != "symbols" ]; then
+        yafp_remote_countdown_text="($remaining)"
+        return
+    fi
+
+    if ! [[ "$remaining" =~ ^[0-9]+$ && "$interval" =~ ^[1-9][0-9]*$ ]]; then
+        yafp_remote_countdown_text="($remaining)"
+        return
+    fi
+
+    if (( remaining == 0 )); then
+        return
+    fi
+
+    level=$(( (remaining * 8 + interval - 1) / interval ))
+    (( level > 8 )) && level=8
+
+    case "$yafp_remote_countdown_color_index" in
+        0) yafp_remote_countdown_tone="bright" ;;
+        1) yafp_remote_countdown_tone="normal" ;;
+    esac
+    yafp_remote_countdown_color_index=$((
+        (yafp_remote_countdown_color_index + 1) % 3
+    ))
+
+    case "$level" in
+        1) yafp_remote_countdown_text='⡀' ;;
+        2) yafp_remote_countdown_text='⣀' ;;
+        3) yafp_remote_countdown_text='⣄' ;;
+        4) yafp_remote_countdown_text='⣤' ;;
+        5) yafp_remote_countdown_text='⣦' ;;
+        6) yafp_remote_countdown_text='⣶' ;;
+        7) yafp_remote_countdown_text='⣷' ;;
+        8) yafp_remote_countdown_text='⣿' ;;
+    esac
 }
 
 
@@ -1753,8 +1818,10 @@ fi
 . "$cfg"
 
 YAFP_REMOTE_CHECK_INTERVAL=${YAFP_REMOTE_CHECK_INTERVAL:-300}
+YAFP_REMOTE_COUNTDOWN_STYLE=${YAFP_REMOTE_COUNTDOWN_STYLE:-numeric}
 YAFP_DARKC=${YAFP_DARKC:-1}
 YAFP_INITIAL_REMOTE_CHECK_PENDING=${YAFP_INITIAL_REMOTE_CHECK_PENDING:-1}
+yafp_remote_countdown_color_index=${yafp_remote_countdown_color_index:-0}
 
 load_vars
 load_theme || return 1

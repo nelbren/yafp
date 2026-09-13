@@ -44,6 +44,35 @@ try {
     $upstream = 'origin/main'
     $cacheFile = Join-Path $local '.git/yafp-remote-status'
     $global:YAFP_REMOTE_CHECK_INTERVAL = 300
+    $global:YAFP_REMOTE_COUNTDOWN_STYLE = 'numeric'
+
+    Assert-Equal '(300)' (Get-YafpRemoteCountdownIndicator -Remaining 300) `
+        'numeric countdown indicator'
+    $global:YAFP_REMOTE_COUNTDOWN_STYLE = 'symbols'
+    $script:YafpRemoteCountdownColorIndex = 0
+    Assert-Equal '⣿' (Get-YafpRemoteCountdownIndicator -Remaining 300) `
+        'full symbolic countdown indicator'
+    Assert-Equal White $script:YafpRemoteCountdownColor `
+        'initial symbolic countdown color'
+    Assert-Equal '⣿' (Get-YafpRemoteCountdownIndicator -Remaining 280) `
+        'stable symbolic countdown indicator during color change'
+    Assert-Equal Gray $script:YafpRemoteCountdownColor `
+        'middle symbolic countdown color'
+    Assert-Equal '⣿' (Get-YafpRemoteCountdownIndicator -Remaining 270) `
+        'stable symbolic countdown indicator before next level'
+    Assert-Equal DarkGray $script:YafpRemoteCountdownColor `
+        'last symbolic countdown color'
+    Assert-Equal '⣷' (Get-YafpRemoteCountdownIndicator -Remaining 250) `
+        'decreasing symbolic countdown indicator'
+    Assert-Equal '⡀' (Get-YafpRemoteCountdownIndicator -Remaining 1) `
+        'last symbolic countdown indicator'
+    Assert-Equal '' (Get-YafpRemoteCountdownIndicator -Remaining 0) `
+        'expired symbolic countdown indicator'
+    $global:YAFP_REMOTE_COUNTDOWN_STYLE = 'invalid'
+    Assert-Equal '(250)' (Get-YafpRemoteCountdownIndicator -Remaining 250) `
+        'invalid countdown style fallback'
+    $global:YAFP_REMOTE_COUNTDOWN_STYLE = 'numeric'
+
     $initialRemote = Get-YafpRemoteContext -RepoRoot $local -Branch main
     Assert-Equal checking $initialRemote.State 'initial asynchronous state'
 

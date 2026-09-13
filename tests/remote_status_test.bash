@@ -70,6 +70,41 @@ PROMPT_COMMAND=
 
 cache_file="$TEST_ROOT/local/.git/yafp-remote-status"
 YAFP_REMOTE_CHECK_INTERVAL=300
+YAFP_REMOTE_COUNTDOWN_STYLE=numeric
+
+yafp_remote_countdown_indicator 300
+assert_eq '(300)' "$yafp_remote_countdown_text" 'numeric countdown indicator'
+YAFP_REMOTE_COUNTDOWN_STYLE=symbols
+yafp_remote_countdown_color_index=0
+yafp_remote_countdown_indicator 300
+assert_eq '⣿' "$yafp_remote_countdown_text" \
+    'full symbolic countdown indicator'
+assert_eq 'bright' "$yafp_remote_countdown_tone" \
+    'initial symbolic countdown tone'
+yafp_remote_countdown_indicator 280
+assert_eq '⣿' "$yafp_remote_countdown_text" \
+    'stable symbolic countdown indicator during color change'
+assert_eq 'normal' "$yafp_remote_countdown_tone" \
+    'middle symbolic countdown tone'
+yafp_remote_countdown_indicator 270
+assert_eq '⣿' "$yafp_remote_countdown_text" \
+    'stable symbolic countdown indicator before next level'
+assert_eq 'dim' "$yafp_remote_countdown_tone" \
+    'last symbolic countdown tone'
+yafp_remote_countdown_indicator 250
+assert_eq '⣷' "$yafp_remote_countdown_text" \
+    'decreasing symbolic countdown indicator'
+yafp_remote_countdown_indicator 1
+assert_eq '⡀' "$yafp_remote_countdown_text" \
+    'last symbolic countdown indicator'
+yafp_remote_countdown_indicator 0
+assert_eq '' "$yafp_remote_countdown_text" \
+    'expired symbolic countdown indicator'
+YAFP_REMOTE_COUNTDOWN_STYLE=invalid
+yafp_remote_countdown_indicator 250
+assert_eq '(250)' "$yafp_remote_countdown_text" 'invalid countdown style fallback'
+YAFP_REMOTE_COUNTDOWN_STYLE=numeric
+
 yafp_remote_context "$TEST_ROOT/local" main
 assert_eq checking "$yafp_ctx_git_remote_state" 'initial asynchronous state'
 set +u

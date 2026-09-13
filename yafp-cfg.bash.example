@@ -23,6 +23,10 @@ YAFP_OSC133=1
 # lifetime in seconds; set it to 0 to disable remote checks completely.
 YAFP_REMOTE_CHECK_INTERVAL=300
 
+# Display the remote refresh countdown as seconds (numeric) or as one
+# progressively emptying Braille cell (symbols).
+YAFP_REMOTE_COUNTDOWN_STYLE="numeric"
+
 # Display prompt construction timing; set it to 0 to disable the metrics.
 YAFP_DEVEL=0
 

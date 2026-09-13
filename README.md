@@ -175,6 +175,28 @@ For PowerShell, set the value in `yafp-cfg.ps1`:
 $global:YAFP_REMOTE_CHECK_INTERVAL = 300
 ```
 
+Choose how the remaining interval is displayed with
+`YAFP_REMOTE_COUNTDOWN_STYLE`. The default `numeric` value shows the exact
+seconds as `(N)`. The `symbols` value shows one Braille cell that progressively
+empties as the next check approaches:
+
+```bash
+YAFP_REMOTE_COUNTDOWN_STYLE="symbols"
+```
+
+```powershell
+$global:YAFP_REMOTE_COUNTDOWN_STYLE = 'symbols'
+```
+
+The symbolic sequence is `⣿`, `⣷`, `⣶`, `⣦`, `⣤`, `⣄`, `⣀`, and `⡀`.
+Each shape progresses through intense white, normal white, and dark gray before
+repeating the cycle. The shape follows the remaining time, while the color
+advances once whenever a new prompt is rendered. It does not update while the
+prompt is idle. At zero, the countdown cell disappears and the existing `⟳`
+refresh indicator communicates that the background check is running. The color
+cycle uses only an integer increment and selection during rendering; it does not
+start another timer or process.
+
 When the cached result expires, YAFP starts a non-interactive `git fetch` in
 the background. A later prompt render reads the result. Repositories without
 an upstream do not produce a false outdated warning. Bash records the worker
@@ -193,7 +215,8 @@ of the branch symbol and to the left of the branch name:
 
 | Indicator | Color       | State and meaning                              |
 | --------- | ----------- | ---------------------------------------------- |
-| `(N)`     | Dark gray   | Countdown: `N` seconds until the next check    |
+| `(N)`     | Dark gray   | Numeric countdown until the next check         |
+| `⣿…⡀`     | Dark gray   | Symbolic countdown until the next check        |
 | `✓`       | Green       | Current: local matches its upstream            |
 | `⇡N`      | Green       | Ahead: `N` local commits are ready to push     |
 | `…`       | Yellow      | Checking: the first check is still running     |
