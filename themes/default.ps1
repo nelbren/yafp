@@ -63,6 +63,10 @@ function script:Write-YafpGitCounts {
         Write-YafpText -Text "$prefix+$($Git.NewCount)" `
             -ForegroundColor Cyan -BackgroundColor $null -NoNewline
     }
+    if ($Git.StagedCount -gt 0) {
+        Write-YafpText -Text "📦$($Git.StagedCount)" `
+            -ForegroundColor Yellow -BackgroundColor $null -NoNewline
+    }
 }
 
 function script:Write-YafpTheme {
@@ -72,6 +76,7 @@ function script:Write-YafpTheme {
         Write-YafpDevelopmentMetrics -Development $Context.Development
     }
     Write-YafpRemoteWarning -Context $Context
+    Write-YafpStagedWarning -Context $Context
 
     if ($Context.Git) {
         $remoteSymbol = if ($Context.Git.Remote -eq 'remote') { '⚡' } else { '⇣' }

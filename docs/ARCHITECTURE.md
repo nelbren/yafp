@@ -109,6 +109,7 @@ Each implementation must represent, when applicable:
 
 - user, host, and directory;
 - branch and Git changes;
+- staged Git changes and the yellow commit-pending warning;
 - remote status;
 - virtual environment;
 - previous command status;

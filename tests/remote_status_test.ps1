@@ -47,6 +47,40 @@ try {
     $global:YAFP_REMOTE_COUNTDOWN_STYLE = 'numeric'
     $global:YAFP_STATUS_PROGRESS_STYLE = 'blocks'
 
+    $gitCounts = Get-YafpGitStatusCounts -Lines @(
+        'M  staged modification'
+        'A  staged addition'
+        'R  old -> new'
+        ' D deleted'
+        ' M modified'
+        'MM both'
+        '?? untracked'
+        'UU conflict'
+    )
+    Assert-Equal 4 $gitCounts.Staged 'staged Git count'
+    Assert-Equal 2 $gitCounts.Change 'unstaged Git change count'
+    Assert-Equal 1 $gitCounts.Delete 'unstaged Git deletion count'
+    Assert-Equal 1 $gitCounts.New 'untracked Git count'
+    Assert-Equal Yellow (Get-YafpStagedWarningColor) `
+        'staged Git warning color'
+
+    $stagedContext = [pscustomobject]@{
+        Git = [pscustomobject]@{ StagedCount = 4 }
+    }
+    $stagedWarning = Write-YafpStagedWarning `
+        -Context $stagedContext 6>&1 | Out-String
+    if ($stagedWarning -notmatch
+        '⚠️ COMMIT PENDING: 4 staged files are ready to commit ⚠️') {
+        throw 'staged Git warning was not rendered'
+    }
+    $stagedContext.Git.StagedCount = 1
+    $stagedWarning = Write-YafpStagedWarning `
+        -Context $stagedContext 6>&1 | Out-String
+    if ($stagedWarning -notmatch
+        '⚠️ COMMIT PENDING: 1 staged file is ready to commit ⚠️') {
+        throw 'singular staged Git warning was not rendered'
+    }
+
     $statusReport = @(Format-YafpRemoteStatusReport -State current `
         -Remaining 175 -Interval 300 -Now 0)
     Assert-Equal '🌐       Remote: ✓ Up to date' $statusReport[0] `

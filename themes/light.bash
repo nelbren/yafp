@@ -260,7 +260,8 @@ theme_render_ps1() {
     main="$(theme_render_main_block)"
     promptMark="$(theme_ps1_prompt_mark)"
 
-    ps1="$(theme_render_remote_warning)${main}\n"
+    ps1="$(theme_render_remote_warning)"
+    ps1+="$(theme_render_staged_warning)${main}\n"
     [[ "${YAFP_DEVEL:-0}" -eq 1 ]] && ps1+="$(yafp_dev_segment)"
     # ps1+="${promptMark}\[\e[0m\e[K\] "
     ps1+="${promptMark}${cFullResetPS1} "

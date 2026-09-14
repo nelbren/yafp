@@ -246,6 +246,26 @@ prompt displays the new state and restarts the configured countdown. Failed
 commands and incidental text such as `echo "git push"` do not reset it. This
 behavior is also disabled when `YAFP_REMOTE_CHECK_INTERVAL` is `0`.
 
+#### Staged changes
+
+YAFP distinguishes every step between editing and publishing repository work:
+
+| Indicator | Meaning                                      |
+| --------- | -------------------------------------------- |
+| `🆕+N`    | `N` untracked files                          |
+| `📝±N`    | `N` unstaged modifications                   |
+| `🗑️-N`    | `N` unstaged deletions                       |
+| `📦N`     | `N` staged files are ready to commit         |
+| `⇡N`      | `N` committed changes are ready to push      |
+
+When the index contains staged additions, modifications, deletions, renames,
+copies, or type changes, all themes display the `📦N` indicator and this yellow
+warning with matching singular or plural grammar:
+
+```text
+⚠️ COMMIT PENDING: 14 staged files are ready to commit ⚠️
+```
+
 #### On-demand remote controls
 
 Use `yafp-status` in Bash or PowerShell to inspect the exact timer independently

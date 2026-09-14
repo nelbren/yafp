@@ -180,6 +180,7 @@ theme_render_ps1() {
 
     [[ "${YAFP_DEVEL:-0}" -eq 1 ]] && ps1+="$(yafp_dev_segment)"
     ps1+="$(theme_render_remote_warning)"
+    ps1+="$(theme_render_staged_warning)"
     ps1+="${main}"
     ps1+="${promptMark}${cFullResetPS1} "
 

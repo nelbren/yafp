@@ -12,6 +12,7 @@ function script:Write-YafpTheme {
         Write-YafpDevelopmentMetrics -Development $Context.Development
     }
     Write-YafpRemoteWarning -Context $Context
+    Write-YafpStagedWarning -Context $Context
 
     $userIcon = if ($Context.IsAdmin) { '💀' } else { '👤' }
     Write-Host "🪟 $userIcon " -ForegroundColor White -NoNewline
@@ -41,7 +42,8 @@ function script:Write-YafpTheme {
         $hasChanges = (
             $Context.Git.DeleteCount -gt 0 -or
             $Context.Git.ChangeCount -gt 0 -or
-            $Context.Git.NewCount -gt 0
+            $Context.Git.NewCount -gt 0 -or
+            $Context.Git.StagedCount -gt 0
         )
         if ($hasChanges) {
             Write-Host ' with ' -ForegroundColor White -NoNewline

@@ -943,6 +943,67 @@ function Write-YafpRemoteWarning {
         -ForegroundColor $foreground -BackgroundColor $background
 }
 
+function Get-YafpStagedWarningColor {
+    return 'Yellow'
+}
+
+function Write-YafpStagedWarning {
+    param([Parameter(Mandatory)][object]$Context)
+
+    if (-not $Context.Git -or $Context.Git.StagedCount -le 0) {
+        return
+    }
+
+    $count = $Context.Git.StagedCount
+    $unit = if ($count -eq 1) { 'file' } else { 'files' }
+    $verb = if ($count -eq 1) { 'is' } else { 'are' }
+    Write-YafpText `
+        -Text "⚠️ COMMIT PENDING: $count staged $unit $verb ready to commit ⚠️" `
+        -ForegroundColor (Get-YafpStagedWarningColor) -BackgroundColor $null
+}
+
+function Get-YafpGitStatusCounts {
+    param([AllowEmptyCollection()][object[]]$Lines)
+
+    $delete = 0
+    $change = 0
+    $new = 0
+    $staged = 0
+    foreach ($raw in @($Lines)) {
+        $line = "$raw".TrimEnd()
+        if ($line.Length -lt 2) {
+            continue
+        }
+        $xy = $line.Substring(0, 2)
+        if ($xy -eq '??') {
+            $new++
+            continue
+        }
+        if ($xy -in @('DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU')) {
+            continue
+        }
+
+        $indexState = $line[0]
+        $workTreeState = $line[1]
+        if ($indexState -in @('A', 'C', 'D', 'M', 'R', 'T')) {
+            $staged++
+        }
+        if ($workTreeState -eq 'D') {
+            $delete++
+        }
+        elseif ($workTreeState -in @('M', 'T')) {
+            $change++
+        }
+    }
+
+    return [pscustomobject]@{
+        Delete = $delete
+        Change = $change
+        New = $new
+        Staged = $staged
+    }
+}
+
 function Get-YafpGitContext {
     param([switch]$ForceRemoteRefresh)
 
@@ -993,38 +1054,17 @@ function Get-YafpGitContext {
         $remoteStatus = Get-YafpRemoteContext -RepoRoot "$top" `
             -Branch "$branch" -ForceRefresh:$effectiveForceRefresh
 
-        $delete = 0
-        $change = 0
-        $new = 0
-        foreach ($raw in @($gitStatus)) {
-            $line = "$raw".TrimEnd()
-            if ($line.Length -lt 2) {
-                continue
-            }
-            if ($line.StartsWith('??')) {
-                $new++
-                continue
-            }
-
-            $indexState = $line[0]
-            $workTreeState = $line[1]
-            if ($indexState -eq 'D' -or $workTreeState -eq 'D') {
-                $delete++
-                continue
-            }
-            if ($indexState -eq 'M' -or $workTreeState -eq 'M') {
-                $change++
-            }
-        }
+        $counts = Get-YafpGitStatusCounts -Lines @($gitStatus)
 
         return [pscustomobject]@{
             Repository = $repo
             Branch = $branch
             Remote = $remote
             LastTimestamp = $lastGitTimestamp
-            DeleteCount = $delete
-            ChangeCount = $change
-            NewCount = $new
+            DeleteCount = $counts.Delete
+            ChangeCount = $counts.Change
+            NewCount = $counts.New
+            StagedCount = $counts.Staged
             RemoteStatus = $remoteStatus
         }
     }

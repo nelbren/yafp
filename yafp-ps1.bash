@@ -89,6 +89,10 @@ YAFP_COLOR_GIT_NEW_BG="CYAN"
 YAFP_COLOR_GIT_NEW_FG="BLACK"
 YAFP_COLOR_GIT_NEW_ATTRS="blink"
 
+YAFP_COLOR_GIT_STAGED_BG="transparent"
+YAFP_COLOR_GIT_STAGED_FG="YELLOW"
+YAFP_COLOR_GIT_STAGED_ATTRS="bold"
+
 # Remote synchronization status
 YAFP_COLOR_REMOTE_NEUTRAL_BG="transparent"
 YAFP_COLOR_REMOTE_NEUTRAL_FG="BLACK"
@@ -139,6 +143,7 @@ YAFP_SYMBOL_GIT_CHANGE_EMOJI="📝"
 YAFP_SYMBOL_GIT_CHANGE="±"
 YAFP_SYMBOL_GIT_NEW_EMOJI="🆕"
 YAFP_SYMBOL_GIT_NEW="+"
+YAFP_SYMBOL_GIT_STAGED_EMOJI="📦"
 YAFP_SYMBOL_REMOTE_WARNING="🚨"
 
 
@@ -252,6 +257,11 @@ theme_build() {
         "$YAFP_COLOR_GIT_NEW_BG" \
         "$YAFP_COLOR_GIT_NEW_FG" \
         "$YAFP_COLOR_GIT_NEW_ATTRS")"
+
+    cGitStaged="$(theme_color \
+        "$YAFP_COLOR_GIT_STAGED_BG" \
+        "$YAFP_COLOR_GIT_STAGED_FG" \
+        "$YAFP_COLOR_GIT_STAGED_ATTRS")"
 
     cRemoteOk="$(theme_color \
         "$YAFP_COLOR_REMOTE_OK_BG" \
@@ -373,11 +383,13 @@ theme_render_git_counts() {
     local cGitDeletePS1
     local cGitChangePS1
     local cGitNewPS1
+    local cGitStagedPS1
     local cNormalPS1
 
     cGitDeletePS1="$(ps1_wrap "$cGitDelete")"
     cGitChangePS1="$(ps1_wrap "$cGitChange")"
     cGitNewPS1="$(ps1_wrap "$cGitNew")"
+    cGitStagedPS1="$(ps1_wrap "$cGitStaged")"
     cNormalPS1="$(theme_ps1_reset)"
 
     if [ "$yafp_ctx_git_delete" -gt 0 ]; then
@@ -401,7 +413,33 @@ theme_render_git_counts() {
         out+="${yafp_ctx_git_new}${cNormalPS1}"
     fi
 
+    if [ "${yafp_ctx_git_staged:-0}" -gt 0 ]; then
+        out+="$cGitStagedPS1"
+        out+="$YAFP_SYMBOL_GIT_STAGED_EMOJI"
+        out+="${yafp_ctx_git_staged}${cNormalPS1}"
+    fi
+
     printf '%s' "$out"
+}
+
+
+theme_render_staged_warning() {
+    local color
+    local count="${yafp_ctx_git_staged:-0}"
+    local reset
+    local unit="files"
+    local verb="are"
+
+    [ "$count" -gt 0 ] || return 0
+    if [ "$count" -eq 1 ]; then
+        unit="file"
+        verb="is"
+    fi
+
+    color="$(ps1_wrap "$cRemotePending")"
+    reset="$(theme_ps1_reset)"
+    printf '%s⚠️ COMMIT PENDING: %s staged %s %s ready to commit ⚠️%s\\n' \
+        "$color" "$count" "$unit" "$verb" "$reset"
 }
 
 
@@ -1761,6 +1799,44 @@ yafp-demo() {
 }
 
 
+yafp_git_status_counts() {
+    local gitstatus="$1"
+    local index_state
+    local line
+    local worktree_state
+    local xy
+
+    yafp_ctx_git_new=0
+    yafp_ctx_git_change=0
+    yafp_ctx_git_delete=0
+    yafp_ctx_git_staged=0
+
+    while IFS= read -r line; do
+        [ "${#line}" -ge 2 ] || continue
+        xy="${line:0:2}"
+        if [ "$xy" = "??" ]; then
+            yafp_ctx_git_new=$((yafp_ctx_git_new + 1))
+            continue
+        fi
+        case "$xy" in
+            DD|AU|UD|UA|DU|AA|UU) continue ;;
+        esac
+
+        index_state="${line:0:1}"
+        worktree_state="${line:1:1}"
+        case "$index_state" in
+            A|C|D|M|R|T)
+                yafp_ctx_git_staged=$((yafp_ctx_git_staged + 1))
+                ;;
+        esac
+        case "$worktree_state" in
+            D) yafp_ctx_git_delete=$((yafp_ctx_git_delete + 1)) ;;
+            M|T) yafp_ctx_git_change=$((yafp_ctx_git_change + 1)) ;;
+        esac
+    done <<< "$gitstatus"
+}
+
+
 yafp_git_context() {
     local last_exit="${1:-0}"
     local force_remote_refresh=0
@@ -1774,6 +1850,7 @@ yafp_git_context() {
     yafp_ctx_git_new=0
     yafp_ctx_git_change=0
     yafp_ctx_git_delete=0
+    yafp_ctx_git_staged=0
     yafp_ctx_git_remote_state=""
     yafp_ctx_git_ahead=0
     yafp_ctx_git_behind=0
@@ -1841,14 +1918,7 @@ yafp_git_context() {
 
     gitstatus="$(git status --porcelain 2>/dev/null)"
 
-    while IFS= read -r line; do
-        [[ $line =~ ^[[:space:]]D ]] && \
-            yafp_ctx_git_delete=$((yafp_ctx_git_delete + 1))
-        [[ $line =~ ^[[:space:]]M ]] && \
-            yafp_ctx_git_change=$((yafp_ctx_git_change + 1))
-        [[ $line =~ ^\?\? ]] && \
-            yafp_ctx_git_new=$((yafp_ctx_git_new + 1))
-    done <<< "$gitstatus"
+    yafp_git_status_counts "$gitstatus"
     yafp_now_ms t_git_end
 }
 

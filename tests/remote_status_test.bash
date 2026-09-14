@@ -73,6 +73,38 @@ YAFP_REMOTE_CHECK_INTERVAL=300
 YAFP_REMOTE_COUNTDOWN_STYLE=numeric
 YAFP_STATUS_PROGRESS_STYLE=blocks
 
+yafp_git_status_counts $'M  staged modification\nA  staged addition\nR  old -> new\n D deleted\n M modified\nMM both\n?? untracked\nUU conflict'
+assert_eq 4 "$yafp_ctx_git_staged" 'staged Git count'
+assert_eq 2 "$yafp_ctx_git_change" 'unstaged Git change count'
+assert_eq 1 "$yafp_ctx_git_delete" 'unstaged Git deletion count'
+assert_eq 1 "$yafp_ctx_git_new" 'untracked Git count'
+
+set +u
+git_counts="$(theme_render_git_counts)"
+staged_warning="$(theme_render_staged_warning)"
+set -u
+case "$git_counts" in
+    *'📦4'*) ;;
+    *) fail 'staged Git indicator was not rendered' ;;
+esac
+case "$staged_warning" in
+    *'⚠️ COMMIT PENDING: 4 staged files are ready to commit ⚠️'*) ;;
+    *) fail 'staged Git warning was not rendered' ;;
+esac
+case "$staged_warning" in
+    "$(ps1_wrap "$cRemotePending")"*) ;;
+    *) fail 'staged Git warning is not yellow' ;;
+esac
+yafp_ctx_git_staged=1
+set +u
+staged_warning="$(theme_render_staged_warning)"
+set -u
+case "$staged_warning" in
+    *'⚠️ COMMIT PENDING: 1 staged file is ready to commit ⚠️'*) ;;
+    *) fail 'singular staged Git warning was not rendered' ;;
+esac
+yafp_ctx_git_staged=0
+
 status_report="$(yafp_remote_status_report current 0 0 0 175 300 0)"
 case "$status_report" in
     *'🌐       Remote: ✓ Up to date'*) ;;

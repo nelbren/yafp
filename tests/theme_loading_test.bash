@@ -74,6 +74,7 @@ yafp_ctx_git_remote_state=''
 yafp_ctx_git_delete=0
 yafp_ctx_git_change=0
 yafp_ctx_git_new=0
+yafp_ctx_git_staged=0
 
 set +u
 git_block="$(theme_render_git_block)"
