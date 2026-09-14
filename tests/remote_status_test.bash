@@ -71,6 +71,73 @@ PROMPT_COMMAND=
 cache_file="$TEST_ROOT/local/.git/yafp-remote-status"
 YAFP_REMOTE_CHECK_INTERVAL=300
 YAFP_REMOTE_COUNTDOWN_STYLE=numeric
+YAFP_STATUS_PROGRESS_STYLE=blocks
+
+status_report="$(yafp_remote_status_report current 0 0 0 175 300 0)"
+case "$status_report" in
+    *'🌐       Remote: ✓ Up to date'*) ;;
+    *) fail 'detailed status omitted the remote state' ;;
+esac
+case "$status_report" in
+    *'🟡        Timer: ████░░░░░░ 42% · 125/300s elapsed · 175s remaining'*) ;;
+    *) fail 'detailed status omitted the timer progress' ;;
+esac
+case "$status_report" in
+    *'🕘 Current time: '*) ;;
+    *) fail 'detailed status omitted the current time' ;;
+esac
+assert_eq GREEN "$(yafp_remote_state_tone current)" \
+    'current state intense green tone'
+assert_eq RED "$(yafp_remote_state_tone error)" \
+    'offline state intense red tone'
+assert_eq WHITE "$(yafp_current_time_tone)" \
+    'current time intense white tone'
+assert_eq YELLOW "$(yafp_next_check_tone)" \
+    'next check intense yellow tone'
+yafp_remote_timer_style 198 300
+assert_eq '🟢|GREEN' \
+    "$yafp_status_timer_emoji|$yafp_status_timer_tone" \
+    'timer green threshold'
+yafp_remote_timer_style 99 300
+assert_eq '🟡|YELLOW' \
+    "$yafp_status_timer_emoji|$yafp_status_timer_tone" \
+    'timer yellow threshold'
+yafp_remote_timer_style 98 300
+assert_eq '🔴|RED' \
+    "$yafp_status_timer_emoji|$yafp_status_timer_tone" \
+    'timer red threshold'
+YAFP_STATUS_PROGRESS_STYLE=symbols
+status_report="$(yafp_remote_status_report current 0 0 0 175 300 0)"
+case "$status_report" in
+    *'🟡        Timer: ⣿⣿⣿⣿⣀      42% · 125/300s elapsed · 175s remaining'*) ;;
+    *) fail 'Braille status progress was not rendered' ;;
+esac
+YAFP_STATUS_PROGRESS_STYLE=blocks
+declare -F yafp-status >/dev/null || fail 'yafp-status command is unavailable'
+declare -F yafp-refresh >/dev/null || fail 'yafp-refresh command is unavailable'
+declare -F yafp-demo >/dev/null || fail 'yafp-demo command is unavailable'
+case "$(declare -f yafp-demo)" in
+    *'Control+C to break this ♾️  loop 🔁 (%ss)'*) ;;
+    *) fail 'yafp-demo interruption hint is unavailable' ;;
+esac
+case "$(declare -f yafp-demo)" in
+    *"sleep \"\$sleep_segs\""*) ;;
+    *) fail 'yafp-demo does not reuse its configured sleep interval' ;;
+esac
+
+refresh_args="$TEST_ROOT/refresh-args"
+(
+    # shellcheck disable=SC2329
+    yafp_remote_context() {
+        printf '%s|%s|%s' "$1" "$2" "$3" > "$refresh_args"
+    }
+    cd "$TEST_ROOT/local"
+    yafp-refresh
+)
+case "$(< "$refresh_args")" in
+    *'/local|main|1') ;;
+    *) fail 'manual refresh command did not force the cached context' ;;
+esac
 
 yafp_remote_countdown_indicator 300
 assert_eq '(300)' "$yafp_remote_countdown_text" 'numeric countdown indicator'
@@ -253,6 +320,21 @@ case "$warning" in
     *) fail 'ahead warning was not rendered' ;;
 esac
 assert_eq '\n' "${warning: -2}" 'ahead warning line break'
+
+yafp_ctx_git_remote_state=error
+set +u
+indicator="$(theme_render_git_remote_status)"
+warning="$(theme_render_remote_warning)"
+set -u
+case "$indicator" in
+    *'❕'*) ;;
+    *) fail 'offline indicator was not rendered' ;;
+esac
+case "$warning" in
+    *'⚡️ No internet connection.'*) ;;
+    *) fail 'offline warning was not rendered' ;;
+esac
+assert_eq '\n' "${warning: -2}" 'offline warning line break'
 
 yafp_ctx_git_remote_state=behind
 yafp_ctx_git_ahead=0

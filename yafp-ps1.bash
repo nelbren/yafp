@@ -5,7 +5,7 @@
 # Main engine of YAFP
 #
 
-YAFP_VERSION=0.3.2
+YAFP_VERSION=0.3.3
 
 # Customize in themes...
 
@@ -410,6 +410,7 @@ theme_render_remote_warning() {
     local message
     local reset
     local symbol="$YAFP_SYMBOL_REMOTE_WARNING"
+    local trailing_symbol="$YAFP_SYMBOL_REMOTE_WARNING"
     local unit
     local verb
 
@@ -424,6 +425,7 @@ theme_render_remote_warning() {
             message="REMOTE NOT UPDATED: ${yafp_ctx_git_ahead} local ${unit} ${verb} not been pushed to ${yafp_ctx_git_upstream}"
             color="$(ps1_wrap "$cRemotePending")"
             symbol="⚠️"
+            trailing_symbol="⚠️"
             ;;
         behind)
             unit="commits"
@@ -439,14 +441,23 @@ theme_render_remote_warning() {
             message="DIVERGED REPOSITORY: local +${yafp_ctx_git_ahead} / remote +${yafp_ctx_git_behind} relative to ${yafp_ctx_git_upstream}"
             color="$(ps1_wrap "$cStatusError")"
             ;;
+        error)
+            message="No internet connection."
+            color="$(ps1_wrap "$cStatusError")"
+            symbol="⚡️"
+            trailing_symbol=""
+            ;;
         *)
             return 0
             ;;
     esac
 
     reset="$(theme_ps1_reset)"
-    printf '%s%s %s %s%s\\n' \
-        "$color" "$symbol" "$message" "$symbol" "$reset"
+    if [ -n "$trailing_symbol" ]; then
+        trailing_symbol=" ${trailing_symbol}"
+    fi
+    printf '%s%s %s%s%s\\n' \
+        "$color" "$symbol" "$message" "$trailing_symbol" "$reset"
 }
 
 
@@ -500,7 +511,7 @@ theme_render_git_remote_status() {
             ;;
         error)
             color="$cRemoteProblem"
-            indicator="!"
+            indicator="❕"
             ;;
         *)
             printf '%s' "$out"
@@ -1519,6 +1530,237 @@ yafp_remote_context() {
 }
 
 
+yafp_remote_state_label() {
+    local state="$1"
+    local ahead="${2:-0}"
+    local behind="${3:-0}"
+
+    case "$state" in
+        current) printf '%s' '✓ Up to date' ;;
+        ahead) printf '⇡%s Ahead' "$ahead" ;;
+        behind) printf '⇣%s Behind' "$behind" ;;
+        diverged) printf '⇡%s⇣%s Diverged' "$ahead" "$behind" ;;
+        checking) printf '%s' '… Checking' ;;
+        error) printf '%s' '❕ No internet connection' ;;
+        *) printf '%s' '— unavailable' ;;
+    esac
+}
+
+
+yafp_remote_state_tone() {
+    case "$1" in
+        current) printf '%s' 'GREEN' ;;
+        error) printf '%s' 'RED' ;;
+        *) printf '%s' '' ;;
+    esac
+}
+
+
+yafp_remote_timer_style() {
+    local remaining="$1"
+    local interval="$2"
+
+    if [ $((remaining * 100)) -ge $((interval * 66)) ]; then
+        yafp_status_timer_emoji="🟢"
+        yafp_status_timer_tone="GREEN"
+    elif [ $((remaining * 100)) -ge $((interval * 33)) ]; then
+        yafp_status_timer_emoji="🟡"
+        yafp_status_timer_tone="YELLOW"
+    else
+        yafp_status_timer_emoji="🔴"
+        yafp_status_timer_tone="RED"
+    fi
+}
+
+
+yafp_braille_progress_symbol() {
+    case "$1" in
+        1) printf '%s' '⡀' ;;
+        2) printf '%s' '⣀' ;;
+        3) printf '%s' '⣄' ;;
+        4) printf '%s' '⣤' ;;
+        5) printf '%s' '⣦' ;;
+        6) printf '%s' '⣶' ;;
+        7) printf '%s' '⣷' ;;
+        8) printf '%s' '⣿' ;;
+    esac
+}
+
+
+yafp_status_start_color() {
+    local tone="$1"
+
+    [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ -n "$tone" ] || return
+    themeColor transparent "$tone"
+}
+
+
+yafp_status_reset_color() {
+    [ -t 1 ] && [ -z "${NO_COLOR:-}" ] || return
+    tput sgr0
+}
+
+
+yafp_next_check_tone() {
+    printf '%s' 'YELLOW'
+}
+
+
+yafp_current_time_tone() {
+    printf '%s' 'WHITE'
+}
+
+
+yafp_format_local_time() {
+    local epoch="$1"
+
+    if date -r "$epoch" '+%H:%M:%S' 2>/dev/null; then
+        return
+    fi
+    date -d "@$epoch" '+%H:%M:%S' 2>/dev/null || printf '%s' 'unavailable'
+}
+
+
+yafp_remote_status_report() {
+    local state="$1"
+    local ahead="${2:-0}"
+    local behind="${3:-0}"
+    local refreshing="${4:-0}"
+    local remaining="${5:-}"
+    local interval="${6:-0}"
+    local now="${7:-0}"
+    local elapsed
+    local filled
+    local index
+    local next_check
+    local partial
+    local percent
+    local progress=""
+    local progress_units
+    local state_tone
+    local state_label
+
+    state_label="$(yafp_remote_state_label "$state" "$ahead" "$behind")"
+    if [ "$refreshing" -eq 1 ]; then
+        state_label="⟳ Refreshing · last: ${state_label}"
+    fi
+    state_tone="$(yafp_remote_state_tone "$state")"
+    printf '%s' '🌐       Remote: '
+    yafp_status_start_color "$state_tone"
+    printf '%s' "$state_label"
+    yafp_status_reset_color
+    printf '\n'
+
+    if ! [[ "$interval" =~ ^[1-9][0-9]*$ &&
+            "$remaining" =~ ^[0-9]+$ && "$now" =~ ^[0-9]+$ ]]; then
+        printf '%s\n' '⏱        Timer: unavailable'
+        printf '%s\n' '🕘 Current time: unavailable'
+        printf '%s\n' '🕒   Next check: unavailable'
+        return
+    fi
+
+    [ "$remaining" -le "$interval" ] || remaining="$interval"
+    yafp_remote_timer_style "$remaining" "$interval"
+    elapsed=$((interval - remaining))
+    percent=$(((elapsed * 100 + interval / 2) / interval))
+    if [ "${YAFP_STATUS_PROGRESS_STYLE:-blocks}" = "symbols" ]; then
+        progress_units=$(((percent * 80 + 50) / 100))
+        filled=$((progress_units / 8))
+        partial=$((progress_units % 8))
+        for ((index = 0; index < filled; index++)); do
+            progress+="⣿"
+        done
+        if [ "$partial" -gt 0 ]; then
+            progress+="$(yafp_braille_progress_symbol "$partial")"
+            index=$((filled + 1))
+        else
+            index="$filled"
+        fi
+        for ((; index < 10; index++)); do
+            progress+=" "
+        done
+    else
+        filled=$(((percent * 10 + 50) / 100))
+        for ((index = 0; index < 10; index++)); do
+            if [ "$index" -lt "$filled" ]; then
+                progress+="█"
+            else
+                progress+="░"
+            fi
+        done
+    fi
+
+    next_check="$(yafp_format_local_time $((now + remaining)))"
+    printf '%s        Timer: ' "$yafp_status_timer_emoji"
+    yafp_status_start_color "$yafp_status_timer_tone"
+    printf '%s %s%% · %s/%ss elapsed · %ss remaining' \
+        "$progress" "$percent" "$elapsed" "$interval" "$remaining"
+    yafp_status_reset_color
+    printf '\n'
+    printf '%s' '🕘 Current time: '
+    yafp_status_start_color "$(yafp_current_time_tone)"
+    printf '%s' "$(yafp_format_local_time "$now")"
+    yafp_status_reset_color
+    printf '\n'
+    printf '%s' '🕒   Next check: '
+    yafp_status_start_color "$(yafp_next_check_tone)"
+    printf '%s' "$next_check"
+    yafp_status_reset_color
+    printf '\n'
+}
+
+
+yafp-status() {
+    local branch
+    local interval="${YAFP_REMOTE_CHECK_INTERVAL:-300}"
+    local now
+    local repo_root
+
+    command -v git >/dev/null 2>&1 || {
+        yafp_remote_status_report "" 0 0 0 "" "$interval" 0
+        return 0
+    }
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || repo_root=""
+    branch="$(git symbolic-ref --short HEAD 2>/dev/null)" || branch=""
+    if [ -z "$repo_root" ] || [ -z "$branch" ]; then
+        yafp_remote_status_report "" 0 0 0 "" "$interval" 0
+        return 0
+    fi
+
+    yafp_remote_context "$repo_root" "$branch"
+    now="$(date +%s)"
+    yafp_remote_status_report \
+        "${yafp_ctx_git_remote_state:-}" \
+        "${yafp_ctx_git_ahead:-0}" \
+        "${yafp_ctx_git_behind:-0}" \
+        "${yafp_ctx_git_remote_refreshing:-0}" \
+        "${yafp_ctx_git_remote_refresh_in:-}" \
+        "$interval" "$now"
+}
+
+
+yafp-refresh() {
+    local branch
+    local repo_root
+
+    command -v git >/dev/null 2>&1 || return 0
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || return 0
+    branch="$(git symbolic-ref --short HEAD 2>/dev/null)" || return 0
+    yafp_remote_context "$repo_root" "$branch" 1
+}
+
+
+yafp-demo() {
+    local sleep_segs=4
+    while true; do
+        yafp-status
+        printf '\nControl+C to break this ♾️  loop 🔁 (%ss)\n\n' \
+            "$sleep_segs"
+        sleep "$sleep_segs"
+    done
+}
+
+
 yafp_git_context() {
     local last_exit="${1:-0}"
     local force_remote_refresh=0
@@ -1832,6 +2074,7 @@ fi
 
 YAFP_REMOTE_CHECK_INTERVAL=${YAFP_REMOTE_CHECK_INTERVAL:-300}
 YAFP_REMOTE_COUNTDOWN_STYLE=${YAFP_REMOTE_COUNTDOWN_STYLE:-numeric}
+YAFP_STATUS_PROGRESS_STYLE=${YAFP_STATUS_PROGRESS_STYLE:-blocks}
 YAFP_DARKC=${YAFP_DARKC:-1}
 YAFP_INITIAL_REMOTE_CHECK_PENDING=${YAFP_INITIAL_REMOTE_CHECK_PENDING:-1}
 yafp_remote_countdown_color_index=${yafp_remote_countdown_color_index:-0}

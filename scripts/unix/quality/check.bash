@@ -102,11 +102,13 @@ print_quality_line 'ok - Unix environment doctor'
 while IFS= read -r -d '' file; do
     bash -n "$file"
 done < <(find . -type f -name '*.bash' -print0)
+sh -n scripts/unix/git/prepare-commit-msg
 print_quality_line 'ok - Bash syntax'
 
 bash tests/osc133_test.bash 2>&1 | colorize_quality_output
 bash tests/theme_loading_test.bash 2>&1 | colorize_quality_output
 bash tests/remote_status_test.bash 2>&1 | colorize_quality_output
+bash tests/origin_device_hook_test.bash 2>&1 | colorize_quality_output
 
 if command -v shellcheck >/dev/null 2>&1; then
     while IFS= read -r -d '' file; do

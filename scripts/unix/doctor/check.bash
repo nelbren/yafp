@@ -86,6 +86,7 @@ check_configuration() {
     local osc133=''
     local remote_interval=''
     local remote_countdown_style=''
+    local status_progress_style=''
     local devel=''
     local theme=''
     local repos=''
@@ -132,6 +133,8 @@ check_configuration() {
             "${YAFP_REMOTE_CHECK_INTERVAL-}"
         printf "__YAFP_REMOTE_COUNTDOWN_STYLE=%s\n" \
             "${YAFP_REMOTE_COUNTDOWN_STYLE-}"
+        printf "__YAFP_STATUS_PROGRESS_STYLE=%s\n" \
+            "${YAFP_STATUS_PROGRESS_STYLE-}"
         printf "__YAFP_DEVEL=%s\n" "${YAFP_DEVEL-}"
         printf "__YAFP_THEME=%s\n" "${YAFP_THEME-}"
         printf "__YAFP_REPOS=%s\n" "${YAFP_REPOS-}"
@@ -153,6 +156,7 @@ check_configuration() {
             __YAFP_OSC133) osc133="$value" ;;
             __YAFP_REMOTE_CHECK_INTERVAL) remote_interval="$value" ;;
             __YAFP_REMOTE_COUNTDOWN_STYLE) remote_countdown_style="$value" ;;
+            __YAFP_STATUS_PROGRESS_STYLE) status_progress_style="$value" ;;
             __YAFP_DEVEL) devel="$value" ;;
             __YAFP_THEME) theme="$value" ;;
             __YAFP_REPOS) repos="$value" ;;
@@ -193,6 +197,17 @@ check_configuration() {
         *)
             doctor_error \
                 'YAFP_REMOTE_COUNTDOWN_STYLE must be numeric or symbols'
+            ;;
+    esac
+
+    case "${status_progress_style:-blocks}" in
+        blocks|symbols)
+            doctor_pass \
+                "YAFP_STATUS_PROGRESS_STYLE is valid: ${status_progress_style:-blocks}"
+            ;;
+        *)
+            doctor_error \
+                'YAFP_STATUS_PROGRESS_STYLE must be blocks or symbols'
             ;;
     esac
 

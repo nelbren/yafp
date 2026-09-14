@@ -21,6 +21,7 @@ be preserved when changing or modularizing the project.
 | `scripts/*/setup/quality.*`   | Platform-specific quality tool installation            |
 | `scripts/*/doctor/check.*`    | Environment and configuration diagnostics              |
 | `scripts/*/quality/`          | Reproducible validation entry points                   |
+| `scripts/unix/git/`           | Versioned Git hooks and safe installation              |
 | `.github/workflows/ci.yml`    | Automated Linux, macOS, and Windows matrix             |
 
 <!-- markdownlint-enable MD013 -->
@@ -70,9 +71,16 @@ foreground:
 - The cache is invalidated by its interval, a reference change, or a local
   commit change.
 - A successful `push`, `fetch`, or `pull` requests an immediate refresh.
+- `yafp-status` reads the same cached context for an exact, on-demand timer
+  report, while `yafp-refresh` requests a background refresh without blocking.
+- `yafp-demo` repeatedly invokes the cached status view every four seconds and
+  remains interruptible with the shell's standard `Ctrl+C` handling.
+- `YAFP_STATUS_PROGRESS_STYLE` selects a block or fixed-width Braille progress
+  bar without changing the compact prompt countdown.
 
 Shared states are checking, refreshing, current, ahead, behind, diverged, and
-error.
+error. The error state renders the `❕` compact indicator and a red
+`⚡️ No internet connection.` warning in both shells.
 
 ## Silent prompt degradation
 

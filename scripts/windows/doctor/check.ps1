@@ -110,6 +110,7 @@ function Get-ConfigurationValues {
         'YAFP_OSC133',
         'YAFP_REMOTE_CHECK_INTERVAL',
         'YAFP_REMOTE_COUNTDOWN_STYLE',
+        'YAFP_STATUS_PROGRESS_STYLE',
         'YAFP_DEVEL',
         'YAFP_THEME',
         'YAFP_REPOS',
@@ -219,6 +220,21 @@ function Test-Configuration {
     else {
         Write-DoctorError (
             'YAFP_REMOTE_COUNTDOWN_STYLE must be numeric or symbols'
+        )
+    }
+
+    $statusProgressStyle = $values['YAFP_STATUS_PROGRESS_STYLE']
+    if (-not $statusProgressStyle) {
+        $statusProgressStyle = 'blocks'
+    }
+    if ($statusProgressStyle -in @('blocks', 'symbols')) {
+        Write-DoctorPass (
+            "YAFP_STATUS_PROGRESS_STYLE is valid: $statusProgressStyle"
+        )
+    }
+    else {
+        Write-DoctorError (
+            'YAFP_STATUS_PROGRESS_STYLE must be blocks or symbols'
         )
     }
 

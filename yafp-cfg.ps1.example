@@ -24,6 +24,9 @@ $global:YAFP_REMOTE_CHECK_INTERVAL = 300
 # progressively emptying Braille cell (symbols).
 $global:YAFP_REMOTE_COUNTDOWN_STYLE = 'numeric'
 
+# Display the yafp-status progress bar with blocks or Braille symbols.
+$global:YAFP_STATUS_PROGRESS_STYLE = 'blocks'
+
 # Display prompt construction timing; set it to 0 to disable the metrics.
 $global:YAFP_DEVEL = 0
 

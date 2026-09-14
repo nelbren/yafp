@@ -45,6 +45,56 @@ try {
     $cacheFile = Join-Path $local '.git/yafp-remote-status'
     $global:YAFP_REMOTE_CHECK_INTERVAL = 300
     $global:YAFP_REMOTE_COUNTDOWN_STYLE = 'numeric'
+    $global:YAFP_STATUS_PROGRESS_STYLE = 'blocks'
+
+    $statusReport = @(Format-YafpRemoteStatusReport -State current `
+        -Remaining 175 -Interval 300 -Now 0)
+    Assert-Equal '🌐       Remote: ✓ Up to date' $statusReport[0] `
+        'detailed remote state'
+    Assert-Equal (
+        '🟡        Timer: ████░░░░░░ 42% · 125/300s elapsed · 175s remaining'
+    ) $statusReport[1] 'detailed timer progress'
+    if ($statusReport[2] -notmatch '^🕘 Current time: \d{2}:\d{2}:\d{2}$') {
+        throw 'detailed status omitted the current time'
+    }
+    Assert-Equal Green (Get-YafpRemoteStateColor -State current) `
+        'current state intense green color'
+    Assert-Equal Red (Get-YafpRemoteStateColor -State error) `
+        'offline state intense red color'
+    Assert-Equal White (Get-YafpCurrentTimeColor) `
+        'current time intense white color'
+    Assert-Equal Yellow (Get-YafpNextCheckColor) `
+        'next check intense yellow color'
+    $timerStyle = Get-YafpRemoteTimerStyle -Remaining 198 -Interval 300
+    Assert-Equal '🟢|Green' "$($timerStyle.Emoji)|$($timerStyle.Color)" `
+        'timer green threshold'
+    $timerStyle = Get-YafpRemoteTimerStyle -Remaining 99 -Interval 300
+    Assert-Equal '🟡|Yellow' "$($timerStyle.Emoji)|$($timerStyle.Color)" `
+        'timer yellow threshold'
+    $timerStyle = Get-YafpRemoteTimerStyle -Remaining 98 -Interval 300
+    Assert-Equal '🔴|Red' "$($timerStyle.Emoji)|$($timerStyle.Color)" `
+        'timer red threshold'
+    $global:YAFP_STATUS_PROGRESS_STYLE = 'symbols'
+    $statusReport = @(Format-YafpRemoteStatusReport -State current `
+        -Remaining 175 -Interval 300 -Now 0)
+    Assert-Equal (
+        '🟡        Timer: ⣿⣿⣿⣿⣀      42% · 125/300s elapsed · 175s remaining'
+    ) $statusReport[1] 'Braille status progress'
+    $global:YAFP_STATUS_PROGRESS_STYLE = 'blocks'
+    Assert-Equal Show-YafpStatus (Get-Alias yafp-status).Definition `
+        'yafp-status command'
+    Assert-Equal Invoke-YafpRefresh (Get-Alias yafp-refresh).Definition `
+        'yafp-refresh command'
+    Assert-Equal Show-YafpDemo (Get-Alias yafp-demo).Definition `
+        'yafp-demo command'
+    if ((Get-Command Show-YafpDemo).Definition -notmatch
+        [regex]::Escape('Control+C to break this ♾️  loop 🔁 ($($sleepSecs)s)')) {
+        throw 'yafp-demo interruption hint is unavailable'
+    }
+    if ((Get-Command Show-YafpDemo).Definition -notmatch
+        'Start-Sleep -Seconds \$sleepSecs') {
+        throw 'yafp-demo does not reuse its configured sleep interval'
+    }
 
     Assert-Equal '(300)' (Get-YafpRemoteCountdownIndicator -Remaining 300) `
         'numeric countdown indicator'
@@ -155,7 +205,7 @@ try {
         @{ State = 'current'; Ahead = 0; Text = '✓' }
         @{ State = 'ahead'; Ahead = 2; Text = '⇡2' }
         @{ State = 'checking'; Ahead = 0; Text = '…' }
-        @{ State = 'error'; Ahead = 0; Text = '!' }
+        @{ State = 'error'; Ahead = 0; Text = '❕' }
     )) {
         $status = [pscustomobject]@{
             State = $indicatorCase.State
@@ -172,6 +222,24 @@ try {
         if ($indicator -notmatch [regex]::Escape($indicatorCase.Text)) {
             throw "$($indicatorCase.State) indicator was not rendered"
         }
+    }
+
+    $offlineStatus = [pscustomobject]@{
+        State = 'error'
+        Ahead = 0
+        Behind = 0
+        Upstream = 'origin/main'
+        CheckedAt = 0L
+        Refreshing = $false
+        RefreshIn = 300L
+    }
+    $offlineContext = [pscustomobject]@{
+        Git = [pscustomobject]@{ RemoteStatus = $offlineStatus }
+    }
+    $warning = Write-YafpRemoteWarning -Context $offlineContext 6>&1 |
+        Out-String
+    if ($warning -notmatch '⚡️ No internet connection\.') {
+        throw 'offline warning was not rendered'
     }
 
     $context = [pscustomobject]@{

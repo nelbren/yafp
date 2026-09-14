@@ -48,6 +48,9 @@ if (-not (Get-Variable YAFP_REMOTE_CHECK_INTERVAL -Scope Global -ErrorAction Ign
 if (-not (Get-Variable YAFP_REMOTE_COUNTDOWN_STYLE -Scope Global -ErrorAction Ignore)) {
     $global:YAFP_REMOTE_COUNTDOWN_STYLE = 'numeric'
 }
+if (-not (Get-Variable YAFP_STATUS_PROGRESS_STYLE -Scope Global -ErrorAction Ignore)) {
+    $global:YAFP_STATUS_PROGRESS_STYLE = 'blocks'
+}
 if (-not (Get-Variable YAFP_DEVEL -Scope Global -ErrorAction Ignore)) {
     $global:YAFP_DEVEL = 0
 }
@@ -551,6 +554,261 @@ function Get-YafpRemoteContext {
     return $remoteContext
 }
 
+function Format-YafpRemoteStateLabel {
+    param(
+        [AllowEmptyString()][string]$State,
+        [int]$Ahead = 0,
+        [int]$Behind = 0
+    )
+
+    switch ($State) {
+        'current' { '✓ Up to date' }
+        'ahead' { "⇡$Ahead Ahead" }
+        'behind' { "⇣$Behind Behind" }
+        'diverged' { "⇡$Ahead⇣$Behind Diverged" }
+        'checking' { '… Checking' }
+        'error' { '❕ No internet connection' }
+        default { '— unavailable' }
+    }
+}
+
+function Get-YafpRemoteStateColor {
+    param([AllowEmptyString()][string]$State)
+
+    switch ($State) {
+        'current' { 'Green' }
+        'error' { 'Red' }
+        default { $null }
+    }
+}
+
+function Get-YafpRemoteTimerStyle {
+    param(
+        [Parameter(Mandatory)][long]$Remaining,
+        [Parameter(Mandatory)][int]$Interval
+    )
+
+    $remainingPercent = ([double]$Remaining * 100) / $Interval
+    if ($remainingPercent -ge 66) {
+        return [pscustomobject]@{ Emoji = '🟢'; Color = 'Green' }
+    }
+    if ($remainingPercent -ge 33) {
+        return [pscustomobject]@{ Emoji = '🟡'; Color = 'Yellow' }
+    }
+    return [pscustomobject]@{ Emoji = '🔴'; Color = 'Red' }
+}
+
+function Get-YafpBrailleProgressSymbol {
+    param([ValidateRange(1, 8)][int]$Level)
+
+    return @('', '⡀', '⣀', '⣄', '⣤', '⣦', '⣶', '⣷', '⣿')[$Level]
+}
+
+function Get-YafpNextCheckColor {
+    return 'Yellow'
+}
+
+function Get-YafpCurrentTimeColor {
+    return 'White'
+}
+
+function Format-YafpRemoteStatusReport {
+    param(
+        [AllowEmptyString()][string]$State,
+        [int]$Ahead = 0,
+        [int]$Behind = 0,
+        [bool]$Refreshing = $false,
+        [AllowNull()][object]$Remaining,
+        [int]$Interval,
+        [long]$Now
+    )
+
+    $stateLabel = Format-YafpRemoteStateLabel -State $State `
+        -Ahead $Ahead -Behind $Behind
+    if ($Refreshing) {
+        $stateLabel = "⟳ Refreshing · last: $stateLabel"
+    }
+    $lines = [Collections.Generic.List[string]]::new()
+    $lines.Add("🌐       Remote: $stateLabel")
+
+    $remainingSeconds = 0L
+    if ($Interval -le 0 -or $null -eq $Remaining -or
+        -not [long]::TryParse("$Remaining", [ref]$remainingSeconds) -or
+        $remainingSeconds -lt 0 -or $Now -lt 0) {
+        $lines.Add('⏱        Timer: unavailable')
+        $lines.Add('🕘 Current time: unavailable')
+        $lines.Add('🕒   Next check: unavailable')
+        return $lines.ToArray()
+    }
+
+    $remainingSeconds = [Math]::Min($remainingSeconds, [long]$Interval)
+    $timerStyle = Get-YafpRemoteTimerStyle `
+        -Remaining $remainingSeconds -Interval $Interval
+    $elapsed = [long]$Interval - $remainingSeconds
+    $percent = [int][Math]::Round(
+        ([double]$elapsed * 100) / $Interval,
+        [MidpointRounding]::AwayFromZero
+    )
+    if ($global:YAFP_STATUS_PROGRESS_STYLE -eq 'symbols') {
+        $progressUnits = [int][Math]::Round(
+            ([double]$percent * 80) / 100,
+            [MidpointRounding]::AwayFromZero
+        )
+        $filled = [Math]::Floor($progressUnits / 8)
+        $partial = $progressUnits % 8
+        $progress = '⣿' * $filled
+        if ($partial -gt 0) {
+            $progress += Get-YafpBrailleProgressSymbol -Level $partial
+        }
+        $progress += ' ' * (10 - $filled - [int]($partial -gt 0))
+    }
+    else {
+        $filled = [int][Math]::Round(
+            ([double]$percent * 10) / 100,
+            [MidpointRounding]::AwayFromZero
+        )
+        $progress = ('█' * $filled) + ('░' * (10 - $filled))
+    }
+    $nextCheck = [DateTimeOffset]::FromUnixTimeSeconds(
+        $Now + $remainingSeconds
+    ).ToLocalTime().ToString('HH:mm:ss')
+    $currentTime = [DateTimeOffset]::FromUnixTimeSeconds(
+        $Now
+    ).ToLocalTime().ToString('HH:mm:ss')
+
+    $lines.Add(
+        "$($timerStyle.Emoji)        Timer: $progress $percent% · " +
+        "$elapsed/$($Interval)s elapsed · " +
+        "$($remainingSeconds)s remaining"
+    )
+    $lines.Add("🕘 Current time: $currentTime")
+    $lines.Add("🕒   Next check: $nextCheck")
+    return $lines.ToArray()
+}
+
+function Write-YafpStatusReport {
+    param(
+        [AllowEmptyString()][string]$State,
+        [int]$Ahead = 0,
+        [int]$Behind = 0,
+        [bool]$Refreshing = $false,
+        [AllowNull()][object]$Remaining,
+        [int]$Interval,
+        [long]$Now
+    )
+
+    $report = @(Format-YafpRemoteStatusReport -State $State `
+        -Ahead $Ahead -Behind $Behind -Refreshing $Refreshing `
+        -Remaining $Remaining -Interval $Interval -Now $Now)
+    $stateLabel = Format-YafpRemoteStateLabel -State $State `
+        -Ahead $Ahead -Behind $Behind
+    if ($Refreshing) {
+        $stateLabel = "⟳ Refreshing · last: $stateLabel"
+    }
+    $stateColor = Get-YafpRemoteStateColor -State $State
+
+    Write-Host '🌐       Remote: ' -NoNewline
+    if ($stateColor) {
+        Write-Host $stateLabel -ForegroundColor $stateColor
+    }
+    else {
+        Write-Host $stateLabel
+    }
+
+    if ($report.Count -lt 4 -or $report[1] -notmatch '^(.+? Timer: )(.*)$') {
+        $report | Select-Object -Skip 1 | Write-Host
+        return
+    }
+
+    $timerPrefix = $Matches[1]
+    $timerDetails = $Matches[2]
+    Write-Host $timerPrefix -NoNewline
+    $remainingSeconds = 0L
+    if ($Interval -gt 0 -and $null -ne $Remaining -and
+        [long]::TryParse("$Remaining", [ref]$remainingSeconds) -and
+        $remainingSeconds -ge 0) {
+        $remainingSeconds = [Math]::Min($remainingSeconds, [long]$Interval)
+        $timerStyle = Get-YafpRemoteTimerStyle `
+            -Remaining $remainingSeconds -Interval $Interval
+        Write-Host $timerDetails -ForegroundColor $timerStyle.Color
+    }
+    else {
+        Write-Host $timerDetails
+    }
+    if ($report[2] -match '^(🕘 Current time: )(\d{2}:\d{2}:\d{2})$') {
+        Write-Host $Matches[1] -NoNewline
+        Write-Host $Matches[2] -ForegroundColor (Get-YafpCurrentTimeColor)
+    }
+    else {
+        Write-Host $report[2]
+    }
+    if ($report[3] -match '^(🕒   Next check: )(\d{2}:\d{2}:\d{2})$') {
+        Write-Host $Matches[1] -NoNewline
+        Write-Host $Matches[2] -ForegroundColor (Get-YafpNextCheckColor)
+    }
+    else {
+        Write-Host $report[3]
+    }
+}
+
+function Show-YafpStatus {
+    $interval = 0
+    $null = [int]::TryParse(
+        "$global:YAFP_REMOTE_CHECK_INTERVAL",
+        [ref]$interval
+    )
+    if (-not (Get-Command git -ErrorAction Ignore)) {
+        Write-YafpStatusReport -State '' -Remaining $null `
+            -Interval $interval -Now 0
+        return
+    }
+
+    $top = git rev-parse --show-toplevel 2>$null
+    $branch = git symbolic-ref --short HEAD 2>$null
+    if (-not $top -or -not $branch) {
+        Write-YafpStatusReport -State '' -Remaining $null `
+            -Interval $interval -Now 0
+        return
+    }
+
+    $remote = Get-YafpRemoteContext -RepoRoot "$top" -Branch "$branch"
+    if (-not $remote) {
+        Write-YafpStatusReport -State '' -Remaining $null `
+            -Interval $interval -Now 0
+        return
+    }
+
+    Write-YafpStatusReport -State $remote.State `
+        -Ahead $remote.Ahead -Behind $remote.Behind `
+        -Refreshing $remote.Refreshing -Remaining $remote.RefreshIn `
+        -Interval $interval `
+        -Now ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())
+}
+
+function Invoke-YafpRefresh {
+    if (-not (Get-Command git -ErrorAction Ignore)) {
+        return
+    }
+
+    $top = git rev-parse --show-toplevel 2>$null
+    $branch = git symbolic-ref --short HEAD 2>$null
+    if (-not $top -or -not $branch) {
+        return
+    }
+
+    $null = Get-YafpRemoteContext -RepoRoot "$top" -Branch "$branch" `
+        -ForceRefresh
+}
+
+function Show-YafpDemo {
+    $sleepSecs = 4
+    while ($true) {
+        Show-YafpStatus
+        Write-Host "`nControl+C to break this ♾️  loop 🔁 ($($sleepSecs)s)`n"
+        Start-Sleep -Seconds $sleepSecs
+    }
+}
+
 function Write-YafpGitRemoteStatus {
     param([Parameter(Mandatory)][object]$Git)
 
@@ -582,7 +840,7 @@ function Write-YafpGitRemoteStatus {
         'behind' { "⇣$($remote.Behind)" }
         'diverged' { "⇡$($remote.Ahead)⇣$($remote.Behind)" }
         'checking' { '…' }
-        'error' { '!' }
+        'error' { '❕' }
         default { '' }
     }
     if (-not $text) {
@@ -651,6 +909,7 @@ function Write-YafpRemoteWarning {
 
     $remote = $Context.Git.RemoteStatus
     $symbol = '🚨'
+    $trailingSymbol = '🚨'
     $foreground = 'White'
     $background = 'DarkRed'
     if ($remote.State -eq 'ahead') {
@@ -658,6 +917,7 @@ function Write-YafpRemoteWarning {
         $verb = if ($remote.Ahead -eq 1) { 'has' } else { 'have' }
         $message = "REMOTE NOT UPDATED: $($remote.Ahead) local $unit $verb not been pushed to $($remote.Upstream)"
         $symbol = '⚠️'
+        $trailingSymbol = '⚠️'
         $foreground = 'Yellow'
         $background = $null
     }
@@ -669,11 +929,17 @@ function Write-YafpRemoteWarning {
     elseif ($remote.State -eq 'diverged') {
         $message = "DIVERGED REPOSITORY: local +$($remote.Ahead) / remote +$($remote.Behind) relative to $($remote.Upstream)"
     }
+    elseif ($remote.State -eq 'error') {
+        $message = 'No internet connection.'
+        $symbol = '⚡️'
+        $trailingSymbol = ''
+    }
     else {
         return
     }
 
-    Write-YafpText -Text "$symbol $message $symbol" `
+    $suffix = if ($trailingSymbol) { " $trailingSymbol" } else { '' }
+    Write-YafpText -Text "$symbol $message$suffix" `
         -ForegroundColor $foreground -BackgroundColor $background
 }
 
@@ -784,6 +1050,10 @@ function Test-YafpAdministrator {
         [Security.Principal.WindowsIdentity]::GetCurrent() `
     ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
+
+Set-Alias -Name yafp-status -Value Show-YafpStatus -Scope Global -Force
+Set-Alias -Name yafp-refresh -Value Invoke-YafpRefresh -Scope Global -Force
+Set-Alias -Name yafp-demo -Value Show-YafpDemo -Scope Global -Force
 
 Import-YafpTheme
 

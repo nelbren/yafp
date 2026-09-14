@@ -7,7 +7,7 @@
 
 [badge-bash]: https://img.shields.io/badge/Made%20with-Bash-1f425f.svg
 [badge-powershell]: https://img.shields.io/badge/Made%20with-PowerShell-5391FE.svg?logo=powershell
-[badge-version]: https://img.shields.io/badge/version-0.3.2-green
+[badge-version]: https://img.shields.io/badge/version-0.3.3-green
 [badge-themes]: https://img.shields.io/badge/themes-8A2BE2?logo=educative
 [bash]: https://www.gnu.org/software/bash/
 [powershell]: https://docs.microsoft.com/powershell/
@@ -224,13 +224,15 @@ of the branch symbol and to the left of the branch name:
 | `⟳`       | Yellow      | Refreshing: updating the previous cached state |
 | `⇣N`      | Intense red | Behind: `N` remote commits must be integrated  |
 | `⇡N⇣M`    | Intense red | Diverged: both histories have unique commits   |
-| `!`       | Intense red | Error: the remote check failed                 |
+| `❕`      | Intense red | Offline: the remote check could not connect    |
 
 The `⟳` indicator can precede the last known state while YAFP refreshes it,
 for example `⟳✓` or `⟳⇣2`. Behind and diverged states retain the prominent red
 warning banner. An ahead state adds a yellow banner surrounded by `⚠️` to make
 clear that local commits have not yet been pushed to the configured upstream.
-These banners are cleared immediately when the prompt leaves the repository.
+When the remote check cannot connect, YAFP also displays the red warning
+`⚡️ No internet connection.`. These banners are cleared immediately when the
+prompt leaves the repository.
 
 For example, ` (250) ⇡1 master` means that the local branch is one commit
 ahead and the next remote check will run in 250 seconds. When the countdown
@@ -243,6 +245,52 @@ shows `(0) ⟳` with the last known state; after the worker completes, the next
 prompt displays the new state and restarts the configured countdown. Failed
 commands and incidental text such as `echo "git push"` do not reset it. This
 behavior is also disabled when `YAFP_REMOTE_CHECK_INTERVAL` is `0`.
+
+#### On-demand remote controls
+
+Use `yafp-status` in Bash or PowerShell to inspect the exact timer independently
+of the configured countdown style:
+
+```text
+🌐       Remote: ✓ Up to date
+🟡        Timer: ████░░░░░░ 42% · 125/300s elapsed · 175s remaining
+🕘 Current time: 14:32:25
+🕒   Next check: 14:35:20
+```
+
+The remote state text is intense green when up to date and intense red when
+offline. The timer bar and metrics use green with `🟢` when at least 66% of the
+interval remains, yellow with `🟡` when at least 33% remains, and red with `🔴`
+below 33%. The current time uses intense white, and the next-check time uses
+intense yellow.
+
+Choose the progress-bar presentation independently of the prompt countdown:
+
+```bash
+YAFP_STATUS_PROGRESS_STYLE="symbols"
+```
+
+```powershell
+$global:YAFP_STATUS_PROGRESS_STYLE = 'symbols'
+```
+
+The default `blocks` style uses filled and shaded blocks. The `symbols` style
+uses Braille cells for elapsed progress and spaces for the remaining area:
+
+```text
+🟡        Timer: ⣿⣿⣿⣿⣀      42% · 125/300s elapsed · 175s remaining
+```
+
+Use `yafp-refresh` to set the countdown to zero and request an immediate
+background refresh. The command remains silent; the prompt displays `(0) ⟳`
+with the last known state until the worker finishes. Outside a repository or
+without an upstream, `yafp-status` reports that the timer is unavailable and
+`yafp-refresh` exits silently.
+
+Use `yafp-demo` to print a fresh `yafp-status` report every four seconds until
+you stop it with `Ctrl+C`. Each iteration displays
+`Control+C to break this ♾️  loop 🔁 (4s)` as a reminder, followed by a blank
+line before the next report.
 
 ---
 
@@ -529,6 +577,21 @@ bash -lc 'cd /c/path/to/yafp && bash scripts/unix/quality/check.bash'
 GitHub Actions runs the same checks on Linux, macOS, and Windows. See
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for component boundaries,
 runtime invariants, and the safe modularization strategy.
+
+### Origin device commit trailer
+
+Install the versioned `prepare-commit-msg` hook for the current repository:
+
+```bash
+bash scripts/unix/git/setup.bash
+```
+
+Preview the target without changing the repository with `--dry-run`. Use
+`--repo PATH` to install it in another checkout. The hook obtains the macOS
+Computer Name first, then falls back to `COMPUTERNAME` on Windows or the short
+hostname on other Unix systems. It adds an `Origin-Device` trailer only when
+one is not already present. The installer is idempotent and refuses to
+overwrite a different existing `prepare-commit-msg` hook.
 
 ---
 

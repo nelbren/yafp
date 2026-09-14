@@ -1,0 +1,24 @@
+#!/bin/sh
+
+commit_message_file=$1
+device_name=''
+
+if command -v scutil >/dev/null 2>&1; then
+    device_name=$(scutil --get ComputerName 2>/dev/null) || device_name=''
+fi
+if [ -z "$device_name" ] && [ -n "${COMPUTERNAME:-}" ]; then
+    device_name=$COMPUTERNAME
+fi
+if [ -z "$device_name" ]; then
+    device_name=$(hostname -s 2>/dev/null || hostname 2>/dev/null) ||
+        device_name=''
+fi
+
+device_name=$(printf '%s' "$device_name" | tr -d '\r\n')
+[ -n "$device_name" ] || exit 0
+
+git interpret-trailers --in-place \
+    --if-exists=doNothing \
+    --if-missing=add \
+    --trailer "Origin-Device: $device_name" \
+    "$commit_message_file"
