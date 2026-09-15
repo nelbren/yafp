@@ -831,8 +831,43 @@ function Show-YafpDemo {
     $sleepSecs = 4
     while ($true) {
         Show-YafpStatus
+        Write-Host "`nPrompt preview:"
+        Show-YafpPromptPreview
         Write-Host "`nControl+C to break this ♾️  loop 🔁 ($($sleepSecs)s)`n"
         Start-Sleep -Seconds $sleepSecs
+    }
+}
+
+function Show-YafpPromptPreview {
+    $osc133Enabled = $global:YAFP_OSC133
+    $promptRan = $script:promptRan
+    $previousTimestamp = $script:previous_timestamp
+    $previousHistoryCount = $script:prevHistCount
+    $lastExitCodeVariable = Get-Variable LASTEXITCODE -Scope Global `
+        -ErrorAction Ignore
+    $nativeExitCode = if ($lastExitCodeVariable) {
+        $lastExitCodeVariable.Value
+    }
+    else {
+        0
+    }
+
+    try {
+        $global:YAFP_OSC133 = 0
+        $promptText = prompt
+        Write-Host $promptText
+    }
+    finally {
+        $global:YAFP_OSC133 = $osc133Enabled
+        $script:promptRan = $promptRan
+        $script:previous_timestamp = $previousTimestamp
+        $script:prevHistCount = $previousHistoryCount
+        if ($lastExitCodeVariable) {
+            $global:LASTEXITCODE = $nativeExitCode
+        }
+        else {
+            Remove-Variable LASTEXITCODE -Scope Global -ErrorAction Ignore
+        }
     }
 }
 

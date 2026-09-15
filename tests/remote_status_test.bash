@@ -166,6 +166,35 @@ case "$(declare -f yafp-demo)" in
     *"sleep \"\$sleep_segs\""*) ;;
     *) fail 'yafp-demo does not reuse its configured sleep interval' ;;
 esac
+case "$(declare -f yafp-demo)" in
+    *'yafp_prompt_preview'*) ;;
+    *) fail 'yafp-demo does not render a prompt preview' ;;
+esac
+preview_user="${USER:-yafp-test-user}"
+preview_host="${HOSTNAME:-yafp-test-host}"
+preview_output="$(
+    USER="$preview_user"
+    HOSTNAME="$preview_host"
+    SSH_CLIENT="${SSH_CLIENT:-}"
+    YAFP_REPOS=0
+    YAFP_PVENV=0
+    YAFP_ERROR=0
+    YAFP_CLOCK=0
+    yafp_prompt_preview
+)"
+case "$preview_output" in
+    *'\['*|*'\]'*|*'\u'*|*'\h'*|*'\w'*)
+        fail 'Bash prompt preview exposes PS1 control escapes'
+        ;;
+esac
+case "$preview_output" in
+    *"${preview_user}"*) ;;
+    *) fail 'Bash prompt preview omitted the current user' ;;
+esac
+case "$preview_output" in
+    *"${preview_host%%.*}"*) ;;
+    *) fail 'Bash prompt preview omitted the current host' ;;
+esac
 
 refresh_args="$TEST_ROOT/refresh-args"
 (

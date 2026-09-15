@@ -1831,6 +1831,8 @@ yafp-demo() {
     local sleep_segs=4
     while true; do
         yafp-status
+        printf '\nPrompt preview:\n'
+        yafp_prompt_preview
         printf '\nControl+C to break this ♾️  loop 🔁 (%ss)\n\n' \
             "$sleep_segs"
         sleep "$sleep_segs"
@@ -2117,6 +2119,43 @@ yafp_validate_ps1_strict() {
         printf '%s\n' '💀 Suspicious PS1… review it before it breaks the cursor'
         return 1
     fi
+}
+
+
+yafp_prompt_preview() {
+    local last_exit=$?
+    local preview
+    local preview_path
+    local previous_timestamp="${previous_timestamp:-}"
+    local YAFP_PROMPT_RENDERING=1
+
+    yafp_now_ms t_all_begin
+
+    yaft_general_context "$last_exit"
+    yafp_git_context "$last_exit"
+    yafp_venv_context
+    yafp_err_context "$last_exit"
+
+    yafp_now_ms t_all_end
+    preview="$(theme_render_ps1)"
+    yafp_remote_countdown_advance_color \
+        "${yafp_ctx_git_remote_refresh_in:-}"
+
+    preview_path="${yafp_ctx_pwd:-}"
+    if [ -n "${HOME:-}" ]; then
+        case "$preview_path" in
+            "$HOME") preview_path='~' ;;
+            "$HOME"/*) preview_path="~${preview_path#"$HOME"}" ;;
+        esac
+    fi
+
+    preview=${preview//\\[/}
+    preview=${preview//\\]/}
+    preview=${preview//\\u/${yafp_ctx_user:-}}
+    preview=${preview//\\h/${yafp_ctx_host%%.*}}
+    preview=${preview//\\w/$preview_path}
+    preview=${preview//\\n/$'\n'}
+    printf '%s\n' "$preview"
 }
 
 

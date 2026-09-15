@@ -12,9 +12,16 @@
 [bash]: https://www.gnu.org/software/bash/
 [powershell]: https://docs.microsoft.com/powershell/
 
+<!--
 ## What is yafp?
 
 ![This is yafp!](docs/images/yafp-retro-command-room-light.png)
+-->
+
+<!-- markdownlint-disable MD026 -->
+## 🎂 yafp Turns 6 — Still Alive!
+
+![This is yafp!](docs/images/yafp-retro-command-room-6-years.png)
 
 ### UNIX™️
 
@@ -316,10 +323,12 @@ with the last known state until the worker finishes. Outside a repository or
 without an upstream, `yafp-status` reports that the timer is unavailable and
 `yafp-refresh` exits silently.
 
-Use `yafp-demo` to print a fresh `yafp-status` report every four seconds until
-you stop it with `Ctrl+C`. Each iteration displays
-`Control+C to break this ♾️  loop 🔁 (4s)` as a reminder, followed by a blank
-line before the next report.
+Use `yafp-demo` to print a fresh `yafp-status` report and a live preview of the
+configured prompt every four seconds until you stop it with `Ctrl+C`. Each
+iteration renders the current theme and local context under `Prompt preview:`,
+then displays `Control+C to break this ♾️  loop 🔁 (4s)` as a reminder. The
+preview omits OSC 133 lifecycle markers because it does not begin an interactive
+command block.
 
 ---
 
@@ -626,6 +635,6 @@ overwrite a different existing `prepare-commit-msg` hook.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-13 01:09:36 🪟 NDEV-DPC-02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-5.6 Sol Medium & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-09-15 01:29:34 🪟 NDEV-DPC-02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-5 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

@@ -139,6 +139,34 @@ try {
         'Start-Sleep -Seconds \$sleepSecs') {
         throw 'yafp-demo does not reuse its configured sleep interval'
     }
+    if ((Get-Command Show-YafpDemo).Definition -notmatch
+        'Show-YafpPromptPreview') {
+        throw 'yafp-demo does not render a prompt preview'
+    }
+    $savedRepos = $global:YAFP_REPOS
+    $savedVenv = $global:YAFP_PVENV
+    $savedError = $global:YAFP_ERROR
+    $savedClock = $global:YAFP_CLOCK
+    try {
+        $global:YAFP_REPOS = 0
+        $global:YAFP_PVENV = 0
+        $global:YAFP_ERROR = 0
+        $global:YAFP_CLOCK = 0
+        $previewOutput = Show-YafpPromptPreview 6>&1 | Out-String
+    }
+    finally {
+        $global:YAFP_REPOS = $savedRepos
+        $global:YAFP_PVENV = $savedVenv
+        $global:YAFP_ERROR = $savedError
+        $global:YAFP_CLOCK = $savedClock
+    }
+    if ($previewOutput -match [regex]::Escape("$([char]27)]133;")) {
+        throw 'PowerShell prompt preview emits OSC 133 lifecycle markers'
+    }
+    if ($previewOutput -notmatch [regex]::Escape($env:USERNAME) -or
+        $previewOutput -notmatch [regex]::Escape($env:COMPUTERNAME)) {
+        throw 'PowerShell prompt preview omitted the current user or host'
+    }
 
     Assert-Equal '(300)' (Get-YafpRemoteCountdownIndicator -Remaining 300) `
         'numeric countdown indicator'

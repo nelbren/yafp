@@ -75,7 +75,9 @@ foreground:
   report, while `yafp-refresh` requests a background refresh without blocking.
 - The refreshing state remains visible on every render while the background
   worker or its cross-process lock is active.
-- `yafp-demo` repeatedly invokes the cached status view every four seconds and
+- `yafp-demo` repeatedly invokes the cached status view and renders the current
+  prompt theme and context every four seconds. The preview does not emit OSC
+  133 lifecycle markers or alter the interactive prompt lifecycle, and the loop
   remains interruptible with the shell's standard `Ctrl+C` handling.
 - `YAFP_STATUS_PROGRESS_STYLE` selects a block or fixed-width Braille progress
   bar without changing the compact prompt countdown.
@@ -189,6 +191,6 @@ missing optional analyzer into an error.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-12 23:16:13 🪟 NDEV-DPC-02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-5.6 Sol Medium & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-09-15 01:29:34 🪟 NDEV-DPC-02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-5 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>
