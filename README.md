@@ -328,7 +328,9 @@ configured prompt every four seconds until you stop it with `Ctrl+C`. Each
 iteration renders the current theme and local context under `Prompt preview:`,
 then displays `Control+C to break this ♾️  loop 🔁 (4s)` as a reminder. The
 preview omits OSC 133 lifecycle markers because it does not begin an interactive
-command block.
+command block. In Bash, the preview expands PS1 display escapes before printing,
+so ANSI colors and the user or root prompt mark render as they do in the active
+prompt instead of appearing as literal backslash sequences.
 
 ---
 

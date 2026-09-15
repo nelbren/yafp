@@ -183,9 +183,21 @@ preview_output="$(
     yafp_prompt_preview
 )"
 case "$preview_output" in
-    *'\['*|*'\]'*|*'\u'*|*'\h'*|*'\w'*)
+    *'\['*|*'\]'*|*'\e'*|*'\u'*|*'\h'*|*'\w'*|*'\$'*)
         fail 'Bash prompt preview exposes PS1 control escapes'
         ;;
+esac
+case "$preview_output" in
+    *$'\033['*) ;;
+    *) fail 'Bash prompt preview omitted rendered ANSI sequences' ;;
+esac
+preview_prompt_symbol='$'
+if [ "${EUID:-1}" -eq 0 ]; then
+    preview_prompt_symbol='#'
+fi
+case "$preview_output" in
+    *"$preview_prompt_symbol"$'\033[0m\033[K '*) ;;
+    *) fail 'Bash prompt preview omitted the rendered prompt mark' ;;
 esac
 case "$preview_output" in
     *"${preview_user}"*) ;;

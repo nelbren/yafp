@@ -2126,6 +2126,7 @@ yafp_prompt_preview() {
     local last_exit=$?
     local preview
     local preview_path
+    local preview_prompt_symbol='$'
     local previous_timestamp="${previous_timestamp:-}"
     local YAFP_PROMPT_RENDERING=1
 
@@ -2151,10 +2152,15 @@ yafp_prompt_preview() {
 
     preview=${preview//\\[/}
     preview=${preview//\\]/}
+    preview=${preview//\\e/$'\033'}
+    preview=${preview//\\n/$'\n'}
+    if [ "${EUID:-1}" -eq 0 ]; then
+        preview_prompt_symbol='#'
+    fi
+    preview=${preview//\\\$/$preview_prompt_symbol}
     preview=${preview//\\u/${yafp_ctx_user:-}}
     preview=${preview//\\h/${yafp_ctx_host%%.*}}
     preview=${preview//\\w/$preview_path}
-    preview=${preview//\\n/$'\n'}
     printf '%s\n' "$preview"
 }
 

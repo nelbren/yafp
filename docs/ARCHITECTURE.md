@@ -77,7 +77,8 @@ foreground:
   worker or its cross-process lock is active.
 - `yafp-demo` repeatedly invokes the cached status view and renders the current
   prompt theme and context every four seconds. The preview does not emit OSC
-  133 lifecycle markers or alter the interactive prompt lifecycle, and the loop
+  133 lifecycle markers or alter the interactive prompt lifecycle. The Bash
+  preview resolves PS1 display escapes into printable ANSI output, and the loop
   remains interruptible with the shell's standard `Ctrl+C` handling.
 - `YAFP_STATUS_PROGRESS_STYLE` selects a block or fixed-width Braille progress
   bar without changing the compact prompt countdown.
