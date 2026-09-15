@@ -64,8 +64,10 @@ function script:Write-YafpGitCounts {
             -ForegroundColor Cyan -BackgroundColor $null -NoNewline
     }
     if ($Git.StagedCount -gt 0) {
+        $style = Get-YafpSeverityStyle -Severity warning
         Write-YafpText -Text "📦$($Git.StagedCount)" `
-            -ForegroundColor Yellow -BackgroundColor $null -NoNewline
+            -ForegroundColor $style.Foreground `
+            -BackgroundColor $style.Background -NoNewline
     }
 }
 
@@ -102,8 +104,15 @@ function script:Write-YafpTheme {
 
     if ($global:YAFP_ERROR -eq 1) {
         $statusSymbol = if ($Context.HadError) { '⚠️' } else { '✅' }
-        $foreground = if ($Context.HadError) { $redColorForeground } else { $greenColorForeground }
-        $background = if ($Context.HadError) { $redColorBackground } else { $greenColorBackground }
+        if ($Context.HadError) {
+            $statusStyle = Get-YafpSeverityStyle -Severity error
+            $foreground = $statusStyle.Foreground
+            $background = $statusStyle.Background
+        }
+        else {
+            $foreground = $greenColorForeground
+            $background = $greenColorBackground
+        }
         Write-YafpText -Text "[🔚$($Context.PreviousTimestamp)🚀$($Context.PreviousCommand)→$statusSymbol$($Context.ExitCode)]" `
             -ForegroundColor $foreground -BackgroundColor $background -NoNewline
     }

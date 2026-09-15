@@ -25,7 +25,7 @@ YAFP_COLOR_TIMESTAMP_FG="black"
 YAFP_COLOR_STATUS_OK_BG="green"
 YAFP_COLOR_STATUS_OK_FG="black"
 
-YAFP_COLOR_STATUS_WARNING_BG="yellow"
+YAFP_COLOR_STATUS_WARNING_BG="intense-yellow"
 YAFP_COLOR_STATUS_WARNING_FG="black"
 
 YAFP_COLOR_STATUS_ERROR_BG="RED"
@@ -73,7 +73,7 @@ YAFP_COLOR_CMD_ERROR_FG="WHITE"
 YAFP_COLOR_OK_ICON_BG="green"
 YAFP_COLOR_OK_ICON_FG="white"
 
-YAFP_COLOR_WARN_ICON_BG="yellow"
+YAFP_COLOR_WARN_ICON_BG="intense-yellow"
 YAFP_COLOR_WARN_ICON_FG="white"
 
 # Git counters
@@ -89,8 +89,8 @@ YAFP_COLOR_GIT_NEW_BG="CYAN"
 YAFP_COLOR_GIT_NEW_FG="BLACK"
 YAFP_COLOR_GIT_NEW_ATTRS="blink"
 
-YAFP_COLOR_GIT_STAGED_BG="transparent"
-YAFP_COLOR_GIT_STAGED_FG="YELLOW"
+YAFP_COLOR_GIT_STAGED_BG="intense-yellow"
+YAFP_COLOR_GIT_STAGED_FG="black"
 YAFP_COLOR_GIT_STAGED_ATTRS="bold"
 
 # Remote synchronization status
@@ -100,8 +100,8 @@ YAFP_COLOR_REMOTE_NEUTRAL_FG="BLACK"
 YAFP_COLOR_REMOTE_OK_BG="transparent"
 YAFP_COLOR_REMOTE_OK_FG="green"
 
-YAFP_COLOR_REMOTE_PENDING_BG="transparent"
-YAFP_COLOR_REMOTE_PENDING_FG="YELLOW"
+YAFP_COLOR_REMOTE_PENDING_BG="intense-yellow"
+YAFP_COLOR_REMOTE_PENDING_FG="black"
 
 YAFP_COLOR_REMOTE_PROBLEM_BG="RED"
 YAFP_COLOR_REMOTE_PROBLEM_FG="WHITE"
@@ -200,8 +200,8 @@ theme_build() {
         "$YAFP_COLOR_STATUS_OK_FG")"
 
     cStatusWarning="$(theme_color \
-        "$YAFP_COLOR_WARN_ICON_BG" \
-        "$YAFP_COLOR_WARN_ICON_FG")"
+        "$YAFP_COLOR_STATUS_WARNING_BG" \
+        "$YAFP_COLOR_STATUS_WARNING_FG")"
 
     cStatusError="$(theme_color \
         "$YAFP_COLOR_STATUS_ERROR_BG" \
@@ -473,17 +473,17 @@ theme_render_remote_warning() {
                 verb="is missing"
             fi
             message="OUTDATED REPOSITORY: ${yafp_ctx_git_behind} ${unit} ${verb} from ${yafp_ctx_git_upstream}"
-            color="$(ps1_wrap "$cStatusError")"
+            color="$(ps1_wrap "$cRemoteProblem")"
             ;;
         diverged)
             message="DIVERGED REPOSITORY: local +${yafp_ctx_git_ahead} / remote +${yafp_ctx_git_behind} relative to ${yafp_ctx_git_upstream}"
-            color="$(ps1_wrap "$cStatusError")"
+            color="$(ps1_wrap "$cRemoteProblem")"
             ;;
         error)
-            message="No internet connection."
-            color="$(ps1_wrap "$cStatusError")"
+            message="NO INTERNET CONNECTION."
+            color="$(ps1_wrap "$cRemoteProblem")"
             symbol="⚡️"
-            trailing_symbol=""
+            trailing_symbol="⚡️"
             ;;
         *)
             return 0
@@ -1037,6 +1037,7 @@ yafp_theme_background_color() {
 
     case "$color" in
         transparent) printf '%s' "$color"; return ;;
+        intense-yellow) printf '%s' 'YELLOW'; return ;;
         black|BLACK) color=black ;;
         red|RED) color=red ;;
         green|GREEN) color=green ;;

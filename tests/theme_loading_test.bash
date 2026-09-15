@@ -50,11 +50,15 @@ assert_theme missing-theme default
 YAFP_DARKC=1
 [ "$(yafp_theme_background_color RED)" = 'red' ] ||
     fail 'YAFP_DARKC=1 did not select the dark Bash background'
+[ "$(yafp_theme_background_color intense-yellow)" = 'YELLOW' ] ||
+    fail 'YAFP_DARKC=1 darkened the intense warning background'
 [ "$(yafp_theme_background_color transparent)" = 'transparent' ] ||
     fail 'YAFP_DARKC=1 changed a transparent Bash background'
 YAFP_DARKC=0
 [ "$(yafp_theme_background_color red)" = 'RED' ] ||
     fail 'YAFP_DARKC=0 did not select the bright Bash background'
+[ "$(yafp_theme_background_color intense-yellow)" = 'YELLOW' ] ||
+    fail 'YAFP_DARKC=0 changed the intense warning background'
 [ "$(yafp_theme_background_color transparent)" = 'transparent' ] ||
     fail 'YAFP_DARKC=0 changed a transparent Bash background'
 YAFP_DARKC=1
@@ -86,6 +90,15 @@ expected_repo_segment="${YAFP_SYMBOL_GIT_REPO}<repo>yafp<git>${YAFP_SYMBOL_GIT_S
 assert_theme light light
 [ "$YAFP_COLOR_NORMAL_BG" = 'transparent' ] ||
     fail 'light theme normal reset can paint separator spaces'
+[ "$YAFP_COLOR_STATUS_WARNING_BG/$YAFP_COLOR_STATUS_WARNING_FG" = \
+    'intense-yellow/black' ] ||
+    fail 'light theme changed the warning color scheme'
+[ "$YAFP_COLOR_STATUS_ERROR_BG/$YAFP_COLOR_STATUS_ERROR_FG" = \
+    'RED/WHITE' ] ||
+    fail 'light theme changed the error color scheme'
+[ "$YAFP_COLOR_CMD_ERROR_BG/$YAFP_COLOR_CMD_ERROR_FG" = \
+    'red/WHITE' ] ||
+    fail 'light theme changed the command error color scheme'
 cGitBranch='<branch>'
 cRemoteNeutral='<timer>'
 yafp_ctx_git_remote_refresh_in=42

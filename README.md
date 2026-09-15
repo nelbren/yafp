@@ -158,7 +158,9 @@ The output maps those fields to `Total ms | ⚙️General 🌱Git 🐍Venv ❌Er
 ⚡Timer`.
 
 Totals below 50 ms use `🚀` in green, totals from 50 through 199 ms use
-`⏱️` in yellow, and totals of 200 ms or more use `🐢` in red.
+`⏱️` with black text on an intense yellow background, and totals of 200 ms or
+more use
+`🐢` with intense white text on a red background.
 
 ### Remote repository checks
 
@@ -221,25 +223,26 @@ repository prompt. Rendering remains non-blocking.
 The refresh countdown and compact indicator appear immediately to the right
 of the branch symbol and to the left of the branch name:
 
-| Indicator | Color          | State and meaning                              |
-| --------- | -------------- | ---------------------------------------------- |
-| `(N)`     | Dark gray      | Numeric countdown until the next check         |
-| `⣿…⡀`     | Dark gray      | Symbolic countdown until the next check        |
-| `✓`       | Green          | Current: local matches its upstream            |
-| `⇡N`      | Intense yellow | Ahead: `N` local commits are ready to push     |
-| `…`       | Intense yellow | Checking: the first check is still running     |
-| `⟳`       | Intense yellow | Refreshing: updating the cached state          |
-| `⇣N`      | Intense red    | Behind: `N` remote commits must be integrated  |
-| `⇡N⇣M`    | Intense red    | Diverged: both histories have unique commits   |
-| `❕`      | Intense red    | Offline: the remote check could not connect    |
+| Indicator | Color                  | State and meaning                       |
+| --------- | ---------------------- | --------------------------------------- |
+| `(N)`     | Dark gray              | Numeric countdown until next check      |
+| `⣿…⡀`     | Dark gray              | Symbolic countdown until next check     |
+| `✓`       | Green                  | Current: matches upstream               |
+| `⇡N`      | Black / intense yellow | Ahead: `N` commits ready to push        |
+| `…`       | Black / intense yellow | Checking: first check is running        |
+| `⟳`       | Black / intense yellow | Refreshing cached state                 |
+| `⇣N`      | White / red            | Behind: `N` commits need integration    |
+| `⇡N⇣M`    | White / red            | Diverged: unique commits on both sides  |
+| `❕`      | White / red            | Offline: remote check failed            |
 
 The `⟳` indicator can precede the last known state while YAFP refreshes it,
-for example `⟳✓` or `⟳⇣2`. Behind and diverged states retain the prominent red
-warning banner. An ahead state adds a yellow banner surrounded by `⚠️` to make
-clear that local commits have not yet been pushed to the configured upstream.
-When the remote check cannot connect, YAFP also displays the red warning
-`⚡️ No internet connection.`. These banners are cleared immediately when the
-prompt leaves the repository.
+for example `⟳✓` or `⟳⇣2`. Warning banners and compact indicators use black
+text on an intense yellow background. Error banners and compact indicators use
+intense white text on a red background. `YAFP_DARKC` selects the dark or bright
+red background variant without changing that severity contract. When the
+remote check cannot connect, YAFP displays
+`⚡️ NO INTERNET CONNECTION. ⚡️`. These banners are cleared immediately when
+the prompt leaves the repository.
 
 The cache tracks both the local commit and the upstream tracking commit. A
 successful push therefore invalidates an outdated `Ahead` result immediately,
@@ -275,8 +278,9 @@ YAFP distinguishes every step between editing and publishing repository work:
 | `⇡N`      | `N` committed changes are ready to push      |
 
 When the index contains staged additions, modifications, deletions, renames,
-copies, or type changes, all themes display the `📦N` indicator and this yellow
-warning with matching singular or plural grammar:
+copies, or type changes, all themes display the `📦N` indicator and this
+warning with matching singular or plural grammar. Both use black text on an
+intense yellow background:
 
 ```text
 ⚠️ COMMIT PENDING: 14 staged files are ready to commit ⚠️
@@ -637,6 +641,6 @@ overwrite a different existing `prepare-commit-msg` hook.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-15 01:29:34 🪟 NDEV-DPC-02 |
+📆 2026-09-15 13:48:47 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-5 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

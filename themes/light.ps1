@@ -79,8 +79,9 @@ function script:Write-YafpTheme {
     }
 
     if ($Context.HadError) {
-        Write-YafpText -Text " ☒ $($Context.ExitCode)" -ForegroundColor Red `
-            -BackgroundColor $null
+        $style = Get-YafpSeverityStyle -Severity error
+        Write-YafpText -Text " ☒ $($Context.ExitCode)" `
+            -ForegroundColor $style.Foreground -BackgroundColor $style.Background
     }
     else {
         Write-YafpText -Text ' ✓' -ForegroundColor Green `

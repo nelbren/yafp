@@ -64,8 +64,9 @@ function script:Write-YafpTheme {
         Write-Host " $($Context.DaySymbol)" -ForegroundColor White -NoNewline
     }
     if ($Context.HadError) {
-        Write-YafpText -Text " → ❌ $($Context.ExitCode)" -ForegroundColor Red `
-            -BackgroundColor $null
+        $style = Get-YafpSeverityStyle -Severity error
+        Write-YafpText -Text " → ❌ $($Context.ExitCode)" `
+            -ForegroundColor $style.Foreground -BackgroundColor $style.Background
     }
     else {
         Write-YafpText -Text ' → ✅ 0' -ForegroundColor Green `

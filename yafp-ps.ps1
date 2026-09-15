@@ -160,15 +160,18 @@ function Write-YafpDevelopmentMetrics {
 
     if ($Development.Total -lt 50) {
         $icon = '🚀'
-        $color = 'Green'
+        $style = [pscustomobject]@{
+            Foreground = 'Green'
+            Background = $null
+        }
     }
     elseif ($Development.Total -lt 200) {
         $icon = '⏱️'
-        $color = 'Yellow'
+        $style = Get-YafpSeverityStyle -Severity warning
     }
     else {
         $icon = '🐢'
-        $color = 'Red'
+        $style = Get-YafpSeverityStyle -Severity error
     }
 
     $text = "$icon$($Development.Total)ms | " +
@@ -177,7 +180,8 @@ function Write-YafpDevelopmentMetrics {
         "🐍$($Development.Venv) " +
         "❌$($Development.Error) " +
         "⚡$($Development.Timer)"
-    Write-YafpText -Text $text -ForegroundColor $color -BackgroundColor $null
+    Write-YafpText -Text $text -ForegroundColor $style.Foreground `
+        -BackgroundColor $style.Background
 }
 if (-not (Get-Variable YafpRemoteJobs -Scope Script -ErrorAction Ignore)) {
     $script:YafpRemoteJobs = @{}
@@ -892,8 +896,10 @@ function Write-YafpGitRemoteStatus {
     }
 
     if ($remote.Refreshing) {
-        Write-YafpText -Text '⟳' -ForegroundColor Yellow `
-            -BackgroundColor $null -NoNewline
+        $warningStyle = Get-YafpSeverityStyle -Severity warning
+        Write-YafpText -Text '⟳' `
+            -ForegroundColor $warningStyle.Foreground `
+            -BackgroundColor $warningStyle.Background -NoNewline
     }
 
     $text = switch ($remote.State) {
@@ -914,12 +920,14 @@ function Write-YafpGitRemoteStatus {
             -BackgroundColor $null -NoNewline
     }
     elseif ($remote.State -in @('ahead', 'checking')) {
-        Write-YafpText -Text $text -ForegroundColor Yellow `
-            -BackgroundColor $null -NoNewline
+        $style = Get-YafpSeverityStyle -Severity warning
+        Write-YafpText -Text $text -ForegroundColor $style.Foreground `
+            -BackgroundColor $style.Background -NoNewline
     }
     else {
-        Write-YafpText -Text $text -ForegroundColor White `
-            -BackgroundColor Red -NoNewline
+        $style = Get-YafpSeverityStyle -Severity error
+        Write-YafpText -Text $text -ForegroundColor $style.Foreground `
+            -BackgroundColor $style.Background -NoNewline
     }
     Write-Host ' ' -NoNewline
 }
@@ -972,16 +980,14 @@ function Write-YafpRemoteWarning {
     $remote = $Context.Git.RemoteStatus
     $symbol = '🚨'
     $trailingSymbol = '🚨'
-    $foreground = 'White'
-    $background = 'DarkRed'
+    $style = Get-YafpSeverityStyle -Severity error
     if ($remote.State -eq 'ahead') {
         $unit = if ($remote.Ahead -eq 1) { 'commit' } else { 'commits' }
         $verb = if ($remote.Ahead -eq 1) { 'has' } else { 'have' }
         $message = "REMOTE NOT UPDATED: $($remote.Ahead) local $unit $verb not been pushed to $($remote.Upstream)"
         $symbol = '⚠️'
         $trailingSymbol = '⚠️'
-        $foreground = 'Yellow'
-        $background = $null
+        $style = Get-YafpSeverityStyle -Severity warning
     }
     elseif ($remote.State -eq 'behind') {
         $unit = if ($remote.Behind -eq 1) { 'commit' } else { 'commits' }
@@ -992,9 +998,9 @@ function Write-YafpRemoteWarning {
         $message = "DIVERGED REPOSITORY: local +$($remote.Ahead) / remote +$($remote.Behind) relative to $($remote.Upstream)"
     }
     elseif ($remote.State -eq 'error') {
-        $message = 'No internet connection.'
+        $message = 'NO INTERNET CONNECTION.'
         $symbol = '⚡️'
-        $trailingSymbol = ''
+        $trailingSymbol = '⚡️'
     }
     else {
         return
@@ -1002,11 +1008,25 @@ function Write-YafpRemoteWarning {
 
     $suffix = if ($trailingSymbol) { " $trailingSymbol" } else { '' }
     Write-YafpText -Text "$symbol $message$suffix" `
-        -ForegroundColor $foreground -BackgroundColor $background
+        -ForegroundColor $style.Foreground -BackgroundColor $style.Background
 }
 
-function Get-YafpStagedWarningColor {
-    return 'Yellow'
+function Get-YafpSeverityStyle {
+    param([ValidateSet('warning', 'error')][string]$Severity)
+
+    if ($Severity -eq 'warning') {
+        return [pscustomobject]@{
+            Foreground = 'Black'
+            Background = 'Yellow'
+        }
+    }
+
+    $useDarkColors = $global:YAFP_DARKC -eq 1
+    $background = if ($useDarkColors) { 'DarkRed' } else { 'Red' }
+    return [pscustomobject]@{
+        Foreground = 'White'
+        Background = $background
+    }
 }
 
 function Write-YafpStagedWarning {
@@ -1019,9 +1039,10 @@ function Write-YafpStagedWarning {
     $count = $Context.Git.StagedCount
     $unit = if ($count -eq 1) { 'file' } else { 'files' }
     $verb = if ($count -eq 1) { 'is' } else { 'are' }
+    $style = Get-YafpSeverityStyle -Severity warning
     Write-YafpText `
         -Text "⚠️ COMMIT PENDING: $count staged $unit $verb ready to commit ⚠️" `
-        -ForegroundColor (Get-YafpStagedWarningColor) -BackgroundColor $null
+        -ForegroundColor $style.Foreground -BackgroundColor $style.Background
 }
 
 function Get-YafpGitStatusCounts {

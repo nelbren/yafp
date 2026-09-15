@@ -84,11 +84,13 @@ foreground:
   bar without changing the compact prompt countdown.
 
 Shared states are checking, refreshing, current, ahead, behind, diverged, and
-error. The error state renders the `❕` compact indicator and a red
-`⚡️ No internet connection.` warning in both shells.
-Remote status colors follow severity in both the compact prompt and
-`yafp-status`: success is intense green, warnings are intense yellow, and
-errors are intense red.
+error. The error state renders the `❕` compact indicator and the
+`⚡️ NO INTERNET CONNECTION. ⚡️` banner in both shells. Banners and compact
+prompt indicators share one severity contract: warnings use black text on an
+intense yellow background, while errors use intense white text on a red
+background. The warning background remains intense for contrast, while
+`YAFP_DARKC` selects the dark or bright red error background. The detailed
+`yafp-status` report retains foreground-only severity colors.
 
 ## Silent prompt degradation
 
@@ -117,7 +119,7 @@ Each implementation must represent, when applicable:
 
 - user, host, and directory;
 - branch and Git changes;
-- staged Git changes and the yellow commit-pending warning;
+- staged Git changes and the black-on-intense-yellow commit-pending warning;
 - remote status;
 - virtual environment;
 - previous command status;
@@ -192,6 +194,6 @@ missing optional analyzer into an error.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-15 01:29:34 🪟 NDEV-DPC-02 |
+📆 2026-09-15 13:46:31 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-5 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

@@ -61,8 +61,25 @@ try {
     Assert-Equal 2 $gitCounts.Change 'unstaged Git change count'
     Assert-Equal 1 $gitCounts.Delete 'unstaged Git deletion count'
     Assert-Equal 1 $gitCounts.New 'untracked Git count'
-    Assert-Equal Yellow (Get-YafpStagedWarningColor) `
-        'staged Git warning color'
+    $global:YAFP_DARKC = 1
+    $warningStyle = Get-YafpSeverityStyle -Severity warning
+    Assert-Equal Black $warningStyle.Foreground `
+        'warning foreground color'
+    Assert-Equal Yellow $warningStyle.Background `
+        'warning background color'
+    $errorStyle = Get-YafpSeverityStyle -Severity error
+    Assert-Equal White $errorStyle.Foreground `
+        'error foreground color'
+    Assert-Equal DarkRed $errorStyle.Background `
+        'error background color'
+    $global:YAFP_DARKC = 0
+    $brightWarningStyle = Get-YafpSeverityStyle -Severity warning
+    Assert-Equal Yellow $brightWarningStyle.Background `
+        'bright warning background color'
+    $brightErrorStyle = Get-YafpSeverityStyle -Severity error
+    Assert-Equal Red $brightErrorStyle.Background `
+        'bright error background color'
+    $global:YAFP_DARKC = 1
 
     $stagedContext = [pscustomobject]@{
         Git = [pscustomobject]@{ StagedCount = 4 }
@@ -337,7 +354,7 @@ try {
     }
     $warning = Write-YafpRemoteWarning -Context $offlineContext 6>&1 |
         Out-String
-    if ($warning -notmatch '⚡️ No internet connection\.') {
+    if ($warning -notmatch '⚡️ NO INTERNET CONNECTION\. ⚡️') {
         throw 'offline warning was not rendered'
     }
 

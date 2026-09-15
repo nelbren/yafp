@@ -93,7 +93,11 @@ case "$staged_warning" in
 esac
 case "$staged_warning" in
     "$(ps1_wrap "$cRemotePending")"*) ;;
-    *) fail 'staged Git warning is not yellow' ;;
+    *) fail 'staged Git warning does not use the warning color scheme' ;;
+esac
+case "$git_counts" in
+    *"$(ps1_wrap "$cGitStaged")"'📦4'*) ;;
+    *) fail 'staged Git indicator does not use the warning color scheme' ;;
 esac
 yafp_ctx_git_staged=1
 set +u
@@ -453,7 +457,7 @@ case "$indicator" in
     *) fail 'offline indicator was not rendered' ;;
 esac
 case "$warning" in
-    *'⚡️ No internet connection.'*) ;;
+    "$(ps1_wrap "$cRemoteProblem")"*'⚡️ NO INTERNET CONNECTION. ⚡️'*) ;;
     *) fail 'offline warning was not rendered' ;;
 esac
 assert_eq '\n' "${warning: -2}" 'offline warning line break'
@@ -465,7 +469,7 @@ set +u
 warning="$(theme_render_remote_warning)"
 set -u
 case "$warning" in
-    *'OUTDATED REPOSITORY'*'1 commit is missing from origin/main'*) ;;
+    "$(ps1_wrap "$cRemoteProblem")"*'OUTDATED REPOSITORY'*'1 commit is missing from origin/main'*) ;;
     *) fail 'behind warning was not rendered' ;;
 esac
 assert_eq '\n' "${warning: -2}" 'warning line break'
