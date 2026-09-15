@@ -169,7 +169,7 @@ esac
 
 refresh_args="$TEST_ROOT/refresh-args"
 (
-    # shellcheck disable=SC2329
+    # shellcheck disable=SC2317,SC2329
     yafp_remote_context() {
         printf '%s|%s|%s' "$1" "$2" "$3" > "$refresh_args"
     }
