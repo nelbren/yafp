@@ -214,17 +214,17 @@ repository prompt. Rendering remains non-blocking.
 The refresh countdown and compact indicator appear immediately to the right
 of the branch symbol and to the left of the branch name:
 
-| Indicator | Color       | State and meaning                              |
-| --------- | ----------- | ---------------------------------------------- |
-| `(N)`     | Dark gray   | Numeric countdown until the next check         |
-| `⣿…⡀`     | Dark gray   | Symbolic countdown until the next check        |
-| `✓`       | Green       | Current: local matches its upstream            |
-| `⇡N`      | Green       | Ahead: `N` local commits are ready to push     |
-| `…`       | Yellow      | Checking: the first check is still running     |
-| `⟳`       | Yellow      | Refreshing: updating the previous cached state |
-| `⇣N`      | Intense red | Behind: `N` remote commits must be integrated  |
-| `⇡N⇣M`    | Intense red | Diverged: both histories have unique commits   |
-| `❕`      | Intense red | Offline: the remote check could not connect    |
+| Indicator | Color          | State and meaning                              |
+| --------- | -------------- | ---------------------------------------------- |
+| `(N)`     | Dark gray      | Numeric countdown until the next check         |
+| `⣿…⡀`     | Dark gray      | Symbolic countdown until the next check        |
+| `✓`       | Green          | Current: local matches its upstream            |
+| `⇡N`      | Intense yellow | Ahead: `N` local commits are ready to push     |
+| `…`       | Intense yellow | Checking: the first check is still running     |
+| `⟳`       | Intense yellow | Refreshing: updating the cached state          |
+| `⇣N`      | Intense red    | Behind: `N` remote commits must be integrated  |
+| `⇡N⇣M`    | Intense red    | Diverged: both histories have unique commits   |
+| `❕`      | Intense red    | Offline: the remote check could not connect    |
 
 The `⟳` indicator can precede the last known state while YAFP refreshes it,
 for example `⟳✓` or `⟳⇣2`. Behind and diverged states retain the prominent red
@@ -233,6 +233,15 @@ clear that local commits have not yet been pushed to the configured upstream.
 When the remote check cannot connect, YAFP also displays the red warning
 `⚡️ No internet connection.`. These banners are cleared immediately when the
 prompt leaves the repository.
+
+The cache tracks both the local commit and the upstream tracking commit. A
+successful push therefore invalidates an outdated `Ahead` result immediately,
+and `⟳` remains visible across prompt renders until the background refresh has
+finished.
+
+The detailed `yafp-status` report uses the same severity colors: current is
+intense green; ahead, checking, and refreshing are intense yellow; and behind,
+diverged, and connection errors are intense red.
 
 For example, ` (250) ⇡1 master` means that the local branch is one commit
 ahead and the next remote check will run in 250 seconds. When the countdown

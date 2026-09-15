@@ -120,6 +120,16 @@ case "$status_report" in
 esac
 assert_eq GREEN "$(yafp_remote_state_tone current)" \
     'current state intense green tone'
+assert_eq YELLOW "$(yafp_remote_state_tone ahead)" \
+    'ahead state intense yellow tone'
+assert_eq YELLOW "$(yafp_remote_state_tone checking)" \
+    'checking state intense yellow tone'
+assert_eq YELLOW "$(yafp_remote_state_tone current 1)" \
+    'refreshing state intense yellow tone'
+assert_eq RED "$(yafp_remote_state_tone behind)" \
+    'behind state intense red tone'
+assert_eq RED "$(yafp_remote_state_tone diverged)" \
+    'diverged state intense red tone'
 assert_eq RED "$(yafp_remote_state_tone error)" \
     'offline state intense red tone'
 assert_eq WHITE "$(yafp_current_time_tone)" \
@@ -233,6 +243,12 @@ assert_eq origin/main "$yafp_ctx_git_upstream" 'upstream name'
     fail 'refresh countdown was not calculated'
 [ "$yafp_ctx_git_remote_refresh_in" -le 300 ] ||
     fail 'refresh countdown exceeds the configured interval'
+IFS=$'\t' read -r _ _ _ _ _ _ cached_local_oid cached_upstream_oid \
+    < "$cache_file"
+assert_eq "$(git -C "$TEST_ROOT/local" rev-parse HEAD)" \
+    "$cached_local_oid" 'cached local object ID'
+assert_eq "$(git -C "$TEST_ROOT/local" rev-parse origin/main)" \
+    "$cached_upstream_oid" 'cached upstream object ID'
 set +u
 indicator="$(theme_render_git_remote_status)"
 set -u
@@ -240,6 +256,35 @@ case "$indicator" in
     *'('*') '*'⇣1'*) ;;
     *) fail 'behind indicator was not rendered' ;;
 esac
+
+mkdir "${cache_file}.lock"
+printf '%s\n' "$$" > "${cache_file}.lock/pid"
+yafp_remote_context "$TEST_ROOT/local" main
+assert_eq 1 "$yafp_ctx_git_remote_refreshing" \
+    'active remote worker remains visible across renders'
+assert_eq 0 "$yafp_ctx_git_remote_refresh_in" \
+    'active remote worker hides the cached countdown'
+rm -f "${cache_file}.lock/pid"
+rmdir "${cache_file}.lock"
+
+git -C "$TEST_ROOT/local" update-ref refs/remotes/origin/main HEAD
+yafp_remote_context "$TEST_ROOT/local" main
+assert_eq checking "$yafp_ctx_git_remote_state" \
+    'upstream object ID change invalidated the cached state'
+set +u
+warning="$(theme_render_remote_warning)"
+set -u
+assert_eq '' "$warning" \
+    'invalidated ahead or behind state does not render a stale warning'
+for _ in {1..100}; do
+    [ ! -d "${cache_file}.lock" ] && break
+    sleep 0.05
+done
+[ ! -d "${cache_file}.lock" ] ||
+    fail 'upstream-change refresh did not complete'
+yafp_remote_context "$TEST_ROOT/local" main
+assert_eq behind "$yafp_ctx_git_remote_state" \
+    'upstream-change refresh restored the remote state'
 
 original_dir="$PWD"
 YAFP_INITIAL_REMOTE_CHECK_PENDING=1
@@ -342,6 +387,10 @@ set -u
 case "$indicator" in
     *'⇡2'*) ;;
     *) fail 'ahead indicator was not rendered' ;;
+esac
+case "$indicator" in
+    *"$(ps1_wrap "$cRemotePending")"⇡2*) ;;
+    *) fail 'ahead indicator is not intense yellow' ;;
 esac
 
 set +u

@@ -101,7 +101,7 @@ YAFP_COLOR_REMOTE_OK_BG="transparent"
 YAFP_COLOR_REMOTE_OK_FG="green"
 
 YAFP_COLOR_REMOTE_PENDING_BG="transparent"
-YAFP_COLOR_REMOTE_PENDING_FG="yellow"
+YAFP_COLOR_REMOTE_PENDING_FG="YELLOW"
 
 YAFP_COLOR_REMOTE_PROBLEM_BG="RED"
 YAFP_COLOR_REMOTE_PROBLEM_FG="WHITE"
@@ -532,7 +532,7 @@ theme_render_git_remote_status() {
             indicator="✓"
             ;;
         ahead)
-            color="$cRemoteOk"
+            color="$cRemotePending"
             indicator="⇡${yafp_ctx_git_ahead}"
             ;;
         behind)
@@ -1303,6 +1303,17 @@ yafp_remote_lock_cleanup() {
 }
 
 
+yafp_remote_check_is_running() {
+    local lock_dir="$1"
+    local lock_pid=""
+
+    [ -d "$lock_dir" ] && [ -r "${lock_dir}/pid" ] || return 1
+    IFS= read -r lock_pid < "${lock_dir}/pid" || return 1
+    [ "$lock_pid" = "starting" ] ||
+        { [[ "$lock_pid" =~ ^[0-9]+$ ]] && kill -0 "$lock_pid" 2>/dev/null; }
+}
+
+
 yafp_remote_check_worker() {
     local repo_root="$1"
     local local_ref="$2"
@@ -1315,6 +1326,7 @@ yafp_remote_check_worker() {
     local checked_at
     local counts
     local current_oid=""
+    local current_upstream_oid=""
     local state="error"
     local temp_file
     local quoted_lock_dir
@@ -1352,11 +1364,15 @@ yafp_remote_check_worker() {
     fi
 
     current_oid="$(git -C "$repo_root" rev-parse "$local_ref" 2>/dev/null)"
+    current_upstream_oid="$(
+        git -C "$repo_root" rev-parse "$upstream" 2>/dev/null
+    )"
     checked_at="$(date +%s)"
     temp_file="${cache_file}.$$.tmp"
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
         "$checked_at" "$state" "$ahead" "$behind" \
-        "$local_ref" "$upstream" "$current_oid" > "$temp_file" &&
+        "$local_ref" "$upstream" "$current_oid" \
+        "$current_upstream_oid" > "$temp_file" &&
         mv -f "$temp_file" "$cache_file" || write_status=$?
 
     yafp_remote_lock_cleanup "$lock_dir"
@@ -1491,10 +1507,13 @@ yafp_remote_context() {
     local cache_file
     local cache_age=0
     local cached_local_ref
-    local cached_oid
+    local cached_local_oid
+    local cached_upstream_oid
     local cached_upstream
     local checked_at=0
     local current_oid
+    local current_oids
+    local current_upstream_oid
     local git_dir
     local local_ref
     local now
@@ -1523,20 +1542,28 @@ yafp_remote_context() {
     [ -n "$remote_name" ] && [ "$remote_name" != "." ] || return 0
 
     git_dir="$(git -C "$repo_root" rev-parse --absolute-git-dir 2>/dev/null)"
-    current_oid="$(git -C "$repo_root" rev-parse "$local_ref" 2>/dev/null)"
-    [ -n "$git_dir" ] && [ -n "$current_oid" ] || return 0
+    current_oids="$(
+        git -C "$repo_root" rev-parse "$local_ref" "$upstream" 2>/dev/null
+    )"
+    current_oid="${current_oids%%$'\n'*}"
+    current_upstream_oid="${current_oids#*$'\n'}"
+    [ "$current_oids" != "$current_oid" ] || current_upstream_oid=""
+    [ -n "$git_dir" ] && [ -n "$current_oid" ] &&
+        [ -n "$current_upstream_oid" ] || return 0
 
     cache_file="${git_dir}/yafp-remote-status"
     now="$(date +%s)"
 
     if [ -r "$cache_file" ]; then
         IFS=$'\t' read -r checked_at state ahead behind \
-            cached_local_ref cached_upstream cached_oid < "$cache_file"
+            cached_local_ref cached_upstream cached_local_oid \
+            cached_upstream_oid < "$cache_file"
         if [[ "$checked_at" =~ ^[0-9]+$ ]] &&
            [[ "$ahead" =~ ^[0-9]+$ ]] && [[ "$behind" =~ ^[0-9]+$ ]] &&
            [ "$cached_local_ref" = "$local_ref" ] &&
            [ "$cached_upstream" = "$upstream" ] &&
-           [ "$cached_oid" = "$current_oid" ]; then
+           [ "$cached_local_oid" = "$current_oid" ] &&
+           [ "$cached_upstream_oid" = "$current_upstream_oid" ]; then
             valid_cache=1
             yafp_ctx_git_remote_state="$state"
             yafp_ctx_git_ahead="$ahead"
@@ -1565,6 +1592,12 @@ yafp_remote_context() {
             yafp_ctx_git_remote_refresh_in=0
         fi
     fi
+
+    if [ "$valid_cache" -eq 1 ] &&
+       yafp_remote_check_is_running "${cache_file}.lock"; then
+        yafp_ctx_git_remote_refreshing=1
+        yafp_ctx_git_remote_refresh_in=0
+    fi
 }
 
 
@@ -1586,9 +1619,15 @@ yafp_remote_state_label() {
 
 
 yafp_remote_state_tone() {
+    if [ "${2:-0}" -eq 1 ]; then
+        printf '%s' 'YELLOW'
+        return
+    fi
+
     case "$1" in
         current) printf '%s' 'GREEN' ;;
-        error) printf '%s' 'RED' ;;
+        ahead|checking) printf '%s' 'YELLOW' ;;
+        behind|diverged|error) printf '%s' 'RED' ;;
         *) printf '%s' '' ;;
     esac
 }
@@ -1682,7 +1721,7 @@ yafp_remote_status_report() {
     if [ "$refreshing" -eq 1 ]; then
         state_label="⟳ Refreshing · last: ${state_label}"
     fi
-    state_tone="$(yafp_remote_state_tone "$state")"
+    state_tone="$(yafp_remote_state_tone "$state" "$refreshing")"
     printf '%s' '🌐       Remote: '
     yafp_status_start_color "$state_tone"
     printf '%s' "$state_label"

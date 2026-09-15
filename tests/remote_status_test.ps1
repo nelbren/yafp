@@ -93,6 +93,16 @@ try {
     }
     Assert-Equal Green (Get-YafpRemoteStateColor -State current) `
         'current state intense green color'
+    Assert-Equal Yellow (Get-YafpRemoteStateColor -State ahead) `
+        'ahead state intense yellow color'
+    Assert-Equal Yellow (Get-YafpRemoteStateColor -State checking) `
+        'checking state intense yellow color'
+    Assert-Equal Yellow (Get-YafpRemoteStateColor -State current `
+        -Refreshing $true) 'refreshing state intense yellow color'
+    Assert-Equal Red (Get-YafpRemoteStateColor -State behind) `
+        'behind state intense red color'
+    Assert-Equal Red (Get-YafpRemoteStateColor -State diverged) `
+        'diverged state intense red color'
     Assert-Equal Red (Get-YafpRemoteStateColor -State error) `
         'offline state intense red color'
     Assert-Equal White (Get-YafpCurrentTimeColor) `
@@ -171,6 +181,12 @@ try {
     if ($remote.RefreshIn -lt 0 -or $remote.RefreshIn -gt 300) {
         throw 'refresh countdown is outside the configured interval'
     }
+    $cacheFields = ([IO.File]::ReadAllText($cacheFile).TrimEnd()) -split "`t"
+    Assert-Equal 8 $cacheFields.Count 'remote cache field count'
+    Assert-Equal "$(& git -C $local rev-parse HEAD)" $cacheFields[6] `
+        'cached local object ID'
+    Assert-Equal "$(& git -C $local rev-parse origin/main)" $cacheFields[7] `
+        'cached upstream object ID'
 
     $gitContext = [pscustomobject]@{ RemoteStatus = $remote }
     $indicator = Write-YafpGitRemoteStatus -Git $gitContext 6>&1 |
@@ -178,6 +194,27 @@ try {
     if ($indicator -notmatch '\(\d+\)\s+⇣1') {
         throw 'behind indicator was not rendered'
     }
+
+    $lockDir = "$cacheFile.lock"
+    $null = New-Item -ItemType Directory -Path $lockDir
+    $refreshingRemote = Get-YafpRemoteContext -RepoRoot $local -Branch main
+    Assert-Equal $true $refreshingRemote.Refreshing `
+        'active remote worker remains visible across renders'
+    Assert-Equal 0 $refreshingRemote.RefreshIn `
+        'active remote worker hides the cached countdown'
+    Remove-Item -LiteralPath $lockDir -Force
+
+    & git -C $local update-ref refs/remotes/origin/main HEAD
+    $invalidatedRemote = Get-YafpRemoteContext `
+        -RepoRoot $local -Branch main
+    Assert-Equal checking $invalidatedRemote.State `
+        'upstream object ID change invalidated the cached state'
+    $job = $script:YafpRemoteJobs[$cacheFile]
+    $null = Wait-Job -Job $job -Timeout 30
+    Assert-Equal Completed $job.State 'upstream-change background job state'
+    $remote = Get-YafpRemoteContext -RepoRoot $local -Branch main
+    Assert-Equal behind $remote.State `
+        'upstream-change refresh restored the remote state'
 
     $script:YafpInitialRemoteCheckPending = $true
     Push-Location $testRoot

@@ -366,6 +366,8 @@ function Start-YafpRemoteCheck {
             }
 
             $currentOid = & git -C $repoRoot rev-parse $localRef 2>$null
+            $currentUpstreamOid = & git -C $repoRoot rev-parse `
+                $upstream 2>$null
             $checkedAt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
             $line = @(
                 $checkedAt
@@ -375,6 +377,7 @@ function Start-YafpRemoteCheck {
                 $localRef
                 $upstream
                 "$currentOid"
+                "$currentUpstreamOid"
             ) -join "`t"
 
             $tempFile = "$cacheFile.$([guid]::NewGuid().ToString('N')).tmp"
@@ -486,8 +489,10 @@ function Get-YafpRemoteContext {
     }
 
     $gitDir = git -C $RepoRoot rev-parse --absolute-git-dir 2>$null
-    $currentOid = git -C $RepoRoot rev-parse $localRef 2>$null
-    if (-not $gitDir -or -not $currentOid) {
+    $currentOids = @(git -C $RepoRoot rev-parse $localRef $upstream 2>$null)
+    $currentOid = $currentOids | Select-Object -First 1
+    $currentUpstreamOid = $currentOids | Select-Object -Skip 1 -First 1
+    if (-not $gitDir -or -not $currentOid -or -not $currentUpstreamOid) {
         return $null
     }
 
@@ -498,13 +503,14 @@ function Get-YafpRemoteContext {
 
     if (Test-Path -LiteralPath $cacheFile -PathType Leaf) {
         try {
-            $fields = ([IO.File]::ReadAllText($cacheFile).TrimEnd()) -split "`t", 7
-            if ($fields.Count -eq 7 -and
+            $fields = ([IO.File]::ReadAllText($cacheFile).TrimEnd()) -split "`t", 8
+            if ($fields.Count -eq 8 -and
                 [long]::TryParse($fields[0], [ref]$checkedAt) -and
                 $fields[2] -match '^\d+$' -and $fields[3] -match '^\d+$' -and
                 $fields[4] -eq "$localRef" -and
                 $fields[5] -eq "$upstream" -and
-                $fields[6] -eq "$currentOid") {
+                $fields[6] -eq "$currentOid" -and
+                $fields[7] -eq "$currentUpstreamOid") {
                 $cacheAge = [Math]::Max(0L, $now - $checkedAt)
                 $remoteContext = [pscustomobject]@{
                     State = $fields[1]
@@ -551,6 +557,18 @@ function Get-YafpRemoteContext {
         }
     }
 
+
+    $jobIsRunning = $script:YafpRemoteJobs.ContainsKey($cacheFile) -and
+        $script:YafpRemoteJobs[$cacheFile].State -notin @(
+            'Completed', 'Failed', 'Stopped'
+        )
+    $lockExists = Test-Path -LiteralPath "$cacheFile.lock" `
+        -PathType Container
+    if ($remoteContext -and ($jobIsRunning -or $lockExists)) {
+        $remoteContext.Refreshing = $true
+        $remoteContext.RefreshIn = 0L
+    }
+
     return $remoteContext
 }
 
@@ -573,11 +591,19 @@ function Format-YafpRemoteStateLabel {
 }
 
 function Get-YafpRemoteStateColor {
-    param([AllowEmptyString()][string]$State)
+    param(
+        [AllowEmptyString()][string]$State,
+        [bool]$Refreshing = $false
+    )
+
+    if ($Refreshing) {
+        return 'Yellow'
+    }
 
     switch ($State) {
         'current' { 'Green' }
-        'error' { 'Red' }
+        { $_ -in @('ahead', 'checking') } { 'Yellow' }
+        { $_ -in @('behind', 'diverged', 'error') } { 'Red' }
         default { $null }
     }
 }
@@ -705,7 +731,8 @@ function Write-YafpStatusReport {
     if ($Refreshing) {
         $stateLabel = "⟳ Refreshing · last: $stateLabel"
     }
-    $stateColor = Get-YafpRemoteStateColor -State $State
+    $stateColor = Get-YafpRemoteStateColor -State $State `
+        -Refreshing $Refreshing
 
     Write-Host '🌐       Remote: ' -NoNewline
     if ($stateColor) {
@@ -847,11 +874,11 @@ function Write-YafpGitRemoteStatus {
         return
     }
 
-    if ($remote.State -in @('current', 'ahead')) {
+    if ($remote.State -eq 'current') {
         Write-YafpText -Text $text -ForegroundColor Green `
             -BackgroundColor $null -NoNewline
     }
-    elseif ($remote.State -eq 'checking') {
+    elseif ($remote.State -in @('ahead', 'checking')) {
         Write-YafpText -Text $text -ForegroundColor Yellow `
             -BackgroundColor $null -NoNewline
     }

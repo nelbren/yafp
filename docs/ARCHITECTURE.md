@@ -68,11 +68,13 @@ foreground:
 - A lock prevents concurrent workers and is removed when it becomes stale.
 - The first repository prompt after loading forces a background refresh; the
   pending initial check is not consumed by prompts outside repositories.
-- The cache is invalidated by its interval, a reference change, or a local
-  commit change.
+- The cache records both local and upstream object IDs. It is invalidated by
+  its interval or as soon as either reference changes, including after a push.
 - A successful `push`, `fetch`, or `pull` requests an immediate refresh.
 - `yafp-status` reads the same cached context for an exact, on-demand timer
   report, while `yafp-refresh` requests a background refresh without blocking.
+- The refreshing state remains visible on every render while the background
+  worker or its cross-process lock is active.
 - `yafp-demo` repeatedly invokes the cached status view every four seconds and
   remains interruptible with the shell's standard `Ctrl+C` handling.
 - `YAFP_STATUS_PROGRESS_STYLE` selects a block or fixed-width Braille progress
@@ -81,6 +83,9 @@ foreground:
 Shared states are checking, refreshing, current, ahead, behind, diverged, and
 error. The error state renders the `❕` compact indicator and a red
 `⚡️ No internet connection.` warning in both shells.
+Remote status colors follow severity in both the compact prompt and
+`yafp-status`: success is intense green, warnings are intense yellow, and
+errors are intense red.
 
 ## Silent prompt degradation
 
