@@ -86,6 +86,7 @@ foreground:
 Shared states are checking, refreshing, current, ahead, behind, diverged, and
 error. The error state renders `☒🌐` as its compact
 indicator and the `☒🌐 NO INTERNET CONNECTION.` banner in both shells.
+Bash and PowerShell render the compact current-state `✓` in intense green.
 Banners and compact prompt indicators share one severity contract: warnings
 use black text on an intense yellow background, while errors use intense white
 text on a red background. The warning background remains intense for contrast,

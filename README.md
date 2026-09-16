@@ -231,7 +231,7 @@ of the branch symbol and to the left of the branch name:
 | --------- | ---------------------- | --------------------------------------- |
 | `(N)`     | Dark gray              | Numeric countdown until next check      |
 | `⣿…⡀`     | Dark gray              | Symbolic countdown until next check     |
-| `✓`       | Green                  | Current: matches upstream               |
+| `✓`       | Intense green          | Current: matches upstream               |
 | `⇡N`      | Black / intense yellow | Ahead: `N` commits ready to push        |
 | `…`       | Black / intense yellow | Checking: first check is running        |
 | `⟳`       | Black / intense yellow | Refreshing cached state                 |

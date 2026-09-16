@@ -73,6 +73,10 @@ YAFP_REMOTE_CHECK_INTERVAL=300
 YAFP_REMOTE_COUNTDOWN_STYLE=numeric
 YAFP_STATUS_PROGRESS_STYLE=blocks
 
+assert_eq 'transparent/GREEN' \
+    "$YAFP_COLOR_REMOTE_OK_BG/$YAFP_COLOR_REMOTE_OK_FG" \
+    'current remote color scheme'
+
 yafp_git_status_counts $'M  staged modification\nA  staged addition\nR  old -> new\n D deleted\n M modified\nMM both\n?? untracked\nUU conflict'
 assert_eq 4 "$yafp_ctx_git_staged" 'staged Git count'
 assert_eq 2 "$yafp_ctx_git_change" 'unstaged Git change count'
@@ -422,6 +426,10 @@ set -u
 case "$indicator" in
     *'✓'*) ;;
     *) fail 'current indicator was not rendered' ;;
+esac
+case "$indicator" in
+    *"$(ps1_wrap "$cRemoteOk")"✓*) ;;
+    *) fail 'current indicator is not intense green' ;;
 esac
 
 yafp_ctx_git_remote_state=ahead
