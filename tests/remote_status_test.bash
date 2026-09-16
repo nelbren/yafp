@@ -453,11 +453,11 @@ indicator="$(theme_render_git_remote_status)"
 warning="$(theme_render_remote_warning)"
 set -u
 case "$indicator" in
-    *'❕'*) ;;
+    *'☒🌐'*) ;;
     *) fail 'offline indicator was not rendered' ;;
 esac
 case "$warning" in
-    "$(ps1_wrap "$cRemoteProblem")"*'⚡️ NO INTERNET CONNECTION. ⚡️'*) ;;
+    "$(ps1_wrap "$cRemoteProblem")"*'☒🌐 NO INTERNET CONNECTION.'*) ;;
     *) fail 'offline warning was not rendered' ;;
 esac
 assert_eq '\n' "${warning: -2}" 'offline warning line break'

@@ -589,7 +589,7 @@ function Format-YafpRemoteStateLabel {
         'behind' { "⇣$Behind Behind" }
         'diverged' { "⇡$Ahead⇣$Behind Diverged" }
         'checking' { '… Checking' }
-        'error' { '❕ No internet connection' }
+        'error' { '☒🌐 No internet connection' }
         default { '— unavailable' }
     }
 }
@@ -908,7 +908,7 @@ function Write-YafpGitRemoteStatus {
         'behind' { "⇣$($remote.Behind)" }
         'diverged' { "⇡$($remote.Ahead)⇣$($remote.Behind)" }
         'checking' { '…' }
-        'error' { '❕' }
+        'error' { '☒🌐' }
         default { '' }
     }
     if (-not $text) {
@@ -999,8 +999,8 @@ function Write-YafpRemoteWarning {
     }
     elseif ($remote.State -eq 'error') {
         $message = 'NO INTERNET CONNECTION.'
-        $symbol = '⚡️'
-        $trailingSymbol = '⚡️'
+        $symbol = '☒🌐'
+        $trailingSymbol = ''
     }
     else {
         return

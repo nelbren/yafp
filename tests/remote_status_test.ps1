@@ -321,7 +321,7 @@ try {
         @{ State = 'current'; Ahead = 0; Text = '✓' }
         @{ State = 'ahead'; Ahead = 2; Text = '⇡2' }
         @{ State = 'checking'; Ahead = 0; Text = '…' }
-        @{ State = 'error'; Ahead = 0; Text = '❕' }
+        @{ State = 'error'; Ahead = 0; Text = '☒🌐' }
     )) {
         $status = [pscustomobject]@{
             State = $indicatorCase.State
@@ -354,7 +354,7 @@ try {
     }
     $warning = Write-YafpRemoteWarning -Context $offlineContext 6>&1 |
         Out-String
-    if ($warning -notmatch '⚡️ NO INTERNET CONNECTION\. ⚡️') {
+    if ($warning -notmatch '☒🌐 NO INTERNET CONNECTION\.') {
         throw 'offline warning was not rendered'
     }
 

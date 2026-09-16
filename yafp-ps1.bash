@@ -482,8 +482,8 @@ theme_render_remote_warning() {
         error)
             message="NO INTERNET CONNECTION."
             color="$(ps1_wrap "$cRemoteProblem")"
-            symbol="⚡️"
-            trailing_symbol="⚡️"
+            symbol="☒🌐"
+            trailing_symbol=""
             ;;
         *)
             return 0
@@ -549,7 +549,7 @@ theme_render_git_remote_status() {
             ;;
         error)
             color="$cRemoteProblem"
-            indicator="❕"
+            indicator="☒🌐"
             ;;
         *)
             printf '%s' "$out"
@@ -1613,7 +1613,7 @@ yafp_remote_state_label() {
         behind) printf '⇣%s Behind' "$behind" ;;
         diverged) printf '⇡%s⇣%s Diverged' "$ahead" "$behind" ;;
         checking) printf '%s' '… Checking' ;;
-        error) printf '%s' '❕ No internet connection' ;;
+        error) printf '%s' '☒🌐 No internet connection' ;;
         *) printf '%s' '— unavailable' ;;
     esac
 }

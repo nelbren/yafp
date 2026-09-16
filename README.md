@@ -233,7 +233,7 @@ of the branch symbol and to the left of the branch name:
 | `⟳`       | Black / intense yellow | Refreshing cached state                 |
 | `⇣N`      | White / red            | Behind: `N` commits need integration    |
 | `⇡N⇣M`    | White / red            | Diverged: unique commits on both sides  |
-| `❕`      | White / red            | Offline: remote check failed            |
+| `☒🌐`     | White / red            | Offline                                 |
 
 The `⟳` indicator can precede the last known state while YAFP refreshes it,
 for example `⟳✓` or `⟳⇣2`. Warning banners and compact indicators use black
@@ -241,8 +241,10 @@ text on an intense yellow background. Error banners and compact indicators use
 intense white text on a red background. `YAFP_DARKC` selects the dark or bright
 red background variant without changing that severity contract. When the
 remote check cannot connect, YAFP displays
-`⚡️ NO INTERNET CONNECTION. ⚡️`. These banners are cleared immediately when
+`☒🌐 NO INTERNET CONNECTION.`. These banners are cleared immediately when
 the prompt leaves the repository.
+
+The offline compact indicator is `☒🌐`.
 
 The cache tracks both the local commit and the upstream tracking commit. A
 successful push therefore invalidates an outdated `Ahead` result immediately,
@@ -641,6 +643,6 @@ overwrite a different existing `prepare-commit-msg` hook.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-15 13:48:47 🪟 NDEV-DPC-02 |
+📆 2026-09-15 17:57:37 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-5 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

@@ -84,13 +84,13 @@ foreground:
   bar without changing the compact prompt countdown.
 
 Shared states are checking, refreshing, current, ahead, behind, diverged, and
-error. The error state renders the `❕` compact indicator and the
-`⚡️ NO INTERNET CONNECTION. ⚡️` banner in both shells. Banners and compact
-prompt indicators share one severity contract: warnings use black text on an
-intense yellow background, while errors use intense white text on a red
-background. The warning background remains intense for contrast, while
-`YAFP_DARKC` selects the dark or bright red error background. The detailed
-`yafp-status` report retains foreground-only severity colors.
+error. The error state renders `☒🌐` as its compact
+indicator and the `☒🌐 NO INTERNET CONNECTION.` banner in both shells.
+Banners and compact prompt indicators share one severity contract: warnings
+use black text on an intense yellow background, while errors use intense white
+text on a red background. The warning background remains intense for contrast,
+while `YAFP_DARKC` selects the dark or bright red error background. The
+detailed `yafp-status` report retains foreground-only severity colors.
 
 ## Silent prompt degradation
 
@@ -194,6 +194,6 @@ missing optional analyzer into an error.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-15 13:46:31 🪟 NDEV-DPC-02 |
+📆 2026-09-15 17:55:10 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-5 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>
