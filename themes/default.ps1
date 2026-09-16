@@ -105,16 +105,20 @@ function script:Write-YafpTheme {
     if ($global:YAFP_ERROR -eq 1) {
         $statusSymbol = if ($Context.HadError) { '⚠️' } else { '✅' }
         if ($Context.HadError) {
-            $statusStyle = Get-YafpSeverityStyle -Severity error
-            $foreground = $statusStyle.Foreground
-            $background = $statusStyle.Background
+            $statusStyle = Get-YafpCommandErrorStyle
+            Write-YafpText -Text "[🔚$($Context.PreviousTimestamp)🚀$($Context.PreviousCommand)→" `
+                -ForegroundColor White -BackgroundColor $null -NoNewline
+            Write-YafpText -Text "$statusSymbol$($Context.ExitCode)" `
+                -ForegroundColor $statusStyle.Foreground `
+                -BackgroundColor $statusStyle.Background -NoNewline
+            Write-YafpText -Text ']' -ForegroundColor White `
+                -BackgroundColor $null -NoNewline
         }
         else {
-            $foreground = $greenColorForeground
-            $background = $greenColorBackground
+            Write-YafpText -Text "[🔚$($Context.PreviousTimestamp)🚀$($Context.PreviousCommand)→$statusSymbol$($Context.ExitCode)]" `
+                -ForegroundColor $greenColorForeground `
+                -BackgroundColor $greenColorBackground -NoNewline
         }
-        Write-YafpText -Text "[🔚$($Context.PreviousTimestamp)🚀$($Context.PreviousCommand)→$statusSymbol$($Context.ExitCode)]" `
-            -ForegroundColor $foreground -BackgroundColor $background -NoNewline
     }
 
     if ($Context.ClockEnabled) {

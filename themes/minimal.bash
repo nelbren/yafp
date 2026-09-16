@@ -165,8 +165,8 @@ theme_render_status_error_block() {
 
     local parts=(
         "$cSeparator"
-        " → $YAFP_SYMBOL_ERROR "
-        "${cExitPS1}$yafp_ctx_exit"
+        " → "
+        "${cExitPS1}$YAFP_SYMBOL_ERROR $yafp_ctx_exit"
         "$cFullReset"
     )
 

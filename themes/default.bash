@@ -111,29 +111,32 @@ theme_render_status_ok_block() {
 
 theme_render_status_error_block() {
     local cmd
+    local cBasePS1
     local cErrorPS1
     local symbol
 
     cmd="$yafp_ctx_previous_command"
 
     if [ "$yafp_ctx_exit" -eq 0 ]; then
+        cBasePS1="$(ps1_wrap "$cCmdOk")"
         cErrorPS1="$(ps1_wrap "$cCmdOk")"
         symbolError=$YAFP_SYMBOL_OK
     else
+        cBasePS1="$(ps1_wrap "$cSeparator")"
         cErrorPS1="$(ps1_wrap "$cCmdError")"
         symbolError=$YAFP_SYMBOL_WARN
     fi
 
     local parts=(
-        "${cErrorPS1}["
+        "${cBasePS1}["
         "$YAFP_SYMBOL_END"
         "$yafp_ctx_previous_timestamp"
         "$YAFP_SYMBOL_CMD"
         "$cmd"
         "$YAFP_SYMBOL_ARROW"
-        "$symbolError"
+        "$cErrorPS1$symbolError"
         "$yafp_ctx_exit"
-        "${cErrorPS1}]"
+        "${cBasePS1}]"
         "$cFullReset\n"
     )
 

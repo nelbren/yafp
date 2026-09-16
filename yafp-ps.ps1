@@ -1029,6 +1029,13 @@ function Get-YafpSeverityStyle {
     }
 }
 
+function Get-YafpCommandErrorStyle {
+    return [pscustomobject]@{
+        Foreground = 'Red'
+        Background = $null
+    }
+}
+
 function Write-YafpStagedWarning {
     param([Parameter(Mandatory)][object]$Context)
 

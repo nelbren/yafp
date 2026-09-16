@@ -18,6 +18,12 @@ foreach ($case in @(
     }
 }
 
+$commandErrorStyle = Get-YafpCommandErrorStyle
+if ($commandErrorStyle.Foreground -ne 'Red' -or
+    $null -ne $commandErrorStyle.Background) {
+    throw 'command errors must use intense red text on a transparent background'
+}
+
 $global:YAFP_REPOS = 0
 $global:YAFP_PVENV = 0
 $global:YAFP_ERROR = 0

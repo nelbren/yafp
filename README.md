@@ -91,6 +91,10 @@ $global:YAFP_DARKC = 1
 The option does not affect `light`, which renders without colored backgrounds,
 including the separator spaces between prompt segments.
 
+The previous-command error symbol and exit code use intense red text on a
+transparent background in every theme. This command-status style is independent
+from error banners, which retain their contrasting foreground and background.
+
 ### Git repository identity
 
 In the Bash `default` theme, only the repository name uses the same yellow

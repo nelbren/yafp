@@ -122,7 +122,8 @@ Each implementation must represent, when applicable:
 - staged Git changes and the black-on-intense-yellow commit-pending warning;
 - remote status;
 - virtual environment;
-- previous command status;
+- previous command status, with command errors rendered in intense red on a
+  transparent background independently from banner severity styles;
 - development metrics.
 
 Adding a theme requires Bash and PowerShell implementations, safe fallback,

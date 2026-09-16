@@ -97,8 +97,18 @@ assert_theme light light
     'RED/WHITE' ] ||
     fail 'light theme changed the error color scheme'
 [ "$YAFP_COLOR_CMD_ERROR_BG/$YAFP_COLOR_CMD_ERROR_FG" = \
-    'red/WHITE' ] ||
+    'transparent/RED' ] ||
     fail 'light theme changed the command error color scheme'
+[ "$cExit" = "$cCmdError" ] ||
+    fail 'command exit errors do not use the dedicated command style'
+yafp_ctx_previous_command='false'
+yafp_ctx_previous_timestamp='2026-09-16 00:00:00'
+yafp_ctx_exit=1
+error_block="$(theme_render_status_error_block)"
+case "$error_block" in
+    *"$(ps1_wrap "$cCmdError")$YAFP_SYMBOL_ERROR 1"*) ;;
+    *) fail 'light theme does not color the command error symbol and code' ;;
+esac
 cGitBranch='<branch>'
 cRemoteNeutral='<timer>'
 yafp_ctx_git_remote_refresh_in=42

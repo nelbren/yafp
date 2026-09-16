@@ -79,7 +79,7 @@ function script:Write-YafpTheme {
     }
 
     if ($Context.HadError) {
-        $style = Get-YafpSeverityStyle -Severity error
+        $style = Get-YafpCommandErrorStyle
         Write-YafpText -Text " ☒ $($Context.ExitCode)" `
             -ForegroundColor $style.Foreground -BackgroundColor $style.Background
     }

@@ -66,8 +66,8 @@ YAFP_COLOR_REPO_FG="black"
 YAFP_COLOR_CMD_OK_BG="green"
 YAFP_COLOR_CMD_OK_FG="black"
 
-YAFP_COLOR_CMD_ERROR_BG="red"
-YAFP_COLOR_CMD_ERROR_FG="WHITE"
+YAFP_COLOR_CMD_ERROR_BG="transparent"
+YAFP_COLOR_CMD_ERROR_FG="RED"
 
 # Check / warning blocks
 YAFP_COLOR_OK_ICON_BG="green"
@@ -300,7 +300,7 @@ theme_build() {
         "$YAFP_COLOR_GIT_BRANCH_BG" \
         "$YAFP_COLOR_GIT_BRANCH_FG")"
 
-    cExit=$cStatusError
+    cExit=$cCmdError
 
     cReset="\e[0m"
     cClearLine="\e[K"
