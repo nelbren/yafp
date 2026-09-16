@@ -71,6 +71,19 @@ foreground:
 - The cache records both local and upstream object IDs. It is invalidated by
   its interval or as soon as either reference changes, including after a push.
 - A successful `push`, `fetch`, or `pull` requests an immediate refresh.
+- The loaded YAFP commit is captured once during startup. After a successful
+  `git pull`, the next prompt compares that hash with the current YAFP `HEAD`
+  and reloads only when they differ. This check does not run during ordinary
+  prompt renders and can be disabled independently with `YAFP_AUTO_RELOAD=0`.
+- `yafp-reload` reloads the active shell definitions manually. Bash preserves
+  an earlier non-YAFP `PROMPT_COMMAND` across repeated loads; PowerShell
+  promotes the reloaded definitions back into the interactive session.
+- Per-session command counters are updated once when the next prompt classifies
+  a completed command. Empty input and internal previews are excluded, reloads
+  preserve the counters, and no persistent statistics file is created.
+- `yafp-stats` renders succeeded, failed, and total counts. Normal interactive
+  shell shutdown prints the same report when `YAFP_STATS_ON_EXIT=1`; Bash
+  chains an earlier `EXIT` trap and PowerShell uses the engine exit event.
 - `yafp-status` reads the same cached context for an exact, on-demand timer
   report, while `yafp-refresh` requests a background refresh without blocking.
 - The refreshing state remains visible on every render while the background

@@ -30,6 +30,13 @@ $global:YAFP_STATUS_PROGRESS_STYLE = 'blocks'
 # Display prompt construction timing; set it to 0 to disable the metrics.
 $global:YAFP_DEVEL = 0
 
+# Reload YAFP automatically when a successful git pull changes its commit.
+# The yafp-reload command remains available when this option is disabled.
+$global:YAFP_AUTO_RELOAD = 1
+
+# Print per-session command statistics during a normal shell exit.
+$global:YAFP_STATS_ON_EXIT = 1
+
 # $global:YAFP_THEME = 'default'
 # $global:YAFP_THEME = 'minimal'
 $global:YAFP_THEME = 'light'

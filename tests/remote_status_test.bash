@@ -166,6 +166,72 @@ YAFP_STATUS_PROGRESS_STYLE=blocks
 declare -F yafp-status >/dev/null || fail 'yafp-status command is unavailable'
 declare -F yafp-refresh >/dev/null || fail 'yafp-refresh command is unavailable'
 declare -F yafp-demo >/dev/null || fail 'yafp-demo command is unavailable'
+declare -F yafp-help >/dev/null || fail 'yafp-help command is unavailable'
+declare -F yafp-stats >/dev/null || fail 'yafp-stats command is unavailable'
+expected_help="$(printf '%s\n' \
+    'yafp-status • Show remote status and refresh timer.' \
+    'yafp-refresh • Request an immediate remote refresh.' \
+    'yafp-reload • Reload YAFP in the current shell.' \
+    'yafp-stats • Show command execution statistics.' \
+    'yafp-help • Show available YAFP commands.')"
+assert_eq "$expected_help" "$(yafp-help)" 'yafp-help output'
+
+YAFP_COMMANDS_TOTAL=0
+YAFP_COMMANDS_SUCCEEDED=0
+YAFP_COMMANDS_FAILED=0
+YAFP_COMMAND_STATS_LAST_KEY=''
+yafp_record_command_stats 'true' 0
+yafp_record_command_stats 'true' 0 || true
+yafp_record_command_stats 'false' 1
+assert_eq 2 "$YAFP_COMMANDS_TOTAL" 'command total count'
+assert_eq 1 "$YAFP_COMMANDS_SUCCEEDED" 'successful command count'
+assert_eq 1 "$YAFP_COMMANDS_FAILED" 'failed command count'
+printf -v stats_separator_one_digit '%*s' 21 ''
+stats_separator_one_digit=${stats_separator_one_digit// /━}
+expected_stats="$(printf '%s\n' \
+    '✓ Succeeded: 1 (050%)' \
+    '☒ Failed:    1 (050%)' \
+    "$stats_separator_one_digit" \
+    '∑ Total:     2 (100%)')"
+assert_eq "$expected_stats" "$(yafp-stats)" 'yafp-stats output'
+YAFP_COMMANDS_TOTAL=0
+YAFP_COMMANDS_SUCCEEDED=0
+YAFP_COMMANDS_FAILED=0
+expected_empty_stats="$(printf '%s\n' \
+    '✓ Succeeded: 0 (000%)' \
+    '☒ Failed:    0 (000%)' \
+    "$stats_separator_one_digit" \
+    '∑ Total:     0 (100%)')"
+assert_eq "$expected_empty_stats" "$(yafp-stats)" 'empty yafp-stats output'
+YAFP_COMMANDS_TOTAL=13
+YAFP_COMMANDS_SUCCEEDED=11
+YAFP_COMMANDS_FAILED=2
+printf -v stats_separator_two_digits '%*s' 22 ''
+stats_separator_two_digits=${stats_separator_two_digits// /━}
+expected_aligned_stats="$(printf '%s\n' \
+    '✓ Succeeded: 11 (085%)' \
+    '☒ Failed:     2 (015%)' \
+    "$stats_separator_two_digits" \
+    '∑ Total:     13 (100%)')"
+assert_eq "$expected_aligned_stats" "$(yafp-stats)" \
+    'aligned yafp-stats output'
+YAFP_COMMANDS_TOTAL=2
+YAFP_COMMANDS_SUCCEEDED=1
+YAFP_COMMANDS_FAILED=1
+YAFP_STATS_ON_EXIT=0
+YAFP_TEST_PREVIOUS_EXIT=0
+YAFP_PREVIOUS_EXIT_TRAP_COMMAND='YAFP_TEST_PREVIOUS_EXIT=1'
+yafp_exit_trap
+assert_eq 1 "$YAFP_TEST_PREVIOUS_EXIT" 'previous EXIT trap command'
+YAFP_PREVIOUS_EXIT_TRAP_COMMAND=''
+YAFP_STATS_ON_EXIT=1
+assert_eq "$expected_stats" "$(yafp_exit_trap)" 'exit statistics output'
+set +u
+yafp-reload
+set -u
+assert_eq 2 "$YAFP_COMMANDS_TOTAL" 'total preserved after reload'
+assert_eq 1 "$YAFP_COMMANDS_SUCCEEDED" 'succeeded preserved after reload'
+assert_eq 1 "$YAFP_COMMANDS_FAILED" 'failed preserved after reload'
 case "$(declare -f yafp-demo)" in
     *'Control+C to break this ♾️  loop 🔁 (%ss)'*) ;;
     *) fail 'yafp-demo interruption hint is unavailable' ;;
@@ -381,6 +447,46 @@ assert_git_sync_command 'git -C other-repo push' 1
 assert_git_sync_command 'command git fetch' 1
 assert_git_sync_command 'git status' 0
 assert_git_sync_command 'echo "git push"' 0
+if ! yafp_is_git_pull_command 'git pull --ff-only'; then
+    fail 'git pull was not detected for automatic reload'
+fi
+if yafp_is_git_pull_command 'git fetch origin'; then
+    fail 'git fetch was detected as git pull'
+fi
+
+YAFP_AUTO_RELOAD=1
+YAFP_LOADED_COMMIT=old-commit
+yafp_reload_called=0
+yafp_current_commit() {
+    printf '%s\n' 'new-commit'
+}
+yafp-reload() {
+    yafp_reload_called=1
+    YAFP_LOADED_COMMIT=new-commit
+}
+yafp_maybe_auto_reload 'git pull --ff-only' 0 ||
+    fail 'changed YAFP commit did not trigger automatic reload'
+assert_eq 1 "$yafp_reload_called" 'automatic reload invocation'
+if yafp_maybe_auto_reload 'git pull --ff-only' 0; then
+    fail 'unchanged YAFP commit triggered automatic reload'
+fi
+YAFP_AUTO_RELOAD=0
+YAFP_LOADED_COMMIT=old-commit
+if yafp_maybe_auto_reload 'git pull' 0; then
+    fail 'disabled automatic reload still ran'
+fi
+
+external_prompt_hook() {
+    :
+}
+PROMPT_COMMAND='external_prompt_hook'
+YAFP_PREVIOUS_PROMPT_COMMAND=''
+yafp_install_prompt_command
+yafp_install_prompt_command
+assert_eq external_prompt_hook "$YAFP_PREVIOUS_PROMPT_COMMAND" \
+    'PROMPT_COMMAND preserved across reloads'
+PROMPT_COMMAND=
+YAFP_PREVIOUS_PROMPT_COMMAND=
 
 YAFP_GIT_SYNC_LAST_COMMAND_KEY=""
 yafp_should_force_remote_refresh 'git push' 0 ||

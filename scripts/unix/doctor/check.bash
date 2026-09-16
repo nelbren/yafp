@@ -88,6 +88,8 @@ check_configuration() {
     local remote_countdown_style=''
     local status_progress_style=''
     local devel=''
+    local auto_reload=''
+    local stats_on_exit=''
     local theme=''
     local repos=''
     local title=''
@@ -136,6 +138,8 @@ check_configuration() {
         printf "__YAFP_STATUS_PROGRESS_STYLE=%s\n" \
             "${YAFP_STATUS_PROGRESS_STYLE-}"
         printf "__YAFP_DEVEL=%s\n" "${YAFP_DEVEL-}"
+        printf "__YAFP_AUTO_RELOAD=%s\n" "${YAFP_AUTO_RELOAD-}"
+        printf "__YAFP_STATS_ON_EXIT=%s\n" "${YAFP_STATS_ON_EXIT-}"
         printf "__YAFP_THEME=%s\n" "${YAFP_THEME-}"
         printf "__YAFP_REPOS=%s\n" "${YAFP_REPOS-}"
         printf "__YAFP_TITLE=%s\n" "${YAFP_TITLE-}"
@@ -158,6 +162,8 @@ check_configuration() {
             __YAFP_REMOTE_COUNTDOWN_STYLE) remote_countdown_style="$value" ;;
             __YAFP_STATUS_PROGRESS_STYLE) status_progress_style="$value" ;;
             __YAFP_DEVEL) devel="$value" ;;
+            __YAFP_AUTO_RELOAD) auto_reload="$value" ;;
+            __YAFP_STATS_ON_EXIT) stats_on_exit="$value" ;;
             __YAFP_THEME) theme="$value" ;;
             __YAFP_REPOS) repos="$value" ;;
             __YAFP_TITLE) title="$value" ;;
@@ -172,6 +178,8 @@ check_configuration() {
     check_binary_option YAFP_CLOCK "$clock"
     check_binary_option YAFP_OSC133 "$osc133"
     check_binary_option YAFP_DEVEL "$devel"
+    check_binary_option YAFP_AUTO_RELOAD "$auto_reload"
+    check_binary_option YAFP_STATS_ON_EXIT "$stats_on_exit"
     check_binary_option YAFP_REPOS "$repos"
     check_binary_option YAFP_TITLE "$title"
     check_binary_option YAFP_ERROR "$error"

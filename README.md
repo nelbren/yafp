@@ -333,6 +333,59 @@ with the last known state until the worker finishes. Outside a repository or
 without an upstream, `yafp-status` reports that the timer is unavailable and
 `yafp-refresh` exits silently.
 
+Use `yafp-reload` to reload the active Bash or PowerShell prompt after changing
+its implementation or personal configuration. YAFP also records the commit
+from which it was loaded. After a successful `git pull`, it checks `HEAD` in
+the YAFP repository and reloads automatically when that hash changed. Pulling
+another repository does not reload YAFP because its recorded hash remains the
+same. Disable only the automatic behavior with:
+
+```bash
+YAFP_AUTO_RELOAD=0
+```
+
+```powershell
+$global:YAFP_AUTO_RELOAD = 0
+```
+
+Use `yafp-help` to list the main YAFP commands with a short description:
+
+```text
+yafp-status • Show remote status and refresh timer.
+yafp-refresh • Request an immediate remote refresh.
+yafp-reload • Reload YAFP in the current shell.
+yafp-stats • Show command execution statistics.
+yafp-help • Show available YAFP commands.
+```
+
+`yafp-stats` counts completed commands in the current shell session. Empty
+input and internal prompt renders are excluded, and `yafp-reload` preserves the
+counters. A zero exit status counts as succeeded; every nonzero status,
+including an interrupted command, counts as failed:
+
+```text
+✓ Succeeded: 38 (090%)
+☒ Failed:     4 (010%)
+━━━━━━━━━━━━━━━━━━━━━━
+∑ Total:     42 (100%)
+```
+
+The names use intense green, intense red, and intense white respectively; the
+separator uses normal white. YAFP prints the same report during a normal shell
+exit, including `exit` and end-of-input. Disable only the automatic exit report
+with:
+
+```bash
+YAFP_STATS_ON_EXIT=0
+```
+
+```powershell
+$global:YAFP_STATS_ON_EXIT = 0
+```
+
+Statistics remain in memory and are discarded when the shell process ends.
+Forced termination cannot run the exit report.
+
 Use `yafp-demo` to print a fresh `yafp-status` report and a live preview of the
 configured prompt every four seconds until you stop it with `Ctrl+C`. Each
 iteration renders the current theme and local context under `Prompt preview:`,

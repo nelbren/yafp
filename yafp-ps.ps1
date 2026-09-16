@@ -6,8 +6,9 @@
 
 Set-StrictMode -Version Latest
 
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$cfg = Join-Path $ScriptDir 'yafp-cfg.ps1'
+$script:YafpScriptPath = $PSCommandPath
+$script:YafpRoot = Split-Path -Parent $script:YafpScriptPath
+$cfg = Join-Path $script:YafpRoot 'yafp-cfg.ps1'
 if (Test-Path -LiteralPath $cfg -PathType Leaf) {
     . $cfg
 }
@@ -53,6 +54,12 @@ if (-not (Get-Variable YAFP_STATUS_PROGRESS_STYLE -Scope Global -ErrorAction Ign
 }
 if (-not (Get-Variable YAFP_DEVEL -Scope Global -ErrorAction Ignore)) {
     $global:YAFP_DEVEL = 0
+}
+if (-not (Get-Variable YAFP_AUTO_RELOAD -Scope Global -ErrorAction Ignore)) {
+    $global:YAFP_AUTO_RELOAD = 1
+}
+if (-not (Get-Variable YAFP_STATS_ON_EXIT -Scope Global -ErrorAction Ignore)) {
+    $global:YAFP_STATS_ON_EXIT = 1
 }
 
 function Write-YafpText {
@@ -122,9 +129,10 @@ function Get-YafpDisplayPath {
 }
 
 function Import-YafpTheme {
-    $themeFile = Join-Path $ScriptDir "themes/$($global:YAFP_THEME).ps1"
+    $themeFile = Join-Path $script:YafpRoot `
+        "themes/$($global:YAFP_THEME).ps1"
     if (-not (Test-Path -LiteralPath $themeFile -PathType Leaf)) {
-        $themeFile = Join-Path $ScriptDir 'themes/default.ps1'
+        $themeFile = Join-Path $script:YafpRoot 'themes/default.ps1'
     }
     if (-not (Test-Path -LiteralPath $themeFile -PathType Leaf)) {
         throw "YAFP theme file not found: $themeFile"
@@ -150,6 +158,48 @@ if (-not (Get-Variable previous_timestamp -Scope Script -ErrorAction Ignore)) {
 if (-not (Get-Variable YafpInitialRemoteCheckPending `
         -Scope Script -ErrorAction Ignore)) {
     $script:YafpInitialRemoteCheckPending = $true
+}
+if (-not (Get-Variable YafpCommandsTotal -Scope Script -ErrorAction Ignore)) {
+    $script:YafpCommandsTotal = 0
+    $script:YafpCommandsSucceeded = 0
+    $script:YafpCommandsFailed = 0
+}
+if (-not (Get-Variable YafpCommandStatsLastHistoryId `
+        -Scope Script -ErrorAction Ignore)) {
+    $lastHistory = Get-History -Count 1 -ErrorAction Ignore
+    $script:YafpCommandStatsLastHistoryId = if ($lastHistory) {
+        $lastHistory.Id
+    }
+    else {
+        0
+    }
+}
+if (-not (Get-Variable YafpExitEventRegistered `
+        -Scope Script -ErrorAction Ignore)) {
+    $script:YafpExitEventRegistered = $false
+}
+
+function Update-YafpCommandStats {
+    param(
+        [int]$HistoryId,
+        [bool]$WasEmpty,
+        [bool]$HadError
+    )
+
+    if ($WasEmpty -or $HistoryId -le 0 -or
+        $HistoryId -eq $script:YafpCommandStatsLastHistoryId) {
+        return $false
+    }
+
+    $script:YafpCommandStatsLastHistoryId = $HistoryId
+    $script:YafpCommandsTotal++
+    if ($HadError) {
+        $script:YafpCommandsFailed++
+    }
+    else {
+        $script:YafpCommandsSucceeded++
+    }
+    return $true
 }
 
 function Write-YafpDevelopmentMetrics {
@@ -404,13 +454,16 @@ function Start-YafpRemoteCheck {
     $script:YafpRemoteJobs[$CacheFile] = $job
 }
 
-function Test-YafpGitSyncCommand {
+function Test-YafpGitCommand {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSAvoidUsingEmptyCatchBlock',
         '',
         Justification = 'YAFP treats command-history text that PowerShell cannot parse as a non-Git command by design, without surfacing parser noise in the prompt.'
     )]
-    param([AllowEmptyString()][string]$CommandLine)
+    param(
+        [AllowEmptyString()][string]$CommandLine,
+        [Parameter(Mandatory)][string[]]$Actions
+    )
 
     if ([string]::IsNullOrWhiteSpace($CommandLine)) {
         return $false
@@ -451,13 +504,94 @@ function Test-YafpGitSyncCommand {
                 if ($argument.StartsWith('-')) {
                     continue
                 }
-                return $argument -in @('push', 'fetch', 'pull')
+                return $argument -in $Actions
             }
         }
     }
     catch {}
 
     return $false
+}
+
+function Test-YafpGitSyncCommand {
+    param([AllowEmptyString()][string]$CommandLine)
+
+    return Test-YafpGitCommand -CommandLine $CommandLine `
+        -Actions @('push', 'fetch', 'pull')
+}
+
+function Test-YafpGitPullCommand {
+    param([AllowEmptyString()][string]$CommandLine)
+
+    return Test-YafpGitCommand -CommandLine $CommandLine -Actions @('pull')
+}
+
+function Get-YafpCurrentCommit {
+    $gitCommand = Get-Command git -ErrorAction Ignore
+    if (-not $gitCommand) {
+        return ''
+    }
+
+    $commit = & $gitCommand -C $script:YafpRoot `
+        rev-parse --verify HEAD 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        return ''
+    }
+    return "$commit".Trim()
+}
+
+function Invoke-YafpReload {
+    $tokens = $null
+    $parseErrors = $null
+    $ast = [Management.Automation.Language.Parser]::ParseFile(
+        $script:YafpScriptPath,
+        [ref]$tokens,
+        [ref]$parseErrors
+    )
+    if ($parseErrors.Count -gt 0) {
+        throw "Cannot reload YAFP because its PowerShell file does not parse"
+    }
+    $functionNames = @(
+        $ast.FindAll({
+            param($node)
+            $node -is [Management.Automation.Language.FunctionDefinitionAst]
+        }, $true) | ForEach-Object Name | Sort-Object -Unique
+    )
+
+    . $script:YafpScriptPath
+
+    foreach ($functionName in $functionNames) {
+        $unscopedName = $functionName -replace '^(global|script|local):', ''
+        $function = Get-Item -LiteralPath "Function:$unscopedName" `
+            -ErrorAction Ignore
+        if ($function) {
+            Set-Item -LiteralPath "Function:global:$unscopedName" `
+                -Value $function.ScriptBlock -Force
+        }
+    }
+}
+
+function Invoke-YafpAutoReload {
+    param(
+        [AllowEmptyString()][string]$CommandLine,
+        [bool]$CommandSucceeded
+    )
+
+    if ($global:YAFP_AUTO_RELOAD -ne 1 -or
+        -not $CommandSucceeded -or
+        [string]::IsNullOrEmpty($script:YafpLoadedCommit) -or
+        -not (Test-YafpGitPullCommand -CommandLine $CommandLine)) {
+        return $false
+    }
+
+    $currentCommit = Get-YafpCurrentCommit
+    if ([string]::IsNullOrEmpty($currentCommit) -or
+        $currentCommit -eq $script:YafpLoadedCommit) {
+        return $false
+    }
+
+    Invoke-YafpReload
+    return $true
 }
 
 function Get-YafpRemoteContext {
@@ -831,6 +965,91 @@ function Invoke-YafpRefresh {
         -ForceRefresh
 }
 
+function Show-YafpHelp {
+    foreach ($entry in @(
+        @{ Name = 'yafp-status'; Description = 'Show remote status and refresh timer.' }
+        @{ Name = 'yafp-refresh'; Description = 'Request an immediate remote refresh.' }
+        @{ Name = 'yafp-reload'; Description = 'Reload YAFP in the current shell.' }
+        @{ Name = 'yafp-stats'; Description = 'Show command execution statistics.' }
+        @{ Name = 'yafp-help'; Description = 'Show available YAFP commands.' }
+    )) {
+        Write-YafpText -Text $entry.Name -ForegroundColor Yellow `
+            -BackgroundColor $null -NoNewline
+        Write-YafpText -Text ' • ' -ForegroundColor Gray `
+            -BackgroundColor $null -NoNewline
+        Write-YafpText -Text $entry.Description -ForegroundColor White `
+            -BackgroundColor $null
+    }
+}
+
+function Show-YafpStats {
+    param([switch]$DirectConsole)
+
+    $succeededPercent = 0
+    $failedPercent = 0
+    if ($script:YafpCommandsTotal -gt 0) {
+        $succeededPercent = [int][Math]::Round(
+            $script:YafpCommandsSucceeded * 100 / $script:YafpCommandsTotal,
+            [MidpointRounding]::AwayFromZero
+        )
+        $failedPercent = 100 - $succeededPercent
+    }
+    $countWidth = "$script:YafpCommandsTotal".Length
+    $succeededCount = "$script:YafpCommandsSucceeded".PadLeft($countWidth)
+    $failedCount = "$script:YafpCommandsFailed".PadLeft($countWidth)
+    $totalCount = "$script:YafpCommandsTotal".PadLeft($countWidth)
+    $succeededRate = $succeededPercent.ToString('000')
+    $failedRate = $failedPercent.ToString('000')
+    $separator = '━' * (20 + $countWidth)
+    $succeededText = "✓ $('Succeeded:'.PadRight(10)) " +
+        "$succeededCount ($succeededRate%)"
+    $failedText = "☒ $('Failed:'.PadRight(10)) " +
+        "$failedCount ($failedRate%)"
+    $totalText = "∑ $('Total:'.PadRight(10)) $totalCount (100%)"
+
+    if ($DirectConsole) {
+        $originalColor = [Console]::ForegroundColor
+        try {
+            [Console]::ForegroundColor = [ConsoleColor]::Green
+            [Console]::WriteLine($succeededText)
+            [Console]::ForegroundColor = [ConsoleColor]::Red
+            [Console]::WriteLine($failedText)
+            [Console]::ForegroundColor = [ConsoleColor]::Gray
+            [Console]::WriteLine($separator)
+            [Console]::ForegroundColor = [ConsoleColor]::White
+            [Console]::WriteLine($totalText)
+        }
+        finally {
+            [Console]::ForegroundColor = $originalColor
+        }
+        return
+    }
+
+    Write-YafpText -Text $succeededText `
+        -ForegroundColor Green -BackgroundColor $null
+    Write-YafpText -Text $failedText `
+        -ForegroundColor Red -BackgroundColor $null
+    Write-YafpText -Text $separator -ForegroundColor Gray `
+        -BackgroundColor $null
+    Write-YafpText -Text $totalText `
+        -ForegroundColor White -BackgroundColor $null
+}
+
+function Install-YafpExitEvent {
+    if ($script:YafpExitEventRegistered -or
+        $Host.Name -ne 'ConsoleHost' -or
+        [Console]::IsInputRedirected) {
+        return
+    }
+
+    $null = Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
+        if ($global:YAFP_STATS_ON_EXIT -eq 1) {
+            Show-YafpStats -DirectConsole
+        }
+    }
+    $script:YafpExitEventRegistered = $true
+}
+
 function Show-YafpDemo {
     $sleepSecs = 4
     while ($true) {
@@ -847,6 +1066,10 @@ function Show-YafpPromptPreview {
     $promptRan = $script:promptRan
     $previousTimestamp = $script:previous_timestamp
     $previousHistoryCount = $script:prevHistCount
+    $commandsTotal = $script:YafpCommandsTotal
+    $commandsSucceeded = $script:YafpCommandsSucceeded
+    $commandsFailed = $script:YafpCommandsFailed
+    $commandStatsLastHistoryId = $script:YafpCommandStatsLastHistoryId
     $lastExitCodeVariable = Get-Variable LASTEXITCODE -Scope Global `
         -ErrorAction Ignore
     $nativeExitCode = if ($lastExitCodeVariable) {
@@ -866,6 +1089,10 @@ function Show-YafpPromptPreview {
         $script:promptRan = $promptRan
         $script:previous_timestamp = $previousTimestamp
         $script:prevHistCount = $previousHistoryCount
+        $script:YafpCommandsTotal = $commandsTotal
+        $script:YafpCommandsSucceeded = $commandsSucceeded
+        $script:YafpCommandsFailed = $commandsFailed
+        $script:YafpCommandStatsLastHistoryId = $commandStatsLastHistoryId
         if ($lastExitCodeVariable) {
             $global:LASTEXITCODE = $nativeExitCode
         }
@@ -1184,8 +1411,13 @@ function Test-YafpAdministrator {
 Set-Alias -Name yafp-status -Value Show-YafpStatus -Scope Global -Force
 Set-Alias -Name yafp-refresh -Value Invoke-YafpRefresh -Scope Global -Force
 Set-Alias -Name yafp-demo -Value Show-YafpDemo -Scope Global -Force
+Set-Alias -Name yafp-reload -Value Invoke-YafpReload -Scope Global -Force
+Set-Alias -Name yafp-help -Value Show-YafpHelp -Scope Global -Force
+Set-Alias -Name yafp-stats -Value Show-YafpStats -Scope Global -Force
 
 Import-YafpTheme
+$script:YafpLoadedCommit = Get-YafpCurrentCommit
+Install-YafpExitEvent
 
 function prompt {
     $previousSucceeded = $?
@@ -1218,9 +1450,14 @@ function prompt {
         $daySymbol = ''
     }
     $previousCommand = ''
-    if (@(Get-History).Count -gt 0) {
-        $previousCommand = (Get-History)[-1].CommandLine
+    $historyId = 0
+    $lastHistory = Get-History -Count 1 -ErrorAction Ignore
+    if ($lastHistory) {
+        $previousCommand = $lastHistory.CommandLine
+        $historyId = $lastHistory.Id
     }
+    $null = Update-YafpCommandStats -HistoryId $historyId `
+        -WasEmpty $wasEmpty -HadError $status.HadError
     $forceRemoteRefresh = (
         -not $wasEmpty -and
         -not $status.HadError -and
@@ -1299,8 +1536,11 @@ function prompt {
 
     $promptMark = Write-YafpTheme -Context $context
     $script:previous_timestamp = if ($clockEnabled) { $timestamp } else { '' }
-    $global:LASTEXITCODE = $nativeExitCode
 
     $promptEnd = Get-YafpOsc133Sequence -Payload 'B'
-    return "$promptMark $promptEnd"
+    $promptResult = "$promptMark $promptEnd"
+    $null = Invoke-YafpAutoReload -CommandLine $previousCommand `
+        -CommandSucceeded (-not $wasEmpty -and -not $status.HadError)
+    $global:LASTEXITCODE = $nativeExitCode
+    return $promptResult
 }

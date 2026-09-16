@@ -947,7 +947,7 @@ yafp_install_prompt_command() {
     if [ -n "${PROMPT_COMMAND:-}" ] &&
        [ "${PROMPT_COMMAND:-}" != "yafp_prompt_command" ]; then
         YAFP_PREVIOUS_PROMPT_COMMAND="$PROMPT_COMMAND"
-    else
+    elif [ "${PROMPT_COMMAND:-}" != "yafp_prompt_command" ]; then
         YAFP_PREVIOUS_PROMPT_COMMAND=""
     fi
 
@@ -1443,7 +1443,7 @@ yafp_remote_check_start() {
 }
 
 
-yafp_is_git_sync_command() {
+yafp_git_command_action() {
     local command_text="$1"
     local index=0
     local words=()
@@ -1472,6 +1472,7 @@ yafp_is_git_sync_command() {
                 index=$((index + 1))
                 ;;
             push|fetch|pull)
+                printf '%s\n' "${words[$index]}"
                 return 0
                 ;;
             *)
@@ -1481,6 +1482,19 @@ yafp_is_git_sync_command() {
     done
 
     return 1
+}
+
+
+yafp_is_git_sync_command() {
+    yafp_git_command_action "$1" >/dev/null
+}
+
+
+yafp_is_git_pull_command() {
+    local action
+
+    action="$(yafp_git_command_action "$1")" || return 1
+    [ "$action" = "pull" ]
 }
 
 
@@ -1495,6 +1509,54 @@ yafp_should_force_remote_refresh() {
     YAFP_GIT_SYNC_LAST_COMMAND_KEY="$command_key"
 
     [ "$exit_code" -eq 0 ]
+}
+
+
+yafp_current_commit() {
+    git -C "$YAFP_ROOT" rev-parse --verify HEAD 2>/dev/null
+}
+
+
+yafp-reload() {
+    # shellcheck source=/dev/null
+    . "$YAFP_SCRIPT_PATH"
+}
+
+
+yafp_maybe_auto_reload() {
+    local command_text="$1"
+    local exit_code="$2"
+    local current_commit
+
+    [ "${YAFP_AUTO_RELOAD:-1}" = 1 ] || return 1
+    [ "$exit_code" -eq 0 ] || return 1
+    [ -n "${YAFP_LOADED_COMMIT:-}" ] || return 1
+    yafp_is_git_pull_command "$command_text" || return 1
+
+    current_commit="$(yafp_current_commit)" || return 1
+    [ -n "$current_commit" ] || return 1
+    [ "$current_commit" != "$YAFP_LOADED_COMMIT" ] || return 1
+
+    yafp-reload
+}
+
+
+yafp_record_command_stats() {
+    local command_text="$1"
+    local exit_code="$2"
+    local command_key
+
+    [ -n "$command_text" ] || return 1
+    command_key="${HISTCMD:-0}:${command_text}"
+    [ "$command_key" != "${YAFP_COMMAND_STATS_LAST_KEY:-}" ] || return 1
+    YAFP_COMMAND_STATS_LAST_KEY="$command_key"
+
+    YAFP_COMMANDS_TOTAL=$((YAFP_COMMANDS_TOTAL + 1))
+    if [ "$exit_code" -eq 0 ]; then
+        YAFP_COMMANDS_SUCCEEDED=$((YAFP_COMMANDS_SUCCEEDED + 1))
+    else
+        YAFP_COMMANDS_FAILED=$((YAFP_COMMANDS_FAILED + 1))
+    fi
 }
 
 
@@ -1825,6 +1887,106 @@ yafp-refresh() {
     repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || return 0
     branch="$(git symbolic-ref --short HEAD 2>/dev/null)" || return 0
     yafp_remote_context "$repo_root" "$branch" 1
+}
+
+
+yafp-help() {
+    local description
+    local name
+
+    while IFS='|' read -r name description; do
+        yafp_status_start_color YELLOW
+        printf '%s' "$name"
+        yafp_status_reset_color
+        yafp_status_start_color white
+        printf '%s' ' • '
+        yafp_status_reset_color
+        yafp_status_start_color WHITE
+        printf '%s' "$description"
+        yafp_status_reset_color
+        printf '\n'
+    done <<'EOF'
+yafp-status|Show remote status and refresh timer.
+yafp-refresh|Request an immediate remote refresh.
+yafp-reload|Reload YAFP in the current shell.
+yafp-stats|Show command execution statistics.
+yafp-help|Show available YAFP commands.
+EOF
+}
+
+
+yafp-stats() {
+    local count_width=${#YAFP_COMMANDS_TOTAL}
+    local failed_percent=0
+    local separator
+    local separator_width=$((20 + count_width))
+    local succeeded_percent=0
+
+    printf -v separator '%*s' "$separator_width" ''
+    separator=${separator// /━}
+
+    if [ "$YAFP_COMMANDS_TOTAL" -gt 0 ]; then
+        succeeded_percent=$((
+            (YAFP_COMMANDS_SUCCEEDED * 100 + YAFP_COMMANDS_TOTAL / 2) /
+            YAFP_COMMANDS_TOTAL
+        ))
+        failed_percent=$((100 - succeeded_percent))
+    fi
+
+    yafp_status_start_color GREEN
+    printf '✓ %-10s %*d (%03d%%)' 'Succeeded:' "$count_width" \
+        "$YAFP_COMMANDS_SUCCEEDED" "$succeeded_percent"
+    yafp_status_reset_color
+    printf '\n'
+    yafp_status_start_color RED
+    printf '☒ %-10s %*d (%03d%%)' 'Failed:' "$count_width" \
+        "$YAFP_COMMANDS_FAILED" "$failed_percent"
+    yafp_status_reset_color
+    printf '\n'
+    yafp_status_start_color white
+    printf '%s' "$separator"
+    yafp_status_reset_color
+    printf '\n'
+    yafp_status_start_color WHITE
+    printf '∑ %-10s %*d (100%%)' 'Total:' "$count_width" \
+        "$YAFP_COMMANDS_TOTAL"
+    yafp_status_reset_color
+    printf '\n'
+}
+
+
+yafp_exit_trap() {
+    local exit_code=$?
+
+    if [ "${YAFP_STATS_ON_EXIT:-1}" = 1 ]; then
+        yafp-stats
+    fi
+    if [ -n "${YAFP_PREVIOUS_EXIT_TRAP_COMMAND:-}" ]; then
+        eval "$YAFP_PREVIOUS_EXIT_TRAP_COMMAND"
+    fi
+    return "$exit_code"
+}
+
+
+yafp_install_exit_trap() {
+    local current_trap
+    local previous_command
+    local trap_arguments
+
+    [[ $- == *i* ]] || return 0
+    current_trap="$(trap -p EXIT)"
+    case "$current_trap" in
+        *yafp_exit_trap*) return 0 ;;
+    esac
+
+    previous_command=""
+    if [ -n "$current_trap" ]; then
+        trap_arguments="${current_trap#trap -- }"
+        eval "set -- $trap_arguments"
+        previous_command="${1:-}"
+    fi
+    YAFP_PREVIOUS_EXIT_TRAP_COMMAND="$previous_command"
+    trap 'yafp_exit_trap' EXIT
 }
 
 
@@ -2169,6 +2331,7 @@ yafp_prompt_preview() {
 yafp_prompt_command() {
     local last_exit=$? # Capture the exit code at the very beginning
     YAFP_PROMPT_RENDERING=1
+    yafp_record_command_stats "${this_command:-}" "$last_exit" || true
     yafp_now_ms t_all_begin
 
     yaft_general_context "$last_exit"
@@ -2208,6 +2371,7 @@ yafp_prompt_command() {
         PS1=$ps1
     fi
     #yafp_validate_ps1_strict $PS1
+    yafp_maybe_auto_reload "${this_command:-}" "$last_exit" || true
     YAFP_PROMPT_RENDERING=0
 }
 
@@ -2215,6 +2379,8 @@ yafp_prompt_command() {
 SCRIPT_DIR=$(
     cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd
 )
+YAFP_ROOT="$SCRIPT_DIR"
+YAFP_SCRIPT_PATH="${SCRIPT_DIR}/yafp-ps1.bash"
 
 cfg="${SCRIPT_DIR}/yafp-cfg.bash"
 
@@ -2231,8 +2397,15 @@ YAFP_REMOTE_CHECK_INTERVAL=${YAFP_REMOTE_CHECK_INTERVAL:-300}
 YAFP_REMOTE_COUNTDOWN_STYLE=${YAFP_REMOTE_COUNTDOWN_STYLE:-numeric}
 YAFP_STATUS_PROGRESS_STYLE=${YAFP_STATUS_PROGRESS_STYLE:-blocks}
 YAFP_DARKC=${YAFP_DARKC:-1}
+YAFP_AUTO_RELOAD=${YAFP_AUTO_RELOAD:-1}
+YAFP_STATS_ON_EXIT=${YAFP_STATS_ON_EXIT:-1}
+YAFP_COMMANDS_TOTAL=${YAFP_COMMANDS_TOTAL:-0}
+YAFP_COMMANDS_SUCCEEDED=${YAFP_COMMANDS_SUCCEEDED:-0}
+YAFP_COMMANDS_FAILED=${YAFP_COMMANDS_FAILED:-0}
+YAFP_COMMAND_STATS_LAST_KEY=${YAFP_COMMAND_STATS_LAST_KEY:-}
 YAFP_INITIAL_REMOTE_CHECK_PENDING=${YAFP_INITIAL_REMOTE_CHECK_PENDING:-1}
 yafp_remote_countdown_color_index=${yafp_remote_countdown_color_index:-0}
+YAFP_LOADED_COMMIT="$(yafp_current_commit)" || YAFP_LOADED_COMMIT=""
 
 load_vars
 load_theme || return 1
@@ -2246,5 +2419,6 @@ YAFP_GIT_SYNC_LAST_COMMAND_KEY=""
 
 if [ "${YAFP_NO_INSTALL_HOOKS:-0}" -ne 1 ]; then
     yafp_install_prompt_command
+    yafp_install_exit_trap
     yafp_install_debug_trap
 fi

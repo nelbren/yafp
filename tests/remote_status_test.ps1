@@ -148,6 +148,145 @@ try {
         'yafp-refresh command'
     Assert-Equal Show-YafpDemo (Get-Alias yafp-demo).Definition `
         'yafp-demo command'
+    Assert-Equal Show-YafpHelp (Get-Alias yafp-help).Definition `
+        'yafp-help command'
+    Assert-Equal Show-YafpStats (Get-Alias yafp-stats).Definition `
+        'yafp-stats command'
+    $originalWriteYafpText = (Get-Command Write-YafpText).ScriptBlock
+    $script:helpWrites = [Collections.Generic.List[object]]::new()
+    function Write-YafpText {
+        param(
+            [string]$Text,
+            [string]$ForegroundColor,
+            [AllowNull()][object]$BackgroundColor,
+            [switch]$NoNewline
+        )
+        $script:helpWrites.Add([pscustomobject]@{
+            Text = $Text
+            Color = $ForegroundColor
+            NoNewline = [bool]$NoNewline
+        })
+    }
+    yafp-help
+    $expectedHelpWrites = @(
+        [pscustomobject]@{ Text = 'yafp-status'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'Show remote status and refresh timer.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'yafp-refresh'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'Request an immediate remote refresh.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'yafp-reload'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'Reload YAFP in the current shell.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'yafp-stats'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'Show command execution statistics.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'yafp-help'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'Show available YAFP commands.'; Color = 'White'; NoNewline = $false }
+    )
+    Assert-Equal $expectedHelpWrites.Count $script:helpWrites.Count `
+        'yafp-help colored write count'
+    for ($index = 0; $index -lt $expectedHelpWrites.Count; $index++) {
+        Assert-Equal $expectedHelpWrites[$index].Text `
+            $script:helpWrites[$index].Text "yafp-help text $index"
+        Assert-Equal $expectedHelpWrites[$index].Color `
+            $script:helpWrites[$index].Color "yafp-help color $index"
+        Assert-Equal $expectedHelpWrites[$index].NoNewline `
+            $script:helpWrites[$index].NoNewline "yafp-help newline $index"
+    }
+    Set-Item -LiteralPath Function:Write-YafpText `
+        -Value $originalWriteYafpText
+
+    $savedCommandsTotal = $script:YafpCommandsTotal
+    $savedCommandsSucceeded = $script:YafpCommandsSucceeded
+    $savedCommandsFailed = $script:YafpCommandsFailed
+    $savedStatsHistoryId = $script:YafpCommandStatsLastHistoryId
+    $script:YafpCommandsTotal = 0
+    $script:YafpCommandsSucceeded = 0
+    $script:YafpCommandsFailed = 0
+    $script:YafpCommandStatsLastHistoryId = 100
+    Assert-Equal $true (Update-YafpCommandStats -HistoryId 101 `
+        -WasEmpty $false -HadError $false) 'successful command counted'
+    Assert-Equal $false (Update-YafpCommandStats -HistoryId 101 `
+        -WasEmpty $false -HadError $false) 'duplicate command ignored'
+    Assert-Equal $true (Update-YafpCommandStats -HistoryId 102 `
+        -WasEmpty $false -HadError $true) 'failed command counted'
+    Assert-Equal $false (Update-YafpCommandStats -HistoryId 103 `
+        -WasEmpty $true -HadError $false) 'empty input ignored'
+    Assert-Equal 2 $script:YafpCommandsTotal 'command total count'
+    Assert-Equal 1 $script:YafpCommandsSucceeded 'successful command count'
+    Assert-Equal 1 $script:YafpCommandsFailed 'failed command count'
+
+    $script:statsWrites = [Collections.Generic.List[object]]::new()
+    function Write-YafpText {
+        param(
+            [string]$Text,
+            [string]$ForegroundColor,
+            [AllowNull()][object]$BackgroundColor,
+            [switch]$NoNewline
+        )
+        $script:statsWrites.Add([pscustomobject]@{
+            Text = $Text
+            Color = $ForegroundColor
+        })
+    }
+    yafp-stats
+    $expectedStatsWrites = @(
+        [pscustomobject]@{ Text = '✓ Succeeded: 1 (050%)'; Color = 'Green' }
+        [pscustomobject]@{ Text = '☒ Failed:    1 (050%)'; Color = 'Red' }
+        [pscustomobject]@{ Text = ('━' * 21); Color = 'Gray' }
+        [pscustomobject]@{ Text = '∑ Total:     2 (100%)'; Color = 'White' }
+    )
+    Assert-Equal $expectedStatsWrites.Count $script:statsWrites.Count `
+        'yafp-stats colored write count'
+    for ($index = 0; $index -lt $expectedStatsWrites.Count; $index++) {
+        Assert-Equal $expectedStatsWrites[$index].Text `
+            $script:statsWrites[$index].Text "yafp-stats text $index"
+        Assert-Equal $expectedStatsWrites[$index].Color `
+            $script:statsWrites[$index].Color "yafp-stats color $index"
+    }
+    $script:YafpCommandsTotal = 0
+    $script:YafpCommandsSucceeded = 0
+    $script:YafpCommandsFailed = 0
+    $script:statsWrites.Clear()
+    yafp-stats
+    Assert-Equal '✓ Succeeded: 0 (000%)' $script:statsWrites[0].Text `
+        'empty succeeded percentage'
+    Assert-Equal '☒ Failed:    0 (000%)' $script:statsWrites[1].Text `
+        'empty failed percentage'
+    Assert-Equal '∑ Total:     0 (100%)' $script:statsWrites[3].Text `
+        'empty total percentage'
+    $script:YafpCommandsTotal = 13
+    $script:YafpCommandsSucceeded = 11
+    $script:YafpCommandsFailed = 2
+    $script:statsWrites.Clear()
+    yafp-stats
+    Assert-Equal '✓ Succeeded: 11 (085%)' $script:statsWrites[0].Text `
+        'aligned succeeded count'
+    Assert-Equal '☒ Failed:     2 (015%)' $script:statsWrites[1].Text `
+        'aligned failed count'
+    Assert-Equal ('━' * 22) $script:statsWrites[2].Text `
+        'expanded statistics separator'
+    Assert-Equal '∑ Total:     13 (100%)' $script:statsWrites[3].Text `
+        'aligned total count'
+    Set-Item -LiteralPath Function:Write-YafpText `
+        -Value $originalWriteYafpText
+    $script:YafpCommandsTotal = $savedCommandsTotal
+    $script:YafpCommandsSucceeded = $savedCommandsSucceeded
+    $script:YafpCommandsFailed = $savedCommandsFailed
+    $script:YafpCommandStatsLastHistoryId = $savedStatsHistoryId
+    $helpDefinition = (Get-Command Show-YafpHelp).Definition
+    foreach ($color in @('Yellow', 'Gray', 'White')) {
+        if ($helpDefinition -notmatch "ForegroundColor $color") {
+            throw "yafp-help does not use $color"
+        }
+    }
+    $exitEventDefinition = (Get-Command Install-YafpExitEvent).Definition
+    if ($exitEventDefinition -notmatch 'PowerShell\.Exiting' -or
+        $exitEventDefinition -notmatch 'Show-YafpStats -DirectConsole') {
+        throw 'PowerShell exit event does not render yafp-stats'
+    }
     if ((Get-Command Show-YafpDemo).Definition -notmatch
         [regex]::Escape('Control+C to break this ♾️  loop 🔁 ($($sleepSecs)s)')) {
         throw 'yafp-demo interruption hint is unavailable'
@@ -304,6 +443,57 @@ try {
         Assert-Equal $commandCase.Expected $detected `
             "sync command: $($commandCase.Command)"
     }
+    Assert-Equal $true `
+        (Test-YafpGitPullCommand -CommandLine 'git pull --ff-only') `
+        'git pull command'
+    Assert-Equal $false `
+        (Test-YafpGitPullCommand -CommandLine 'git fetch origin') `
+        'git fetch is not pull'
+    Assert-Equal Invoke-YafpReload (Get-Alias yafp-reload).Definition `
+        'yafp-reload command'
+
+    $script:YafpCommandsTotal = 7
+    $script:YafpCommandsSucceeded = 5
+    $script:YafpCommandsFailed = 2
+    Invoke-YafpReload
+    Assert-Equal Invoke-YafpReload (Get-Alias yafp-reload).Definition `
+        'yafp-reload command after reload'
+    Assert-Equal Show-YafpHelp (Get-Alias yafp-help).Definition `
+        'yafp-help command after reload'
+    Assert-Equal Show-YafpStats (Get-Alias yafp-stats).Definition `
+        'yafp-stats command after reload'
+    Assert-Equal 7 $script:YafpCommandsTotal 'total preserved after reload'
+    Assert-Equal 5 $script:YafpCommandsSucceeded `
+        'succeeded preserved after reload'
+    Assert-Equal 2 $script:YafpCommandsFailed 'failed preserved after reload'
+    if (-not (Get-Command prompt -CommandType Function -ErrorAction Ignore)) {
+        throw 'prompt function was not retained after reload'
+    }
+
+    $global:YAFP_AUTO_RELOAD = 1
+    $script:YafpLoadedCommit = 'old-commit'
+    $script:YafpReloadCalled = $false
+    function Get-YafpCurrentCommit { return 'new-commit' }
+    function Invoke-YafpReload {
+        $script:YafpReloadCalled = $true
+        $script:YafpLoadedCommit = 'new-commit'
+    }
+    Assert-Equal $true (
+        Invoke-YafpAutoReload -CommandLine 'git pull --ff-only' `
+            -CommandSucceeded $true
+    ) 'changed commit automatic reload'
+    Assert-Equal $true $script:YafpReloadCalled `
+        'automatic reload invocation'
+    Assert-Equal $false (
+        Invoke-YafpAutoReload -CommandLine 'git pull --ff-only' `
+            -CommandSucceeded $true
+    ) 'unchanged commit automatic reload'
+    $global:YAFP_AUTO_RELOAD = 0
+    $script:YafpLoadedCommit = 'old-commit'
+    Assert-Equal $false (
+        Invoke-YafpAutoReload -CommandLine 'git pull' `
+            -CommandSucceeded $true
+    ) 'disabled automatic reload'
 
     $forced = Get-YafpRemoteContext -RepoRoot $local -Branch main `
         -ForceRefresh

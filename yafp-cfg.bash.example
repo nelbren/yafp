@@ -33,6 +33,13 @@ YAFP_STATUS_PROGRESS_STYLE="blocks"
 # Display prompt construction timing; set it to 0 to disable the metrics.
 YAFP_DEVEL=0
 
+# Reload YAFP automatically when a successful git pull changes its commit.
+# The yafp-reload command remains available when this option is disabled.
+YAFP_AUTO_RELOAD=1
+
+# Print per-session command statistics during a normal shell exit.
+YAFP_STATS_ON_EXIT=1
+
 # YAFP_THEME="default"
 # YAFP_THEME="minimal"
 YAFP_THEME="light"
