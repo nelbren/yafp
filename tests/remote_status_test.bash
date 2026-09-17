@@ -227,6 +227,8 @@ YAFP_PREVIOUS_EXIT_TRAP_COMMAND=''
 YAFP_STATS_ON_EXIT=1
 assert_eq "$expected_stats" "$(yafp_exit_trap)" 'exit statistics output'
 set +u
+# Loaded from yafp-ps1.bash above; a later definition is an intentional test double.
+# shellcheck disable=SC2218
 yafp-reload
 set -u
 assert_eq 2 "$YAFP_COMMANDS_TOTAL" 'total preserved after reload'
