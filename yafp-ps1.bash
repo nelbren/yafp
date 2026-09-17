@@ -1982,8 +1982,8 @@ yafp_install_exit_trap() {
     previous_command=""
     if [ -n "$current_trap" ]; then
         trap_arguments="${current_trap#trap -- }"
-        eval "set -- $trap_arguments"
-        previous_command="${1:-}"
+        trap_arguments="${trap_arguments% EXIT}"
+        eval "previous_command=$trap_arguments"
     fi
     YAFP_PREVIOUS_EXIT_TRAP_COMMAND="$previous_command"
     trap 'yafp_exit_trap' EXIT
