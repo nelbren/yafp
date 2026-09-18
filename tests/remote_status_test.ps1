@@ -82,25 +82,66 @@ try {
     $global:YAFP_DARKC = 1
 
     $stagedContext = [pscustomobject]@{
-        Git = [pscustomobject]@{ StagedCount = 4 }
+        Git = [pscustomobject]@{
+            StagedCount = 4
+            RemoteStatus = $null
+        }
     }
-    $stagedWarning = Write-YafpStagedWarning `
-        -Context $stagedContext 6>&1 | Out-String
-    if ($stagedWarning -notmatch
-        '⚠️ COMMIT PENDING: 4 staged files are ready to commit ⚠️') {
-        throw 'staged Git warning was not rendered'
+    $stagedExpansion = Write-YafpStagedExpansion `
+        -Git $stagedContext.Git 6>&1 | Out-String
+    if ($stagedExpansion -notmatch
+        '⎝ COMMIT PENDING: 4 staged files are ready to commit ⎠') {
+        throw 'staged Git expansion was not rendered'
     }
     $stagedContext.Git.StagedCount = 1
-    $stagedWarning = Write-YafpStagedWarning `
-        -Context $stagedContext 6>&1 | Out-String
-    if ($stagedWarning -notmatch
-        '⚠️ COMMIT PENDING: 1 staged file is ready to commit ⚠️') {
-        throw 'singular staged Git warning was not rendered'
+    $stagedExpansion = Write-YafpStagedExpansion `
+        -Git $stagedContext.Git 6>&1 | Out-String
+    if ($stagedExpansion -notmatch
+        '⎝ COMMIT PENDING: 1 staged file is ready to commit ⎠') {
+        throw 'singular staged Git expansion was not rendered'
     }
+    $stagedContext.Git.RemoteStatus = [pscustomobject]@{
+        State = 'ahead'
+        ConnectionAnnouncement = $false
+    }
+    $stagedExpansion = Write-YafpStagedExpansion `
+        -Git $stagedContext.Git 6>&1 | Out-String
+    $twoRowsUp = "$([char]27)[2A"
+    if (-not $stagedExpansion.Contains($twoRowsUp)) {
+        throw 'staged Git expansion did not preserve the remote expansion row'
+    }
+    Assert-Equal 'COMMIT PENDING: 1' (
+        Get-YafpExpansionMessage `
+            -LongMessage 'COMMIT PENDING: 1 staged file is ready to commit' `
+            -ShortMessage 'COMMIT PENDING: 1' -TerminalWidth 21
+    ) 'compact staged Git expansion message'
+    Assert-Equal '' (
+        Get-YafpExpansionMessage `
+            -LongMessage 'COMMIT PENDING: 12 staged files are ready to commit' `
+            -ShortMessage 'COMMIT PENDING: 12' -TerminalWidth 72 `
+            -IndicatorColumn 65 -IndicatorWidth 4
+    ) 'hide staged expansion when the short banner crosses the right edge'
+    Assert-Equal '' (
+        Get-YafpExpansionMessage `
+            -LongMessage 'COMMIT PENDING: 12 staged files are ready to commit' `
+            -ShortMessage 'COMMIT PENDING: 12' -TerminalWidth 15
+    ) 'hide staged expansion when the terminal is narrower than the short banner'
+    Assert-Equal 'COMMIT PENDING: 12' (
+        Get-YafpExpansionMessage `
+            -LongMessage 'COMMIT PENDING: 12 staged files are ready to commit' `
+            -ShortMessage 'COMMIT PENDING: 12' -TerminalWidth 72 `
+            -IndicatorColumn 50 -IndicatorWidth 4
+    ) 'staged expansion accounts for its indicator column'
+    Assert-Equal 'COMMIT PENDING: 12 staged files are ready to commit' (
+        Get-YafpExpansionMessage `
+            -LongMessage 'COMMIT PENDING: 12 staged files are ready to commit' `
+            -ShortMessage 'COMMIT PENDING: 12' -TerminalWidth 72 `
+            -IndicatorColumn 30 -IndicatorWidth 4
+    ) 'staged expansion keeps the long message when centered text fits'
 
     $statusReport = @(Format-YafpRemoteStatusReport -State current `
         -Remaining 175 -Interval 300 -Now 0)
-    Assert-Equal '🌐       Remote: ✓ Up to date' $statusReport[0] `
+    Assert-Equal '🌐︎       Remote: ✓ Up to date' $statusReport[0] `
         'detailed remote state'
     Assert-Equal (
         '🟡        Timer: ████░░░░░░ 42% · 125/300s elapsed · 175s remaining'
@@ -146,12 +187,34 @@ try {
         'yafp-status command'
     Assert-Equal Invoke-YafpRefresh (Get-Alias yafp-refresh).Definition `
         'yafp-refresh command'
+    Assert-Equal Confirm-YafpRemoteAlert (Get-Alias yafp-ack).Definition `
+        'yafp-ack command'
     Assert-Equal Show-YafpDemo (Get-Alias yafp-demo).Definition `
         'yafp-demo command'
     Assert-Equal Show-YafpHelp (Get-Alias yafp-help).Definition `
         'yafp-help command'
     Assert-Equal Show-YafpStats (Get-Alias yafp-stats).Definition `
         'yafp-stats command'
+    $originalGetYafpRemoteContext = `
+        (Get-Command Get-YafpRemoteContext).ScriptBlock
+    function Get-YafpRemoteContext {
+        param(
+            [string]$RepoRoot,
+            [string]$Branch,
+            [switch]$ForceRefresh
+        )
+        return [pscustomobject]@{ State = 'error' }
+    }
+    $script:YafpRemoteOfflineAcknowledged = $false
+    $ackOutput = Confirm-YafpRemoteAlert 6>&1 | Out-String
+    Assert-Equal $true $script:YafpRemoteOfflineAcknowledged `
+        'yafp-ack acknowledges the current offline alert'
+    if ($ackOutput -notmatch 'Offline alert acknowledged\.') {
+        throw 'yafp-ack confirmation was not rendered'
+    }
+    Set-Item -LiteralPath Function:Get-YafpRemoteContext `
+        -Value $originalGetYafpRemoteContext
+    $script:YafpRemoteOfflineAcknowledged = $false
     $originalWriteYafpText = (Get-Command Write-YafpText).ScriptBlock
     $script:helpWrites = [Collections.Generic.List[object]]::new()
     function Write-YafpText {
@@ -175,6 +238,9 @@ try {
         [pscustomobject]@{ Text = 'yafp-refresh'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Request an immediate remote refresh.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'yafp-ack'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'Acknowledge the current offline alert.'; Color = 'White'; NoNewline = $false }
         [pscustomobject]@{ Text = 'yafp-reload'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Reload YAFP in the current shell.'; Color = 'White'; NoNewline = $false }
@@ -460,6 +526,8 @@ try {
         'yafp-reload command after reload'
     Assert-Equal Show-YafpHelp (Get-Alias yafp-help).Definition `
         'yafp-help command after reload'
+    Assert-Equal Confirm-YafpRemoteAlert (Get-Alias yafp-ack).Definition `
+        'yafp-ack command after reload'
     Assert-Equal Show-YafpStats (Get-Alias yafp-stats).Definition `
         'yafp-stats command after reload'
     Assert-Equal 7 $script:YafpCommandsTotal 'total preserved after reload'
@@ -506,12 +574,93 @@ try {
     if ($remote.RefreshIn -le 0) {
         throw 'forced refresh did not reset the countdown'
     }
+    $script:YafpRemoteConnectivityState = 'offline'
+    $script:YafpSessionStartedAt = 0L
+    $remote = Get-YafpRemoteContext -RepoRoot $local -Branch main
+    Assert-Equal $true $remote.ConnectionAnnouncement `
+        'first recovered remote check announces internet connection'
+    $remoteAgain = Get-YafpRemoteContext -RepoRoot $local -Branch main
+    Assert-Equal $false $remoteAgain.ConnectionAnnouncement `
+        'internet connection is announced only once per transition'
+    $script:YafpRemoteConnectivityState = 'offline'
+    $recoveredAgain = Get-YafpRemoteContext -RepoRoot $local -Branch main
+    Assert-Equal $true $recoveredAgain.ConnectionAnnouncement `
+        'a later offline-to-online transition is announced again'
+    $remote = Get-YafpRemoteContext -RepoRoot $local -Branch main
+
+    $connectedStatus = [pscustomobject]@{
+        State = 'current'
+        Ahead = 0
+        Behind = 0
+        Upstream = 'origin/main'
+        CheckedAt = 0L
+        Refreshing = $false
+        RefreshIn = 300L
+        ConnectionAnnouncement = $true
+    }
+    $connectedContext = [pscustomobject]@{
+        Git = [pscustomobject]@{ RemoteStatus = $connectedStatus }
+    }
+    $row = Write-YafpRemoteExpansionRow -Context $connectedContext 6>&1 |
+        Out-String
+    if (-not $row) {
+        throw 'connection announcement row was not reserved'
+    }
+    $expansion = Write-YafpRemoteExpansion -Remote $connectedStatus `
+        -IndicatorText '✓🌐︎' 6>&1 | Out-String
+    if ($expansion -notmatch '⎝ INTERNET CONNECTION ⎠') {
+        throw 'connection announcement was not rendered'
+    }
+    $originalWriteYafpText = (Get-Command Write-YafpText).ScriptBlock
+    $script:connectionWrites = [Collections.Generic.List[object]]::new()
+    function Write-YafpText {
+        param(
+            [string]$Text,
+            [string]$ForegroundColor,
+            [AllowNull()][object]$BackgroundColor,
+            [switch]$NoNewline
+        )
+        $script:connectionWrites.Add([pscustomobject]@{
+            Text = $Text
+            Foreground = $ForegroundColor
+            Background = $BackgroundColor
+        })
+    }
+    $connectedStatus.RefreshIn = $null
+    $null = Write-YafpGitRemoteStatus `
+        -Git $connectedContext.Git 6>&1 | Out-String
+    $transitionIndicator = $script:connectionWrites |
+        Where-Object Text -EQ '✓🌐︎' | Select-Object -Last 1
+    $transitionBanner = $script:connectionWrites |
+        Where-Object Text -EQ '⎝ INTERNET CONNECTION ⎠' |
+        Select-Object -Last 1
+    Assert-Equal White $transitionBanner.Foreground `
+        'connection banner foreground'
+    Assert-Equal DarkGreen $transitionBanner.Background `
+        'connection banner background'
+    Assert-Equal White $transitionIndicator.Foreground `
+        'connection indicator foreground'
+    Assert-Equal DarkGreen $transitionIndicator.Background `
+        'connection indicator background'
+
+    $script:connectionWrites.Clear()
+    $connectedStatus.ConnectionAnnouncement = $false
+    $null = Write-YafpGitRemoteStatus `
+        -Git $connectedContext.Git 6>&1 | Out-String
+    $steadyIndicator = $script:connectionWrites |
+        Where-Object Text -EQ '✓🌐︎' | Select-Object -Last 1
+    Assert-Equal Green $steadyIndicator.Foreground `
+        'steady connection indicator foreground'
+    Assert-Equal $null $steadyIndicator.Background `
+        'steady connection indicator background'
+    Set-Item -LiteralPath Function:Write-YafpText `
+        -Value $originalWriteYafpText
 
     foreach ($indicatorCase in @(
-        @{ State = 'current'; Ahead = 0; Text = '✓' }
+        @{ State = 'current'; Ahead = 0; Text = '✓🌐︎' }
         @{ State = 'ahead'; Ahead = 2; Text = '⇡2' }
         @{ State = 'checking'; Ahead = 0; Text = '…' }
-        @{ State = 'error'; Ahead = 0; Text = '☒🌐' }
+        @{ State = 'error'; Ahead = 0; Text = '☒🌐︎' }
     )) {
         $status = [pscustomobject]@{
             State = $indicatorCase.State
@@ -542,19 +691,69 @@ try {
     $offlineContext = [pscustomobject]@{
         Git = [pscustomobject]@{ RemoteStatus = $offlineStatus }
     }
-    $warning = Write-YafpRemoteWarning -Context $offlineContext 6>&1 |
+    $warning = Write-YafpRemoteExpansionRow -Context $offlineContext 6>&1 |
         Out-String
-    if ($warning -notmatch '☒🌐 NO INTERNET CONNECTION\.') {
-        throw 'offline warning was not rendered'
+    if (-not $warning) {
+        throw 'offline warning row was not reserved'
     }
+    $expansion = Write-YafpRemoteExpansion -Remote $offlineStatus `
+        -IndicatorText '☒🌐︎' 6>&1 | Out-String
+    if ($expansion -notmatch '⎝ NO INTERNET CONNECTION ⎠') {
+        throw 'offline expansion was not rendered'
+    }
+    if ($expansion -notmatch ([regex]::Escape("$([char]27)[s$([char]27)[1A"))) {
+        throw 'offline expansion was not positioned above its indicator'
+    }
+
+    $script:YafpRemoteOfflineAcknowledged = $true
+    $row = Write-YafpRemoteExpansionRow -Context $offlineContext 6>&1 |
+        Out-String
+    Assert-Equal '' $row 'acknowledged offline state reserves no banner row'
+    $expansion = Write-YafpRemoteExpansion -Remote $offlineStatus `
+        -IndicatorText '☒🌐︎' 6>&1 | Out-String
+    Assert-Equal '' $expansion 'acknowledged offline banner is hidden'
+
+    $originalWriteYafpText = (Get-Command Write-YafpText).ScriptBlock
+    $script:ackWrites = [Collections.Generic.List[object]]::new()
+    function Write-YafpText {
+        param(
+            [string]$Text,
+            [string]$ForegroundColor,
+            [AllowNull()][object]$BackgroundColor,
+            [switch]$NoNewline
+        )
+        $script:ackWrites.Add([pscustomobject]@{
+            Text = $Text
+            Foreground = $ForegroundColor
+            Background = $BackgroundColor
+        })
+    }
+    $offlineStatus.RefreshIn = $null
+    $null = Write-YafpGitRemoteStatus -Git $offlineContext.Git 6>&1 |
+        Out-String
+    $ackIndicator = $script:ackWrites |
+        Where-Object Text -EQ '☒🌐︎' | Select-Object -Last 1
+    Assert-Equal Red $ackIndicator.Foreground `
+        'acknowledged offline indicator foreground'
+    Assert-Equal $null $ackIndicator.Background `
+        'acknowledged offline indicator background'
+    Set-Item -LiteralPath Function:Write-YafpText `
+        -Value $originalWriteYafpText
+    $script:YafpRemoteOfflineAcknowledged = $false
 
     $context = [pscustomobject]@{
         Git = [pscustomobject]@{ RemoteStatus = $remote }
     }
-    $warning = Write-YafpRemoteWarning -Context $context 6>&1 | Out-String
-    if ($warning -notmatch 'OUTDATED REPOSITORY' -or
-        $warning -notmatch '1 commit is missing from origin/main') {
-        throw 'behind warning was not rendered'
+    $warning = Write-YafpRemoteExpansionRow -Context $context 6>&1 |
+        Out-String
+    if (-not $warning) {
+        throw 'behind warning row was not reserved'
+    }
+    $expansion = Write-YafpRemoteExpansion -Remote $remote `
+        -IndicatorText '⇣1' 6>&1 | Out-String
+    if ($expansion -notmatch '⎝ OUTDATED REPOSITORY' -or
+        $expansion -notmatch '1 commit is missing from origin/main ⎠') {
+        throw 'behind expansion was not rendered'
     }
 
     $aheadStatus = [pscustomobject]@{
@@ -569,14 +768,52 @@ try {
     $aheadContext = [pscustomobject]@{
         Git = [pscustomobject]@{ RemoteStatus = $aheadStatus }
     }
-    $warning = Write-YafpRemoteWarning -Context $aheadContext 6>&1 |
+    $warning = Write-YafpRemoteExpansionRow -Context $aheadContext 6>&1 |
         Out-String
-    if ($warning -notmatch (
-        '⚠️ REMOTE NOT UPDATED: 2 local commits have not been pushed ' +
-        'to origin/main ⚠️'
-    )) {
-        throw 'ahead warning was not rendered'
+    if (-not $warning) {
+        throw 'ahead warning row was not reserved'
     }
+    $expansion = Write-YafpRemoteExpansion -Remote $aheadStatus `
+        -IndicatorText '⇡2' 6>&1 | Out-String
+    if ($expansion -notmatch (
+        '⎝ REMOTE NOT UPDATED: 2 local commits have not been pushed ' +
+        'to origin/main ⎠'
+    )) {
+        throw 'ahead expansion was not rendered'
+    }
+
+    $divergedStatus = [pscustomobject]@{
+        State = 'diverged'
+        Ahead = 2
+        Behind = 3
+        Upstream = 'origin/main'
+        CheckedAt = 0L
+        Refreshing = $false
+        RefreshIn = 300L
+    }
+    $expansion = Write-YafpRemoteExpansion -Remote $divergedStatus `
+        -IndicatorText '⇡2⇣3' 6>&1 | Out-String
+    if ($expansion -notmatch (
+        '⎝ DIVERGED REPOSITORY: local \+2 / remote \+3 relative to ' +
+        'origin/main ⎠'
+    )) {
+        throw 'diverged expansion was not rendered'
+    }
+    Assert-Equal 'PUSH PENDING: 2' (
+        Get-YafpExpansionMessage `
+            -LongMessage 'REMOTE NOT UPDATED: 2 local commits have not been pushed to origin/main' `
+            -ShortMessage 'PUSH PENDING: 2' -TerminalWidth 20
+    ) 'compact ahead expansion message'
+    Assert-Equal 'PULL PENDING: 1' (
+        Get-YafpExpansionMessage `
+            -LongMessage 'OUTDATED REPOSITORY: 1 commit is missing from origin/main' `
+            -ShortMessage 'PULL PENDING: 1' -TerminalWidth 20
+    ) 'compact behind expansion message'
+    Assert-Equal 'DIVERGED: ⇡2 ⇣3' (
+        Get-YafpExpansionMessage `
+            -LongMessage 'DIVERGED REPOSITORY: local +2 / remote +3 relative to origin/main' `
+            -ShortMessage 'DIVERGED: ⇡2 ⇣3' -TerminalWidth 20
+    ) 'compact diverged expansion message'
 
     & git -C $local config user.name 'YAFP Test'
     & git -C $local config user.email 'yafp@example.invalid'

@@ -61,6 +61,19 @@ if (-not (Get-Variable YAFP_AUTO_RELOAD -Scope Global -ErrorAction Ignore)) {
 if (-not (Get-Variable YAFP_STATS_ON_EXIT -Scope Global -ErrorAction Ignore)) {
     $global:YAFP_STATS_ON_EXIT = 1
 }
+if (-not (Get-Variable YafpSessionStartedAt -Scope Script `
+        -ErrorAction Ignore)) {
+    $script:YafpSessionStartedAt = `
+        [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+}
+if (-not (Get-Variable YafpRemoteConnectivityState -Scope Script `
+        -ErrorAction Ignore)) {
+    $script:YafpRemoteConnectivityState = 'unknown'
+}
+if (-not (Get-Variable YafpRemoteOfflineAcknowledged -Scope Script `
+        -ErrorAction Ignore)) {
+    $script:YafpRemoteOfflineAcknowledged = $false
+}
 
 function Write-YafpText {
     param(
@@ -707,6 +720,24 @@ function Get-YafpRemoteContext {
         $remoteContext.RefreshIn = 0L
     }
 
+    $announceConnection = $false
+    if ($remoteContext -and $remoteContext.State -eq 'error') {
+        $script:YafpRemoteConnectivityState = 'offline'
+    }
+    elseif ($remoteContext -and
+        -not $remoteContext.Refreshing -and
+        $remoteContext.CheckedAt -ge $script:YafpSessionStartedAt -and
+        $remoteContext.State -in @('current', 'ahead', 'behind', 'diverged')) {
+        $announceConnection = `
+            $script:YafpRemoteConnectivityState -ne 'online'
+        $script:YafpRemoteConnectivityState = 'online'
+        $script:YafpRemoteOfflineAcknowledged = $false
+    }
+    if ($remoteContext) {
+        $remoteContext | Add-Member -NotePropertyName ConnectionAnnouncement `
+            -NotePropertyValue $announceConnection -Force
+    }
+
     return $remoteContext
 }
 
@@ -723,7 +754,7 @@ function Format-YafpRemoteStateLabel {
         'behind' { "⇣$Behind Behind" }
         'diverged' { "⇡$Ahead⇣$Behind Diverged" }
         'checking' { '… Checking' }
-        'error' { '☒🌐 No internet connection' }
+        'error' { '☒🌐︎ No internet connection' }
         default { '— unavailable' }
     }
 }
@@ -793,7 +824,7 @@ function Format-YafpRemoteStatusReport {
         $stateLabel = "⟳ Refreshing · last: $stateLabel"
     }
     $lines = [Collections.Generic.List[string]]::new()
-    $lines.Add("🌐       Remote: $stateLabel")
+    $lines.Add("🌐︎       Remote: $stateLabel")
 
     $remainingSeconds = 0L
     if ($Interval -le 0 -or $null -eq $Remaining -or
@@ -872,7 +903,7 @@ function Write-YafpStatusReport {
     $stateColor = Get-YafpRemoteStateColor -State $State `
         -Refreshing $Refreshing
 
-    Write-Host '🌐       Remote: ' -NoNewline
+    Write-Host '🌐︎       Remote: ' -NoNewline
     if ($stateColor) {
         Write-Host $stateLabel -ForegroundColor $stateColor
     }
@@ -965,10 +996,34 @@ function Invoke-YafpRefresh {
         -ForceRefresh
 }
 
+function Confirm-YafpRemoteAlert {
+    if (-not (Get-Command git -ErrorAction Ignore)) {
+        Write-Host 'No offline alert to acknowledge.'
+        return
+    }
+
+    $top = git rev-parse --show-toplevel 2>$null
+    $branch = git symbolic-ref --short HEAD 2>$null
+    if (-not $top -or -not $branch) {
+        Write-Host 'No offline alert to acknowledge.'
+        return
+    }
+
+    $remote = Get-YafpRemoteContext -RepoRoot "$top" -Branch "$branch"
+    if (-not $remote -or $remote.State -ne 'error') {
+        Write-Host 'No offline alert to acknowledge.'
+        return
+    }
+
+    $script:YafpRemoteOfflineAcknowledged = $true
+    Write-Host 'Offline alert acknowledged.'
+}
+
 function Show-YafpHelp {
     foreach ($entry in @(
         @{ Name = 'yafp-status'; Description = 'Show remote status and refresh timer.' }
         @{ Name = 'yafp-refresh'; Description = 'Request an immediate remote refresh.' }
+        @{ Name = 'yafp-ack'; Description = 'Acknowledge the current offline alert.' }
         @{ Name = 'yafp-reload'; Description = 'Reload YAFP in the current shell.' }
         @{ Name = 'yafp-stats'; Description = 'Show command execution statistics.' }
         @{ Name = 'yafp-help'; Description = 'Show available YAFP commands.' }
@@ -1109,6 +1164,19 @@ function Write-YafpGitRemoteStatus {
     if (-not $remote) {
         return
     }
+    $announceConnection = $remote.PSObject.Properties[
+        'ConnectionAnnouncement'
+    ] -and $remote.ConnectionAnnouncement
+
+    $text = switch ($remote.State) {
+        'current' { '✓🌐︎' }
+        'ahead' { "⇡$($remote.Ahead)" }
+        'behind' { "⇣$($remote.Behind)" }
+        'diverged' { "⇡$($remote.Ahead)⇣$($remote.Behind)" }
+        'checking' { '…' }
+        'error' { '☒🌐︎' }
+        default { '' }
+    }
 
     Write-Host ' ' -NoNewline
 
@@ -1129,27 +1197,31 @@ function Write-YafpGitRemoteStatus {
             -BackgroundColor $warningStyle.Background -NoNewline
     }
 
-    $text = switch ($remote.State) {
-        'current' { '✓' }
-        'ahead' { "⇡$($remote.Ahead)" }
-        'behind' { "⇣$($remote.Behind)" }
-        'diverged' { "⇡$($remote.Ahead)⇣$($remote.Behind)" }
-        'checking' { '…' }
-        'error' { '☒🌐' }
-        default { '' }
-    }
     if (-not $text) {
         return
     }
 
+    Write-YafpRemoteExpansion -Remote $remote -IndicatorText $text
+
     if ($remote.State -eq 'current') {
-        Write-YafpText -Text $text -ForegroundColor Green `
-            -BackgroundColor $null -NoNewline
+        if ($announceConnection) {
+            Write-YafpText -Text $text -ForegroundColor White `
+                -BackgroundColor DarkGreen -NoNewline
+        }
+        else {
+            Write-YafpText -Text $text -ForegroundColor Green `
+                -BackgroundColor $null -NoNewline
+        }
     }
     elseif ($remote.State -in @('ahead', 'checking')) {
         $style = Get-YafpSeverityStyle -Severity warning
         Write-YafpText -Text $text -ForegroundColor $style.Foreground `
             -BackgroundColor $style.Background -NoNewline
+    }
+    elseif ($remote.State -eq 'error' -and
+        $script:YafpRemoteOfflineAcknowledged) {
+        Write-YafpText -Text $text -ForegroundColor Red `
+            -BackgroundColor $null -NoNewline
     }
     else {
         $style = Get-YafpSeverityStyle -Severity error
@@ -1197,45 +1269,148 @@ function Get-YafpRemoteCountdownIndicator {
     return @('', '⡀', '⣀', '⣄', '⣤', '⣦', '⣶', '⣷', '⣿')[$level]
 }
 
-function Write-YafpRemoteWarning {
+function Write-YafpRemoteExpansionRow {
     param([Parameter(Mandatory)][object]$Context)
 
     if (-not $Context.Git -or -not $Context.Git.RemoteStatus) {
         return
     }
 
-    $remote = $Context.Git.RemoteStatus
-    $symbol = '🚨'
-    $trailingSymbol = '🚨'
+    if (Test-YafpRemoteExpansion -Remote $Context.Git.RemoteStatus) {
+        Write-Host
+    }
+}
+
+function Test-YafpRemoteExpansion {
+    param([Parameter(Mandatory)][object]$Remote)
+
+    $announceConnection = $Remote.PSObject.Properties[
+        'ConnectionAnnouncement'
+    ] -and $Remote.ConnectionAnnouncement
+    return $announceConnection -or $Remote.State -in @(
+        'ahead', 'behind', 'diverged'
+    ) -or ($Remote.State -eq 'error' -and
+        -not $script:YafpRemoteOfflineAcknowledged)
+}
+
+function Get-YafpExpansionMessage {
+    param(
+        [Parameter(Mandatory)][string]$LongMessage,
+        [Parameter(Mandatory)][string]$ShortMessage,
+        [int]$TerminalWidth = 0,
+        [int]$IndicatorColumn = 0,
+        [int]$IndicatorWidth = 1
+    )
+
+    if ($TerminalWidth -le 0) {
+        $TerminalWidth = 80
+        try {
+            $detectedWidth = $Host.UI.RawUI.WindowSize.Width
+            if ($detectedWidth -gt 0) {
+                $TerminalWidth = $detectedWidth
+            }
+        }
+        catch {
+            $TerminalWidth = 80
+        }
+    }
+
+    foreach ($candidate in @($LongMessage, $ShortMessage)) {
+        $bannerWidth = $candidate.Length + 4
+        $left = [Math]::Max(
+            0,
+            [Math]::Floor(($bannerWidth - $IndicatorWidth) / 2)
+        )
+        $start = [Math]::Max(1, $IndicatorColumn - $left)
+        if (($start + $bannerWidth - 1) -le $TerminalWidth) {
+            return $candidate
+        }
+    }
+    return ''
+}
+
+function Get-YafpCursorColumn {
+    try {
+        return [int]$Host.UI.RawUI.CursorPosition.X + 1
+    }
+    catch {
+        return 0
+    }
+}
+
+function Write-YafpRemoteExpansion {
+    param(
+        [Parameter(Mandatory)][object]$Remote,
+        [Parameter(Mandatory)][string]$IndicatorText
+    )
+
+    $announceConnection = $Remote.PSObject.Properties[
+        'ConnectionAnnouncement'
+    ] -and $Remote.ConnectionAnnouncement
+    $indicatorColumn = Get-YafpCursorColumn
+    $indicatorWidth = if ($Remote.State -eq 'error') {
+        3
+    }
+    else {
+        $IndicatorText.Length
+    }
     $style = Get-YafpSeverityStyle -Severity error
-    if ($remote.State -eq 'ahead') {
-        $unit = if ($remote.Ahead -eq 1) { 'commit' } else { 'commits' }
-        $verb = if ($remote.Ahead -eq 1) { 'has' } else { 'have' }
-        $message = "REMOTE NOT UPDATED: $($remote.Ahead) local $unit $verb not been pushed to $($remote.Upstream)"
-        $symbol = '⚠️'
-        $trailingSymbol = '⚠️'
+    if ($announceConnection) {
+        $message = 'INTERNET CONNECTION'
+        $style = [pscustomobject]@{
+            Foreground = 'White'
+            Background = 'DarkGreen'
+        }
+    }
+    elseif ($Remote.State -eq 'ahead') {
+        $unit = if ($Remote.Ahead -eq 1) { 'commit' } else { 'commits' }
+        $verb = if ($Remote.Ahead -eq 1) { 'has' } else { 'have' }
+        $message = Get-YafpExpansionMessage `
+            -LongMessage "REMOTE NOT UPDATED: $($Remote.Ahead) local $unit $verb not been pushed to $($Remote.Upstream)" `
+            -ShortMessage "PUSH PENDING: $($Remote.Ahead)" `
+            -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
         $style = Get-YafpSeverityStyle -Severity warning
     }
-    elseif ($remote.State -eq 'behind') {
-        $unit = if ($remote.Behind -eq 1) { 'commit' } else { 'commits' }
-        $verb = if ($remote.Behind -eq 1) { 'is missing' } else { 'are missing' }
-        $message = "OUTDATED REPOSITORY: $($remote.Behind) $unit $verb from $($remote.Upstream)"
+    elseif ($Remote.State -eq 'behind') {
+        $unit = if ($Remote.Behind -eq 1) { 'commit' } else { 'commits' }
+        $verb = if ($Remote.Behind -eq 1) { 'is missing' } else { 'are missing' }
+        $message = Get-YafpExpansionMessage `
+            -LongMessage "OUTDATED REPOSITORY: $($Remote.Behind) $unit $verb from $($Remote.Upstream)" `
+            -ShortMessage "PULL PENDING: $($Remote.Behind)" `
+            -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
     }
-    elseif ($remote.State -eq 'diverged') {
-        $message = "DIVERGED REPOSITORY: local +$($remote.Ahead) / remote +$($remote.Behind) relative to $($remote.Upstream)"
+    elseif ($Remote.State -eq 'diverged') {
+        $message = Get-YafpExpansionMessage `
+            -LongMessage "DIVERGED REPOSITORY: local +$($Remote.Ahead) / remote +$($Remote.Behind) relative to $($Remote.Upstream)" `
+            -ShortMessage "DIVERGED: ⇡$($Remote.Ahead) ⇣$($Remote.Behind)" `
+            -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
     }
-    elseif ($remote.State -eq 'error') {
-        $message = 'NO INTERNET CONNECTION.'
-        $symbol = '☒🌐'
-        $trailingSymbol = ''
+    elseif ($Remote.State -eq 'error') {
+        if ($script:YafpRemoteOfflineAcknowledged) {
+            return
+        }
+        $message = 'NO INTERNET CONNECTION'
     }
     else {
         return
     }
 
-    $suffix = if ($trailingSymbol) { " $trailingSymbol" } else { '' }
-    Write-YafpText -Text "$symbol $message$suffix" `
-        -ForegroundColor $style.Foreground -BackgroundColor $style.Background
+    if ([string]::IsNullOrEmpty($message)) { return }
+    $message = Get-YafpExpansionMessage `
+        -LongMessage $message -ShortMessage $message `
+        -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
+    if ([string]::IsNullOrEmpty($message)) { return }
+    $banner = "⎝ $message ⎠"
+    $left = [Math]::Max(
+        0,
+        [Math]::Floor(($banner.Length - $indicatorWidth) / 2)
+    )
+    $escape = [char]27
+    $moveLeft = if ($left -gt 0) { "$escape[$($left)D" } else { '' }
+    Write-Host "$escape[s$escape[1A$moveLeft" -NoNewline
+    Write-YafpText -Text $banner -ForegroundColor $style.Foreground `
+        -BackgroundColor $style.Background -NoNewline
+    Write-Host "$escape[u" -NoNewline
 }
 
 function Get-YafpSeverityStyle {
@@ -1263,20 +1438,49 @@ function Get-YafpCommandErrorStyle {
     }
 }
 
-function Write-YafpStagedWarning {
+function Write-YafpStagedExpansionRow {
     param([Parameter(Mandatory)][object]$Context)
 
-    if (-not $Context.Git -or $Context.Git.StagedCount -le 0) {
+    if ($Context.Git -and $Context.Git.StagedCount -gt 0) {
+        Write-Host
+    }
+}
+
+function Write-YafpStagedExpansion {
+    param([Parameter(Mandatory)][object]$Git)
+
+    if ($Git.StagedCount -le 0) {
         return
     }
 
-    $count = $Context.Git.StagedCount
+    $count = $Git.StagedCount
     $unit = if ($count -eq 1) { 'file' } else { 'files' }
     $verb = if ($count -eq 1) { 'is' } else { 'are' }
     $style = Get-YafpSeverityStyle -Severity warning
-    Write-YafpText `
-        -Text "⚠️ COMMIT PENDING: $count staged $unit $verb ready to commit ⚠️" `
-        -ForegroundColor $style.Foreground -BackgroundColor $style.Background
+    $indicatorColumn = Get-YafpCursorColumn
+    $indicatorWidth = 2 + "$count".Length
+    $message = Get-YafpExpansionMessage `
+        -LongMessage "COMMIT PENDING: $count staged $unit $verb ready to commit" `
+        -ShortMessage "COMMIT PENDING: $count" `
+        -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
+    if ([string]::IsNullOrEmpty($message)) { return }
+    $message = Get-YafpExpansionMessage `
+        -LongMessage $message -ShortMessage $message `
+        -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
+    if ([string]::IsNullOrEmpty($message)) { return }
+    $banner = "⎝ $message ⎠"
+    $left = [Math]::Max(
+        0,
+        [Math]::Floor(($banner.Length - $indicatorWidth) / 2)
+    )
+    $rows = if ($Git.RemoteStatus -and
+        (Test-YafpRemoteExpansion -Remote $Git.RemoteStatus)) { 2 } else { 1 }
+    $escape = [char]27
+    $moveLeft = if ($left -gt 0) { "$escape[$($left)D" } else { '' }
+    Write-Host "$escape[s$escape[$($rows)A$moveLeft" -NoNewline
+    Write-YafpText -Text $banner -ForegroundColor $style.Foreground `
+        -BackgroundColor $style.Background -NoNewline
+    Write-Host "$escape[u" -NoNewline
 }
 
 function Get-YafpGitStatusCounts {
@@ -1410,6 +1614,7 @@ function Test-YafpAdministrator {
 
 Set-Alias -Name yafp-status -Value Show-YafpStatus -Scope Global -Force
 Set-Alias -Name yafp-refresh -Value Invoke-YafpRefresh -Scope Global -Force
+Set-Alias -Name yafp-ack -Value Confirm-YafpRemoteAlert -Scope Global -Force
 Set-Alias -Name yafp-demo -Value Show-YafpDemo -Scope Global -Force
 Set-Alias -Name yafp-reload -Value Invoke-YafpReload -Scope Global -Force
 Set-Alias -Name yafp-help -Value Show-YafpHelp -Scope Global -Force

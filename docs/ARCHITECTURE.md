@@ -86,6 +86,9 @@ foreground:
   chains an earlier `EXIT` trap and PowerShell uses the engine exit event.
 - `yafp-status` reads the same cached context for an exact, on-demand timer
   report, while `yafp-refresh` requests a background refresh without blocking.
+- `yafp-ack` acknowledges the current offline incident for the session. It
+  suppresses the error expansion and changes the compact indicator to intense
+  red on a transparent background until a successful check resets it.
 - The refreshing state remains visible on every render while the background
   worker or its cross-process lock is active.
 - `yafp-demo` repeatedly invokes the cached status view and renders the current
@@ -97,10 +100,42 @@ foreground:
   bar without changing the compact prompt countdown.
 
 Shared states are checking, refreshing, current, ahead, behind, diverged, and
-error. The error state renders `☒🌐` as its compact
-indicator and the `☒🌐 NO INTERNET CONNECTION.` banner in both shells.
-Bash and PowerShell render the compact current-state `✓` in intense green.
-Banners and compact prompt indicators share one severity contract: warnings
+error. The error state renders `☒🌐︎` as its compact
+indicator and the `⎝ NO INTERNET CONNECTION ⎠` expansion in both shells. Remote
+warning and error expansions reserve the row immediately above the prompt,
+save the cursor at the compact indicator, draw the centered message one row up,
+and restore the cursor before rendering the indicator. This keeps alignment
+independent of variable-width prompt prefixes without adding a process to the
+render path.
+The staged-change expansion uses the same cursor-relative mechanism, centered
+above `📦N`. When staged and remote expansions are both active, the renderer
+reserves two rows so the messages do not overwrite each other.
+Detailed staged and remote messages are selected only when their complete
+`⎝ … ⎠` banner fits at the compact indicator's actual column. PowerShell reads
+the host cursor column; Bash measures a marker-only render of the prompt prefix
+with shell built-ins. Both select a compact alternative without adding an
+external process or querying the terminal interactively.
+The Bash measurement strips both Readline nonprinting spans and raw ANSI style
+sequences, including character-set resets emitted by `tput`. Invisible separator
+styles must not contribute to the column or its wrapping calculation.
+Only ANSI stripping runs under the `C` locale: macOS locale collation can reject
+the ASCII regex ranges. Unicode cell measurement retains the caller's locale.
+Both shells check the short alternative too and emit no banner text or cursor
+movement when neither variant fits. Fixed connectivity messages use the same
+check. Compact indicators remain visible; reserved expansion rows may stay empty.
+Bash also reserves a small right-edge margin because browser terminals can
+temporarily report a wider `COLUMNS` value and fonts can disagree on the cell
+width of prompt symbols.
+The first successful remote check and each later offline-to-online transition
+set a one-render announcement. It displays
+`⎝ INTERNET CONNECTION ⎠` with intense white text on a normal green
+background and uses that same transition style for a compact `✓🌐︎`. Later
+renders restore the normal intense-green foreground and transparent background.
+The announcement takes precedence over any repository-state expansion for that
+one prompt. Cached success from before the session does not trigger the initial
+announcement, and reloads preserve the current connectivity state.
+Bash and PowerShell render the compact current-state `✓🌐︎` in intense green.
+Expansions and compact prompt indicators share one severity contract: warnings
 use black text on an intense yellow background, while errors use intense white
 text on a red background. The warning background remains intense for contrast,
 while `YAFP_DARKC` selects the dark or bright red error background. The
@@ -133,7 +168,7 @@ Each implementation must represent, when applicable:
 
 - user, host, and directory;
 - branch and Git changes;
-- staged Git changes and the black-on-intense-yellow commit-pending warning;
+- staged Git changes and the black-on-intense-yellow commit-pending expansion;
 - remote status;
 - virtual environment;
 - previous command status, with command errors rendered in intense red on a
@@ -209,6 +244,6 @@ missing optional analyzer into an error.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-15 17:55:10 🪟 NDEV-DPC-02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-5 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-09-18 00:39:53 🍎 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

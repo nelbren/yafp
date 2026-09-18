@@ -227,28 +227,48 @@ repository prompt. Rendering remains non-blocking.
 The refresh countdown and compact indicator appear immediately to the right
 of the branch symbol and to the left of the branch name:
 
-| Indicator | Color                  | State and meaning                       |
-| --------- | ---------------------- | --------------------------------------- |
-| `(N)`     | Dark gray              | Numeric countdown until next check      |
-| `⣿…⡀`     | Dark gray              | Symbolic countdown until next check     |
-| `✓`       | Intense green          | Current: matches upstream               |
-| `⇡N`      | Black / intense yellow | Ahead: `N` commits ready to push        |
-| `…`       | Black / intense yellow | Checking: first check is running        |
-| `⟳`       | Black / intense yellow | Refreshing cached state                 |
-| `⇣N`      | White / red            | Behind: `N` commits need integration    |
-| `⇡N⇣M`    | White / red            | Diverged: unique commits on both sides  |
-| `☒🌐`     | White / red            | Offline                                 |
+| Indicator | Color                  | State and meaning                      |
+| --------- | ---------------------- | -------------------------------------- |
+| `(N)`     | Dark gray              | Numeric countdown until next check     |
+| `⣿…⡀`     | Dark gray              | Symbolic countdown until next check    |
+| `✓🌐︎`     | Intense green          | Current: matches upstream              |
+| `⇡N`      | Black / intense yellow | Ahead: `N` commits ready to push       |
+| `…`       | Black / intense yellow | Checking: first check is running       |
+| `⟳`       | Black / intense yellow | Refreshing cached state                |
+| `⇣N`      | White / red            | Behind: `N` commits need integration   |
+| `⇡N⇣M`    | White / red            | Diverged: unique commits on both sides |
+| `☒🌐︎`     | White / red            | Offline                                |
 
 The `⟳` indicator can precede the last known state while YAFP refreshes it,
-for example `⟳✓` or `⟳⇣2`. Warning banners and compact indicators use black
-text on an intense yellow background. Error banners and compact indicators use
+for example `⟳✓🌐︎` or `⟳⇣2`. Warning expansions and compact indicators use black
+text on an intense yellow background. Error expansions and compact indicators use
 intense white text on a red background. `YAFP_DARKC` selects the dark or bright
 red background variant without changing that severity contract. When the
 remote check cannot connect, YAFP displays
-`☒🌐 NO INTERNET CONNECTION.`. These banners are cleared immediately when
-the prompt leaves the repository.
+`⎝ NO INTERNET CONNECTION ⎠` centered above the compact `☒🌐︎` indicator. The
+same expansion layout applies to ahead, behind, and diverged messages. It uses
+the indicator's actual cursor position, so changes to the user, host, path,
+repository, or branch do not require estimating their display width. These
+expansions are cleared immediately when the prompt leaves the repository.
+Long remote messages are used only when the complete centered banner fits
+between the terminal edges at the compact indicator's current column. Narrow
+or crowded prompts automatically use `PUSH PENDING: N`, `PULL PENDING: N`, or
+`DIVERGED: ⇡N ⇣M`; all variants retain the centered `⎝ … ⎠` presentation.
+Bash keeps a small right-edge safety margin for terminals that report stale
+columns or render prompt glyphs wider than their Unicode cell estimate.
 
-The offline compact indicator is `☒🌐`.
+After the first fresh successful check, or after connectivity recovers from an
+offline state, YAFP displays
+`⎝ INTERNET CONNECTION ⎠` with intense white text on a normal green
+background above the compact remote indicator. When that indicator is `✓🌐︎`,
+it uses the same transition colors for that prompt. On later prompts, `✓🌐︎`
+returns to intense green text on a transparent background. The connection
+expansion appears once per offline-to-online transition; reloading YAFP does
+not duplicate the current state. If the recovered result is ahead, behind, or
+diverged, the connection expansion takes precedence for one prompt and the
+repository-state expansion returns on the next prompt.
+
+The offline compact indicator is `☒🌐︎`.
 
 The cache tracks both the local commit and the upstream tracking commit. A
 successful push therefore invalidates an outdated `Ahead` result immediately,
@@ -285,12 +305,25 @@ YAFP distinguishes every step between editing and publishing repository work:
 
 When the index contains staged additions, modifications, deletions, renames,
 copies, or type changes, all themes display the `📦N` indicator and this
-warning with matching singular or plural grammar. Both use black text on an
-intense yellow background:
+expansion centered above it with matching singular or plural grammar. Both use
+black text on an intense yellow background:
 
 ```text
-⚠️ COMMIT PENDING: 14 staged files are ready to commit ⚠️
+⎝ COMMIT PENDING: 14 staged files are ready to commit ⎠
 ```
+
+The expansion uses the indicator's actual cursor position and keeps a separate
+row when a remote-status expansion is visible at the same time. If the long
+message cannot remain centered above `📦N` without crossing a terminal edge,
+it becomes `⎝ COMMIT PENDING: N ⎠`.
+Bash excludes both Readline-wrapped and raw terminal color sequences when
+measuring that position, so colored separators cannot make an overflowing
+detailed banner appear to fit.
+ANSI removal uses locale-independent byte matching, while visible text keeps
+Unicode width measurement. This also applies with macOS UTF-8 locales.
+If even the short banner would cross the right edge, YAFP omits the expansion
+and keeps the `📦N` indicator. The same fit check applies to remote banners;
+their compact status indicators remain visible.
 
 #### On-demand remote controls
 
@@ -298,7 +331,7 @@ Use `yafp-status` in Bash or PowerShell to inspect the exact timer independently
 of the configured countdown style:
 
 ```text
-🌐       Remote: ✓ Up to date
+🌐︎       Remote: ✓ Up to date
 🟡        Timer: ████░░░░░░ 42% · 125/300s elapsed · 175s remaining
 🕘 Current time: 14:32:25
 🕒   Next check: 14:35:20
@@ -333,6 +366,13 @@ with the last known state until the worker finishes. Outside a repository or
 without an upstream, `yafp-status` reports that the timer is unavailable and
 `yafp-refresh` exits silently.
 
+While offline, use `yafp-ack` to acknowledge the current connection alert. The
+`⎝ NO INTERNET CONNECTION ⎠` expansion then stays hidden and the compact
+`☒🌐︎` changes to intense red text on a transparent background. A successful
+remote check resets the acknowledgement, so a later offline incident displays
+the expansion again. Outside an offline repository state, `yafp-ack` leaves
+the prompt unchanged.
+
 Use `yafp-reload` to reload the active Bash or PowerShell prompt after changing
 its implementation or personal configuration. YAFP also records the commit
 from which it was loaded. After a successful `git pull`, it checks `HEAD` in
@@ -353,6 +393,7 @@ Use `yafp-help` to list the main YAFP commands with a short description:
 ```text
 yafp-status • Show remote status and refresh timer.
 yafp-refresh • Request an immediate remote refresh.
+yafp-ack • Acknowledge the current offline alert.
 yafp-reload • Reload YAFP in the current shell.
 yafp-stats • Show command execution statistics.
 yafp-help • Show available YAFP commands.
@@ -412,7 +453,7 @@ git clone https://github.com/nelbren/yafp.git
 
 ![screenshot_macOS_Acquire_Local](images/screenshot_macOS_Acquire_Local.png)
 
-### 🌐 Global acquire
+### 🌐︎ Global acquire
 
 #### ⌨ Commands to acquire globally
 
@@ -453,7 +494,7 @@ Both `yafp-cfg.bash` and `yafp-cfg.ps1` are ignored by Git. Their `.example`
 files define the versioned defaults and can be copied again when new options
 are introduced.
 
-### 🌐 Global settings
+### 🌐︎ Global settings
 
 #### ⌨ Commands to configure globally
 
@@ -480,7 +521,7 @@ source ~/yafp/yafp-ps1.bash
 
 ![screenshot_macOS_Preview_Local](images/screenshot_macOS_Preview_Local.png)
 
-### 🌐 Global preview
+### 🌐︎ Global preview
 
 #### ⌨ Commands for global preview
 
@@ -506,7 +547,7 @@ echo source ~/yafp/yafp-ps1.bash >> ~/.bash_profile
 
 ![screenshot_macOS_Install_Local](images/screenshot_macOS_Install_Local.png)
 
-### 🌐 Global install
+### 🌐︎ Global install
 
 #### ⌨ Commands for global installation
 
@@ -700,6 +741,6 @@ overwrite a different existing `prepare-commit-msg` hook.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-15 17:57:37 🪟 NDEV-DPC-02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-5 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-09-18 00:39:53 🍎 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

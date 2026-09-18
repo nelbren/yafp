@@ -26,8 +26,8 @@ function script:Write-YafpTheme {
     if ($Context.Development) {
         Write-YafpDevelopmentMetrics -Development $Context.Development
     }
-    Write-YafpRemoteWarning -Context $Context
-    Write-YafpStagedWarning -Context $Context
+    Write-YafpStagedExpansionRow -Context $Context
+    Write-YafpRemoteExpansionRow -Context $Context
 
     Write-YafpText -Text '🪟 ' -ForegroundColor White `
         -BackgroundColor $null -NoNewline

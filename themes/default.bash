@@ -178,12 +178,13 @@ theme_render_ps1() {
 
     # ps1="${ps1}${cPromptPS1}${promptMark}\[\e[0m$(ps1k)\] "
 
+    theme_prepare_expansion_columns
     main="$(theme_render_main_block)"
     promptMark="$(theme_ps1_prompt_mark)"
 
     [[ "${YAFP_DEVEL:-0}" -eq 1 ]] && ps1+="$(yafp_dev_segment)"
-    ps1+="$(theme_render_remote_warning)"
-    ps1+="$(theme_render_staged_warning)"
+    ps1+="$(theme_reserve_staged_expansion_row)"
+    ps1+="$(theme_reserve_remote_expansion_row)"
     ps1+="${main}"
     ps1+="${promptMark}${cFullResetPS1} "
 

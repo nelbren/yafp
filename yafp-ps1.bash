@@ -100,6 +100,12 @@ YAFP_COLOR_REMOTE_NEUTRAL_FG="BLACK"
 YAFP_COLOR_REMOTE_OK_BG="transparent"
 YAFP_COLOR_REMOTE_OK_FG="GREEN"
 
+YAFP_COLOR_REMOTE_CONNECTION_BG="normal-green"
+YAFP_COLOR_REMOTE_CONNECTION_FG="WHITE"
+
+YAFP_COLOR_REMOTE_ACKNOWLEDGED_BG="transparent"
+YAFP_COLOR_REMOTE_ACKNOWLEDGED_FG="RED"
+
 YAFP_COLOR_REMOTE_PENDING_BG="intense-yellow"
 YAFP_COLOR_REMOTE_PENDING_FG="black"
 
@@ -144,7 +150,6 @@ YAFP_SYMBOL_GIT_CHANGE="±"
 YAFP_SYMBOL_GIT_NEW_EMOJI="🆕"
 YAFP_SYMBOL_GIT_NEW="+"
 YAFP_SYMBOL_GIT_STAGED_EMOJI="📦"
-YAFP_SYMBOL_REMOTE_WARNING="🚨"
 
 
 YAFP_SYMBOL_VENV_EMOJI="🐍"
@@ -266,6 +271,14 @@ theme_build() {
     cRemoteOk="$(theme_color \
         "$YAFP_COLOR_REMOTE_OK_BG" \
         "$YAFP_COLOR_REMOTE_OK_FG")"
+
+    cRemoteConnection="$(theme_color \
+        "$YAFP_COLOR_REMOTE_CONNECTION_BG" \
+        "$YAFP_COLOR_REMOTE_CONNECTION_FG")"
+
+    cRemoteAcknowledged="$(theme_color \
+        "$YAFP_COLOR_REMOTE_ACKNOWLEDGED_BG" \
+        "$YAFP_COLOR_REMOTE_ACKNOWLEDGED_FG")"
 
     cRemoteNeutral="$(theme_color \
         "$YAFP_COLOR_REMOTE_NEUTRAL_BG" \
@@ -414,6 +427,7 @@ theme_render_git_counts() {
     fi
 
     if [ "${yafp_ctx_git_staged:-0}" -gt 0 ]; then
+        theme_render_staged_expansion
         out+="$cGitStagedPS1"
         out+="$YAFP_SYMBOL_GIT_STAGED_EMOJI"
         out+="${yafp_ctx_git_staged}${cNormalPS1}"
@@ -423,36 +437,270 @@ theme_render_git_counts() {
 }
 
 
-theme_render_staged_warning() {
-    local color
+theme_remote_expansion_visible() {
+    if [ "${yafp_ctx_git_remote_connection_announcement:-0}" -eq 1 ]; then
+        return 0
+    fi
+
+    case "${yafp_ctx_git_remote_state:-}" in
+        ahead|behind|diverged) return 0 ;;
+        error)
+            [ "${YAFP_REMOTE_OFFLINE_ACKNOWLEDGED:-0}" -ne 1 ]
+            return
+            ;;
+        *) return 1 ;;
+    esac
+}
+
+
+YAFP_REMOTE_EXPANSION_MARKER="__YAFP_REMOTE_INDICATOR__"
+YAFP_STAGED_EXPANSION_MARKER="__YAFP_STAGED_INDICATOR__"
+
+
+yafp_text_display_width() {
+    local char
+    local code
+    local index
+    local text="$1"
+    local width=0
+
+    for ((index = 0; index < ${#text}; index++)); do
+        char="${text:index:1}"
+        printf -v code '%d' "'$char"
+        if ((
+            (code >= 0x0300 && code <= 0x036f) ||
+            (code >= 0x1ab0 && code <= 0x1aff) ||
+            (code >= 0x1dc0 && code <= 0x1dff) ||
+            (code >= 0x20d0 && code <= 0x20ff) ||
+            code == 0x200d ||
+            (code >= 0xfe00 && code <= 0xfe0f) ||
+            (code >= 0xfe20 && code <= 0xfe2f)
+        )); then
+            continue
+        fi
+        if ((
+            (code >= 0x1100 && code <= 0x115f) ||
+            code == 0x2329 || code == 0x232a ||
+            (code >= 0x2e80 && code <= 0xa4cf) ||
+            (code >= 0xac00 && code <= 0xd7a3) ||
+            (code >= 0xf900 && code <= 0xfaff) ||
+            (code >= 0xfe10 && code <= 0xfe19) ||
+            (code >= 0xfe30 && code <= 0xfe6f) ||
+            (code >= 0xff00 && code <= 0xff60) ||
+            (code >= 0xffe0 && code <= 0xffe6) ||
+            (code >= 0x1f300 && code <= 0x1faff)
+        )); then
+            width=$((width + 2))
+        else
+            width=$((width + 1))
+        fi
+    done
+    yafp_display_width=$width
+}
+
+
+yafp_expansion_terminal_columns() {
+    yafp_expansion_columns="${COLUMNS:-80}"
+    if ! [[ "$yafp_expansion_columns" =~ ^[0-9]+$ ]] ||
+       [ "$yafp_expansion_columns" -le 0 ]; then
+        yafp_expansion_columns=80
+    fi
+}
+
+
+yafp_strip_terminal_styles() {
+    # ANSI grammar is ASCII. Locale collation can make its regex ranges fail
+    # on macOS; keep byte matching confined here so Unicode width stays intact.
+    local LC_ALL=C
+    local terminal_style=$'\033''(\[[0-?]*[ -/]*[@-~]|[()][0-2A-Z])'
+
+    yafp_plain_text="$1"
+    while [[ "$yafp_plain_text" =~ $terminal_style ]]; do
+        yafp_plain_text="${yafp_plain_text/"${BASH_REMATCH[0]}"/}"
+    done
+}
+
+
+yafp_measure_indicator_column() {
+    local marker="$1"
+    local rendered="$2"
+    local prefix
+    local preview_path
+    local rest
+
+    if [[ "$rendered" != *"$marker"* ]]; then
+        yafp_indicator_column=0
+        return
+    fi
+    prefix="${rendered%%"$marker"*}"
+    prefix="${prefix//$YAFP_REMOTE_EXPANSION_MARKER/}"
+    prefix="${prefix//$YAFP_STAGED_EXPANSION_MARKER/}"
+    preview_path="${yafp_ctx_pwd:-}"
+    if [ -n "${HOME:-}" ]; then
+        case "$preview_path" in
+            "$HOME") preview_path='~' ;;
+            "$HOME"/*) preview_path="~${preview_path#"$HOME"}" ;;
+        esac
+    fi
+    prefix=${prefix//\\u/${yafp_ctx_user:-}}
+    prefix=${prefix//\\h/${yafp_ctx_host%%.*}}
+    prefix=${prefix//\\w/$preview_path}
+    prefix=${prefix//\\n/$'\n'}
+    prefix="${prefix##*$'\n'}"
+    while [[ "$prefix" == *'\['*'\]'* ]]; do
+        rest="${prefix#*\\[}"
+        prefix="${prefix%%\\[*}${rest#*\\]}"
+    done
+    # Theme separators also emit raw SGR and character-set reset sequences.
+    # These occupy no cells, even when they are outside Readline wrappers.
+    yafp_strip_terminal_styles "$prefix"
+    yafp_text_display_width "$yafp_plain_text"
+    yafp_expansion_terminal_columns
+    yafp_indicator_column=$((
+        yafp_display_width % yafp_expansion_columns + 1
+    ))
+}
+
+
+theme_prepare_expansion_columns() {
+    local measured
+
+    yafp_ctx_git_remote_indicator_column=0
+    yafp_ctx_git_staged_indicator_column=0
+    if [ "${yafp_ctx_git_staged:-0}" -le 0 ] &&
+       ! theme_remote_expansion_visible; then
+        return 0
+    fi
+    measured="$(YAFP_MEASURE_EXPANSIONS=1 theme_render_main_block)"
+    yafp_measure_indicator_column \
+        "$YAFP_REMOTE_EXPANSION_MARKER" "$measured"
+    yafp_ctx_git_remote_indicator_column=$yafp_indicator_column
+    yafp_measure_indicator_column \
+        "$YAFP_STAGED_EXPANSION_MARKER" "$measured"
+    yafp_ctx_git_staged_indicator_column=$yafp_indicator_column
+}
+
+
+theme_select_expansion_message() {
+    local long_message="$1"
+    local short_message="$2"
+    local indicator_column="${3:-0}"
+    local indicator_width="${4:-1}"
+    local banner_width
+    local end
+    local fit_columns
+    local left
+    local start
+
+    yafp_expansion_terminal_columns
+    fit_columns=$yafp_expansion_columns
+    if [ "$indicator_column" -gt 0 ]; then
+        fit_columns=$((fit_columns - 8))
+        ((fit_columns >= 1)) || fit_columns=1
+    fi
+    yafp_expansion_message=""
+    local candidate
+    for candidate in "$long_message" "$short_message"; do
+        yafp_text_display_width "⎝ ${candidate} ⎠"
+        banner_width=$yafp_display_width
+        left=$(((banner_width - indicator_width) / 2))
+        ((left >= 0)) || left=0
+        start=$((indicator_column - left))
+        ((start >= 1)) || start=1
+        end=$((start + banner_width - 1))
+
+        if [ "$end" -le "$fit_columns" ]; then
+            yafp_expansion_message="$candidate"
+            return 0
+        fi
+    done
+}
+
+
+theme_reserve_staged_expansion_row() {
+    [ "${yafp_ctx_git_staged:-0}" -gt 0 ] && printf '\\n'
+    return 0
+}
+
+
+theme_render_staged_expansion() {
+    local banner
+    local control
     local count="${yafp_ctx_git_staged:-0}"
+    local indicator_width
+    local left
     local reset
+    local rows=1
     local unit="files"
     local verb="are"
 
     [ "$count" -gt 0 ] || return 0
+    if [ "${YAFP_MEASURE_EXPANSIONS:-0}" -eq 1 ]; then
+        printf '%s' "$YAFP_STAGED_EXPANSION_MARKER"
+        return 0
+    fi
     if [ "$count" -eq 1 ]; then
         unit="file"
         verb="is"
     fi
 
-    color="$(ps1_wrap "$cRemotePending")"
-    reset="$(theme_ps1_reset)"
-    printf '%s⚠️ COMMIT PENDING: %s staged %s %s ready to commit ⚠️%s\\n' \
-        "$color" "$count" "$unit" "$verb" "$reset"
+    indicator_width=$((2 + ${#count}))
+    theme_select_expansion_message \
+        "COMMIT PENDING: ${count} staged ${unit} ${verb} ready to commit" \
+        "COMMIT PENDING: ${count}" \
+        "${yafp_ctx_git_staged_indicator_column:-0}" \
+        "$indicator_width"
+    [ -n "$yafp_expansion_message" ] || return 0
+    banner="⎝ ${yafp_expansion_message} ⎠"
+    yafp_text_display_width "$banner"
+    left=$(((yafp_display_width - indicator_width) / 2))
+    [ "$left" -ge 0 ] || left=0
+    theme_remote_expansion_visible && rows=2
+    control=$'\033[s\033['"${rows}"'A'
+    [ "$left" -eq 0 ] || control+=$'\033['"${left}"D
+    reset="$(theme_reset)"
+    printf '%s' \
+        "$(ps1_wrap "${control}${cRemotePending}${banner}${reset}"$'\033[u')"
 }
 
 
-theme_render_remote_warning() {
+theme_reserve_remote_expansion_row() {
+    theme_remote_expansion_visible && printf '\\n'
+    return 0
+}
+
+
+theme_render_remote_expansion() {
+    local banner
     local color
+    local control
+    local indicator_width
+    local left
     local message
     local reset
-    local symbol="$YAFP_SYMBOL_REMOTE_WARNING"
-    local trailing_symbol="$YAFP_SYMBOL_REMOTE_WARNING"
     local unit
     local verb
 
-    case "${yafp_ctx_git_remote_state:-}" in
+    if [ "${YAFP_MEASURE_EXPANSIONS:-0}" -eq 1 ]; then
+        theme_remote_expansion_visible &&
+            printf '%s' "$YAFP_REMOTE_EXPANSION_MARKER"
+        return 0
+    fi
+
+    if [ "${yafp_ctx_git_remote_connection_announcement:-0}" -eq 1 ]; then
+        message="INTERNET CONNECTION"
+        color="$cRemoteConnection"
+        case "${yafp_ctx_git_remote_state:-}" in
+            ahead) indicator_width=$((1 + ${#yafp_ctx_git_ahead})) ;;
+            behind) indicator_width=$((1 + ${#yafp_ctx_git_behind})) ;;
+            diverged)
+                indicator_width=$((2 + ${#yafp_ctx_git_ahead} + ${#yafp_ctx_git_behind}))
+                ;;
+            current) indicator_width=3 ;;
+            *) return 0 ;;
+        esac
+    else
+        case "${yafp_ctx_git_remote_state:-}" in
         ahead)
             unit="commits"
             verb="have"
@@ -460,10 +708,14 @@ theme_render_remote_warning() {
                 unit="commit"
                 verb="has"
             fi
-            message="REMOTE NOT UPDATED: ${yafp_ctx_git_ahead} local ${unit} ${verb} not been pushed to ${yafp_ctx_git_upstream}"
-            color="$(ps1_wrap "$cRemotePending")"
-            symbol="⚠️"
-            trailing_symbol="⚠️"
+            indicator_width=$((1 + ${#yafp_ctx_git_ahead}))
+            theme_select_expansion_message \
+                "REMOTE NOT UPDATED: ${yafp_ctx_git_ahead} local ${unit} ${verb} not been pushed to ${yafp_ctx_git_upstream}" \
+                "PUSH PENDING: ${yafp_ctx_git_ahead}" \
+                "${yafp_ctx_git_remote_indicator_column:-0}" \
+                "$indicator_width"
+            message="$yafp_expansion_message"
+            color="$cRemotePending"
             ;;
         behind)
             unit="commits"
@@ -472,30 +724,48 @@ theme_render_remote_warning() {
                 unit="commit"
                 verb="is missing"
             fi
-            message="OUTDATED REPOSITORY: ${yafp_ctx_git_behind} ${unit} ${verb} from ${yafp_ctx_git_upstream}"
-            color="$(ps1_wrap "$cRemoteProblem")"
+            indicator_width=$((1 + ${#yafp_ctx_git_behind}))
+            theme_select_expansion_message \
+                "OUTDATED REPOSITORY: ${yafp_ctx_git_behind} ${unit} ${verb} from ${yafp_ctx_git_upstream}" \
+                "PULL PENDING: ${yafp_ctx_git_behind}" \
+                "${yafp_ctx_git_remote_indicator_column:-0}" \
+                "$indicator_width"
+            message="$yafp_expansion_message"
+            color="$cRemoteProblem"
             ;;
         diverged)
-            message="DIVERGED REPOSITORY: local +${yafp_ctx_git_ahead} / remote +${yafp_ctx_git_behind} relative to ${yafp_ctx_git_upstream}"
-            color="$(ps1_wrap "$cRemoteProblem")"
+            indicator_width=$((2 + ${#yafp_ctx_git_ahead} + ${#yafp_ctx_git_behind}))
+            theme_select_expansion_message \
+                "DIVERGED REPOSITORY: local +${yafp_ctx_git_ahead} / remote +${yafp_ctx_git_behind} relative to ${yafp_ctx_git_upstream}" \
+                "DIVERGED: ⇡${yafp_ctx_git_ahead} ⇣${yafp_ctx_git_behind}" \
+                "${yafp_ctx_git_remote_indicator_column:-0}" \
+                "$indicator_width"
+            message="$yafp_expansion_message"
+            color="$cRemoteProblem"
             ;;
         error)
-            message="NO INTERNET CONNECTION."
-            color="$(ps1_wrap "$cRemoteProblem")"
-            symbol="☒🌐"
-            trailing_symbol=""
+            [ "${YAFP_REMOTE_OFFLINE_ACKNOWLEDGED:-0}" -eq 0 ] || return 0
+            message="NO INTERNET CONNECTION"
+            color="$cRemoteProblem"
+            indicator_width=3
             ;;
-        *)
-            return 0
-            ;;
-    esac
-
-    reset="$(theme_ps1_reset)"
-    if [ -n "$trailing_symbol" ]; then
-        trailing_symbol=" ${trailing_symbol}"
+        *) return 0 ;;
+        esac
     fi
-    printf '%s%s %s%s%s\\n' \
-        "$color" "$symbol" "$message" "$trailing_symbol" "$reset"
+
+    [ -n "$message" ] || return 0
+    theme_select_expansion_message "$message" "$message" \
+        "${yafp_ctx_git_remote_indicator_column:-0}" "$indicator_width"
+    [ -n "$yafp_expansion_message" ] || return 0
+    banner="⎝ ${message} ⎠"
+    yafp_text_display_width "$banner"
+    left=$(((yafp_display_width - indicator_width) / 2))
+    [ "$left" -ge 0 ] || left=0
+    control=$'\033[s\033[1A'
+    [ "$left" -eq 0 ] || control+=$'\033['"${left}"D
+    reset="$(theme_reset)"
+    printf '%s' \
+        "$(ps1_wrap "${control}${color}${banner}${reset}"$'\033[u')"
 }
 
 
@@ -526,10 +796,16 @@ theme_render_git_remote_status() {
         out+="$(ps1_wrap "$cRemotePending")⟳"
     fi
 
+    out+="$(theme_render_remote_expansion)"
+
     case "${yafp_ctx_git_remote_state:-}" in
         current)
-            color="$cRemoteOk"
-            indicator="✓"
+            if [ "${yafp_ctx_git_remote_connection_announcement:-0}" -eq 1 ]; then
+                color="$cRemoteConnection"
+            else
+                color="$cRemoteOk"
+            fi
+            indicator="✓🌐︎"
             ;;
         ahead)
             color="$cRemotePending"
@@ -548,8 +824,12 @@ theme_render_git_remote_status() {
             indicator="…"
             ;;
         error)
-            color="$cRemoteProblem"
-            indicator="☒🌐"
+            if [ "${YAFP_REMOTE_OFFLINE_ACKNOWLEDGED:-0}" -eq 1 ]; then
+                color="$cRemoteAcknowledged"
+            else
+                color="$cRemoteProblem"
+            fi
+            indicator="☒🌐︎"
             ;;
         *)
             printf '%s' "$out"
@@ -1037,6 +1317,7 @@ yafp_theme_background_color() {
 
     case "$color" in
         transparent) printf '%s' "$color"; return ;;
+        normal-green) printf '%s' 'green'; return ;;
         intense-yellow) printf '%s' 'YELLOW'; return ;;
         black|BLACK) color=black ;;
         red|RED) color=red ;;
@@ -1591,6 +1872,7 @@ yafp_remote_context() {
     yafp_ctx_git_upstream=""
     yafp_ctx_git_remote_refreshing=0
     yafp_ctx_git_remote_refresh_in=""
+    yafp_ctx_git_remote_connection_announcement=0
 
     [[ "$interval" =~ ^[0-9]+$ ]] && [ "$interval" -gt 0 ] || return 0
     [ -n "$branch" ] && [ "$branch" != "unnamed" ] || return 0
@@ -1661,6 +1943,23 @@ yafp_remote_context() {
         yafp_ctx_git_remote_refreshing=1
         yafp_ctx_git_remote_refresh_in=0
     fi
+
+    case "$yafp_ctx_git_remote_state" in
+        error)
+            YAFP_REMOTE_CONNECTIVITY_STATE=offline
+            ;;
+        current|ahead|behind|diverged)
+            YAFP_REMOTE_OFFLINE_ACKNOWLEDGED=0
+            if [ "$valid_cache" -eq 1 ] &&
+               [ "$yafp_ctx_git_remote_refreshing" -eq 0 ] &&
+               [ "$checked_at" -ge "${YAFP_SESSION_STARTED_AT:-0}" ]; then
+                if [ "${YAFP_REMOTE_CONNECTIVITY_STATE:-unknown}" != online ]; then
+                    yafp_ctx_git_remote_connection_announcement=1
+                fi
+                YAFP_REMOTE_CONNECTIVITY_STATE=online
+            fi
+            ;;
+    esac
 }
 
 
@@ -1675,7 +1974,7 @@ yafp_remote_state_label() {
         behind) printf '⇣%s Behind' "$behind" ;;
         diverged) printf '⇡%s⇣%s Diverged' "$ahead" "$behind" ;;
         checking) printf '%s' '… Checking' ;;
-        error) printf '%s' '☒🌐 No internet connection' ;;
+        error) printf '%s' '☒🌐︎ No internet connection' ;;
         *) printf '%s' '— unavailable' ;;
     esac
 }
@@ -1785,7 +2084,7 @@ yafp_remote_status_report() {
         state_label="⟳ Refreshing · last: ${state_label}"
     fi
     state_tone="$(yafp_remote_state_tone "$state" "$refreshing")"
-    printf '%s' '🌐       Remote: '
+    printf '%s' '🌐︎       Remote: '
     yafp_status_start_color "$state_tone"
     printf '%s' "$state_label"
     yafp_status_reset_color
@@ -1890,6 +2189,32 @@ yafp-refresh() {
 }
 
 
+yafp-ack() {
+    local branch
+    local repo_root
+
+    command -v git >/dev/null 2>&1 || {
+        printf '%s\n' 'No offline alert to acknowledge.'
+        return 0
+    }
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || repo_root=""
+    branch="$(git symbolic-ref --short HEAD 2>/dev/null)" || branch=""
+    if [ -z "$repo_root" ] || [ -z "$branch" ]; then
+        printf '%s\n' 'No offline alert to acknowledge.'
+        return 0
+    fi
+
+    yafp_remote_context "$repo_root" "$branch"
+    if [ "${yafp_ctx_git_remote_state:-}" != error ]; then
+        printf '%s\n' 'No offline alert to acknowledge.'
+        return 0
+    fi
+
+    YAFP_REMOTE_OFFLINE_ACKNOWLEDGED=1
+    printf '%s\n' 'Offline alert acknowledged.'
+}
+
+
 yafp-help() {
     local description
     local name
@@ -1908,6 +2233,7 @@ yafp-help() {
     done <<'EOF'
 yafp-status|Show remote status and refresh timer.
 yafp-refresh|Request an immediate remote refresh.
+yafp-ack|Acknowledge the current offline alert.
 yafp-reload|Reload YAFP in the current shell.
 yafp-stats|Show command execution statistics.
 yafp-help|Show available YAFP commands.
@@ -2061,6 +2387,7 @@ yafp_git_context() {
     yafp_ctx_git_upstream=""
     yafp_ctx_git_remote_refreshing=0
     yafp_ctx_git_remote_refresh_in=""
+    yafp_ctx_git_remote_connection_announcement=0
 
     yafp_now_ms t_git_begin
     if [ "${YAFP_REPOS:-0}" -eq 0 ]; then
@@ -2404,6 +2731,9 @@ YAFP_COMMANDS_SUCCEEDED=${YAFP_COMMANDS_SUCCEEDED:-0}
 YAFP_COMMANDS_FAILED=${YAFP_COMMANDS_FAILED:-0}
 YAFP_COMMAND_STATS_LAST_KEY=${YAFP_COMMAND_STATS_LAST_KEY:-}
 YAFP_INITIAL_REMOTE_CHECK_PENDING=${YAFP_INITIAL_REMOTE_CHECK_PENDING:-1}
+YAFP_SESSION_STARTED_AT=${YAFP_SESSION_STARTED_AT:-$(date +%s)}
+YAFP_REMOTE_CONNECTIVITY_STATE=${YAFP_REMOTE_CONNECTIVITY_STATE:-unknown}
+YAFP_REMOTE_OFFLINE_ACKNOWLEDGED=${YAFP_REMOTE_OFFLINE_ACKNOWLEDGED:-0}
 yafp_remote_countdown_color_index=${yafp_remote_countdown_color_index:-0}
 YAFP_LOADED_COMMIT="$(yafp_current_commit)" || YAFP_LOADED_COMMIT=""
 
