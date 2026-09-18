@@ -109,6 +109,7 @@ bash tests/osc133_test.bash 2>&1 | colorize_quality_output
 bash tests/theme_loading_test.bash 2>&1 | colorize_quality_output
 bash tests/remote_status_test.bash 2>&1 | colorize_quality_output
 bash tests/origin_device_hook_test.bash 2>&1 | colorize_quality_output
+bash tests/psscriptanalyzer_setup_test.bash 2>&1 | colorize_quality_output
 
 if command -v shellcheck >/dev/null 2>&1; then
     while IFS= read -r -d '' file; do

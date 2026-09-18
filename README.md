@@ -659,6 +659,32 @@ On Windows, install ShellCheck, PSScriptAnalyzer, and markdownlint with:
 pwsh -NoProfile -File scripts/windows/setup/quality.ps1
 ```
 
+To install only PSScriptAnalyzer on Linux or macOS, with PowerShell 7.2.11 or
+later (`pwsh`) already on `PATH`, run:
+
+```bash
+bash scripts/unix/setup/psscriptanalyzer.bash
+```
+
+On Windows, use the standalone PowerShell installer:
+
+```powershell
+pwsh -NoProfile -File scripts/windows/setup/psscriptanalyzer.ps1
+```
+
+Both entry points install PSScriptAnalyzer `1.25.0` from PSGallery for the
+current user, reuse that version if it is already installed, and verify that
+the module imports and exposes `Invoke-ScriptAnalyzer`. They do not require
+administrator privileges or change the repository trust policy. Preview the
+installation without downloading or importing modules with `--dry-run` on
+Unix or `-DryRun` on Windows. PowerShell itself is a prerequisite and is not
+installed by these scripts.
+
+The Windows quality installer calls this same module installer. The Unix
+quality installer continues to install ShellCheck and markdownlint; use the
+standalone command above when PowerShell analysis is also needed. Installing
+the analyzer on Unix does not enable tests that require Windows APIs.
+
 The Windows setup prefers Scoop, then WinGet, then Chocolatey. ShellCheck is
 included so the Bash validation can also run from Git Bash. Preview the
 installation commands without changing the system with `--dry-run` on Unix or
@@ -741,6 +767,6 @@ overwrite a different existing `prepare-commit-msg` hook.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-18 00:39:53 🍎 |
+📆 2026-09-18 01:19:49 🍎 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

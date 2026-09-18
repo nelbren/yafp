@@ -438,11 +438,20 @@ try {
     Assert-Equal "$(& git -C $local rev-parse origin/main)" $cacheFields[7] `
         'cached upstream object ID'
 
-    $gitContext = [pscustomobject]@{ RemoteStatus = $remote }
-    $indicator = Write-YafpGitRemoteStatus -Git $gitContext 6>&1 |
-        Out-String
-    if ($indicator -notmatch '\(\d+\)\s+⇣1') {
-        throw 'behind indicator was not rendered'
+    $gitContext = [pscustomobject]@{ RemoteStatus = $remote.PSObject.Copy() }
+    foreach ($announceConnection in @($true, $false)) {
+        $gitContext.RemoteStatus.ConnectionAnnouncement = $announceConnection
+        $indicator = Write-YafpGitRemoteStatus -Git $gitContext 6>&1 |
+            Out-String
+        # Banner text and cursor movement are emitted between these fields.
+        # Their visual adjacency is not adjacency in the information stream.
+        $countdownPattern = [regex]::Escape("($($remote.RefreshIn))")
+        if ($indicator -notmatch "^\s*$countdownPattern\s") {
+            throw 'behind countdown was not rendered'
+        }
+        if ($indicator -notmatch '⇣1\s*$') {
+            throw 'behind indicator was not rendered'
+        }
     }
 
     $lockDir = "$cacheFile.lock"

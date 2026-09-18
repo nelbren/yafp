@@ -72,6 +72,7 @@ try {
     Write-QualityLine "ok - parsed $($files.Count) PowerShell files"
 
     foreach ($test in @(
+        'tests/psscriptanalyzer_setup_test.ps1'
         'tests/powershell_status_test.ps1'
         'tests/powershell_devel_test.ps1'
         'tests/powershell_theme_loading_test.ps1'

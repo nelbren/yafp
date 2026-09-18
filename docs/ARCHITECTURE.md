@@ -213,6 +213,15 @@ pwsh -NoProfile -File scripts/windows/setup/quality.ps1
 Both installers support a non-mutating setup-plan mode through `--dry-run` on
 Unix and `-DryRun` on Windows.
 
+The standalone `scripts/windows/setup/psscriptanalyzer.ps1` installer shares
+its cross-platform module installation logic with the Windows quality setup
+and `scripts/unix/setup/psscriptanalyzer.bash`. It pins PSScriptAnalyzer to
+`1.25.0` in the current-user scope, reuses an existing matching version, and
+verifies the imported command. PowerShell 7.2.11 or later must already be
+installed. Setup tests mock module installation and the `pwsh` executable to
+cover dry runs, repeated setup, argument forwarding, and failures without
+network access or changes to installed modules.
+
 Inspect the local environment without changing it with:
 
 ```bash
@@ -240,10 +249,16 @@ pwsh -NoProfile -File scripts/windows/quality/check.ps1
 CI runs these same entry points. The `YAFP_REQUIRE_LINTERS=1` variable turns a
 missing optional analyzer into an error.
 
+PowerShell render tests validate the countdown and compact remote indicator
+separately. The captured information stream includes banner text and cursor
+movement between them, even though they appear adjacent on the prompt line.
+The behind-state test covers both the initial connection announcement and the
+subsequent repository-state banner.
+
 ---
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-18 00:39:53 🍎 |
+📆 2026-09-18 01:19:49 🍎 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

@@ -113,33 +113,7 @@ else {
     throw 'npm is unavailable. Restart PowerShell and run this script again.'
 }
 
-$analyzer = Get-Module -ListAvailable -Name PSScriptAnalyzer |
-    Where-Object Version -EQ ([version]'1.25.0')
-if (-not $analyzer) {
-    if ($DryRun) {
-        Write-Output (
-            '  + Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 ' +
-            '-Scope CurrentUser -Force'
-        )
-    }
-    else {
-        $repository = Get-PSRepository -Name PSGallery
-        $originalPolicy = $repository.InstallationPolicy
-        try {
-            if ($originalPolicy -ne 'Trusted') {
-                Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-            }
-            Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 `
-                -Scope CurrentUser -Force
-        }
-        finally {
-            if ($originalPolicy -ne 'Trusted') {
-                Set-PSRepository -Name PSGallery `
-                    -InstallationPolicy $originalPolicy
-            }
-        }
-    }
-}
+& (Join-Path $PSScriptRoot 'psscriptanalyzer.ps1') -DryRun:$DryRun
 
 if (-not $DryRun) {
     foreach ($command in @('shellcheck', 'markdownlint')) {
