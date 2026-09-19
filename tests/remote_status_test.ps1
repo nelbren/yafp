@@ -208,8 +208,8 @@ try {
     $script:YafpRemoteOfflineAcknowledged = $false
     $ackOutput = Confirm-YafpRemoteAlert 6>&1 | Out-String
     Assert-Equal $true $script:YafpRemoteOfflineAcknowledged `
-        'yafp-ack acknowledges the current offline alert'
-    if ($ackOutput -notmatch 'Offline alert acknowledged\.') {
+        'yafp-ack acknowledges the current remote error alert'
+    if ($ackOutput -notmatch 'Remote error alert acknowledged\.') {
         throw 'yafp-ack confirmation was not rendered'
     }
     Set-Item -LiteralPath Function:Get-YafpRemoteContext `
@@ -240,7 +240,7 @@ try {
         [pscustomobject]@{ Text = 'Request an immediate remote refresh.'; Color = 'White'; NoNewline = $false }
         [pscustomobject]@{ Text = 'yafp-ack'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
-        [pscustomobject]@{ Text = 'Acknowledge the current offline alert.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'Acknowledge the current remote error alert.'; Color = 'White'; NoNewline = $false }
         [pscustomobject]@{ Text = 'yafp-reload'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Reload YAFP in the current shell.'; Color = 'White'; NoNewline = $false }
@@ -707,7 +707,7 @@ try {
     }
     $expansion = Write-YafpRemoteExpansion -Remote $offlineStatus `
         -IndicatorText '☒🌐︎' 6>&1 | Out-String
-    if ($expansion -notmatch '⎝ NO INTERNET CONNECTION ⎠') {
+    if ($expansion -notmatch '⎝ REMOTE CHECK FAILED ⎠') {
         throw 'offline expansion was not rendered'
     }
     if ($expansion -notmatch ([regex]::Escape("$([char]27)[s$([char]27)[1A"))) {
@@ -847,6 +847,30 @@ try {
         Out-String
     if ($indicator -notmatch '⇡1⇣1') {
         throw 'diverged indicator was not rendered'
+    }
+
+    # A missing local remote must not be diagnosed as an internet outage.
+    & git -C $local remote set-url origin (Join-Path $testRoot 'missing.git')
+    Push-Location $local
+    try {
+        Invoke-YafpRefresh
+        $job = $script:YafpRemoteJobs[$cacheFile]
+        $null = Wait-Job -Job $job -Timeout 30
+        Assert-Equal Completed $job.State 'failed refresh job completed'
+        $remote = Get-YafpRemoteContext -RepoRoot $local -Branch main
+        Assert-Equal error $remote.State 'invalid remote is a check error'
+
+        & git -C $local remote set-url origin $origin
+        Invoke-YafpRefresh
+        $job = $script:YafpRemoteJobs[$cacheFile]
+        $null = Wait-Job -Job $job -Timeout 30
+        Assert-Equal Completed $job.State 'recovery refresh job completed'
+        $remote = Get-YafpRemoteContext -RepoRoot $local -Branch main
+        Assert-Equal diverged $remote.State `
+            'manual refresh replaces a fresh error cache after recovery'
+    }
+    finally {
+        Pop-Location
     }
 
     $global:YAFP_REMOTE_CHECK_INTERVAL = 0

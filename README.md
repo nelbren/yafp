@@ -237,15 +237,15 @@ of the branch symbol and to the left of the branch name:
 | `⟳`       | Black / intense yellow | Refreshing cached state                |
 | `⇣N`      | White / red            | Behind: `N` commits need integration   |
 | `⇡N⇣M`    | White / red            | Diverged: unique commits on both sides |
-| `☒🌐︎`     | White / red            | Offline                                |
+| `☒🌐︎`     | White / red            | Remote check failed                    |
 
 The `⟳` indicator can precede the last known state while YAFP refreshes it,
 for example `⟳✓🌐︎` or `⟳⇣2`. Warning expansions and compact indicators use black
 text on an intense yellow background. Error expansions and compact indicators use
 intense white text on a red background. `YAFP_DARKC` selects the dark or bright
 red background variant without changing that severity contract. When the
-remote check cannot connect, YAFP displays
-`⎝ NO INTERNET CONNECTION ⎠` centered above the compact `☒🌐︎` indicator. The
+remote check fails, YAFP displays
+`⎝ REMOTE CHECK FAILED ⎠` centered above the compact `☒🌐︎` indicator. The
 same expansion layout applies to ahead, behind, and diverged messages. It uses
 the indicator's actual cursor position, so changes to the user, host, path,
 repository, or branch do not require estimating their display width. These
@@ -277,7 +277,7 @@ finished.
 
 The detailed `yafp-status` report uses the same severity colors: current is
 intense green; ahead, checking, and refreshing are intense yellow; and behind,
-diverged, and connection errors are intense red.
+diverged, and remote-check errors are intense red.
 
 For example, ` (250) ⇡1 master` means that the local branch is one commit
 ahead and the next remote check will run in 250 seconds. When the countdown
@@ -338,8 +338,9 @@ of the configured countdown style:
 ```
 
 The remote state text is intense green when up to date and intense red when
-offline. The timer bar and metrics use green with `🟢` when at least 66% of the
-interval remains, yellow with `🟡` when at least 33% remains, and red with `🔴`
+a remote check fails. The timer bar and metrics use green with `🟢` when at
+least 66% of the interval remains, yellow with `🟡` when at least 33% remains,
+and red with `🔴`
 below 33%. The current time uses intense white, and the next-check time uses
 intense yellow.
 
@@ -366,11 +367,21 @@ with the last known state until the worker finishes. Outside a repository or
 without an upstream, `yafp-status` reports that the timer is unavailable and
 `yafp-refresh` exits silently.
 
-While offline, use `yafp-ack` to acknowledge the current connection alert. The
-`⎝ NO INTERNET CONNECTION ⎠` expansion then stays hidden and the compact
+YAFP checks the configured Git remote, not general internet connectivity.
+Authentication, permissions, an invalid remote, DNS, or a restricted execution
+environment can all make `git fetch` fail while other internet access works.
+The `REMOTE CHECK FAILED` banner reflects that uncertainty, including for
+previously cached errors. To see Git's diagnostic, run `git fetch` in your
+terminal; after resolving the cause, run `yafp-refresh` and render another
+prompt once the background check finishes. A successful check replaces the
+error even before its cache interval expires. Checks from restricted shells
+can write failures into the same repository cache used by your terminal.
+
+After a remote check fails, use `yafp-ack` to acknowledge the current alert. The
+`⎝ REMOTE CHECK FAILED ⎠` expansion then stays hidden and the compact
 `☒🌐︎` changes to intense red text on a transparent background. A successful
-remote check resets the acknowledgement, so a later offline incident displays
-the expansion again. Outside an offline repository state, `yafp-ack` leaves
+remote check resets the acknowledgement, so a later remote-check failure displays
+the expansion again. Outside a remote error state, `yafp-ack` leaves
 the prompt unchanged.
 
 Use `yafp-reload` to reload the active Bash or PowerShell prompt after changing
@@ -393,7 +404,7 @@ Use `yafp-help` to list the main YAFP commands with a short description:
 ```text
 yafp-status • Show remote status and refresh timer.
 yafp-refresh • Request an immediate remote refresh.
-yafp-ack • Acknowledge the current offline alert.
+yafp-ack • Acknowledge the current remote error alert.
 yafp-reload • Reload YAFP in the current shell.
 yafp-stats • Show command execution statistics.
 yafp-help • Show available YAFP commands.
@@ -767,6 +778,6 @@ overwrite a different existing `prepare-commit-msg` hook.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-18 01:19:49 🍎 |
+📆 2026-09-18 16:39:40 🍎 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

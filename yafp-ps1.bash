@@ -745,7 +745,7 @@ theme_render_remote_expansion() {
             ;;
         error)
             [ "${YAFP_REMOTE_OFFLINE_ACKNOWLEDGED:-0}" -eq 0 ] || return 0
-            message="NO INTERNET CONNECTION"
+            message="REMOTE CHECK FAILED"
             color="$cRemoteProblem"
             indicator_width=3
             ;;
@@ -1974,7 +1974,7 @@ yafp_remote_state_label() {
         behind) printf '⇣%s Behind' "$behind" ;;
         diverged) printf '⇡%s⇣%s Diverged' "$ahead" "$behind" ;;
         checking) printf '%s' '… Checking' ;;
-        error) printf '%s' '☒🌐︎ No internet connection' ;;
+        error) printf '%s' '☒🌐︎ Remote check failed' ;;
         *) printf '%s' '— unavailable' ;;
     esac
 }
@@ -2194,24 +2194,24 @@ yafp-ack() {
     local repo_root
 
     command -v git >/dev/null 2>&1 || {
-        printf '%s\n' 'No offline alert to acknowledge.'
+        printf '%s\n' 'No remote error alert to acknowledge.'
         return 0
     }
     repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || repo_root=""
     branch="$(git symbolic-ref --short HEAD 2>/dev/null)" || branch=""
     if [ -z "$repo_root" ] || [ -z "$branch" ]; then
-        printf '%s\n' 'No offline alert to acknowledge.'
+        printf '%s\n' 'No remote error alert to acknowledge.'
         return 0
     fi
 
     yafp_remote_context "$repo_root" "$branch"
     if [ "${yafp_ctx_git_remote_state:-}" != error ]; then
-        printf '%s\n' 'No offline alert to acknowledge.'
+        printf '%s\n' 'No remote error alert to acknowledge.'
         return 0
     fi
 
     YAFP_REMOTE_OFFLINE_ACKNOWLEDGED=1
-    printf '%s\n' 'Offline alert acknowledged.'
+    printf '%s\n' 'Remote error alert acknowledged.'
 }
 
 
@@ -2233,7 +2233,7 @@ yafp-help() {
     done <<'EOF'
 yafp-status|Show remote status and refresh timer.
 yafp-refresh|Request an immediate remote refresh.
-yafp-ack|Acknowledge the current offline alert.
+yafp-ack|Acknowledge the current remote error alert.
 yafp-reload|Reload YAFP in the current shell.
 yafp-stats|Show command execution statistics.
 yafp-help|Show available YAFP commands.

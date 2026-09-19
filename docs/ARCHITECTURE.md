@@ -86,7 +86,7 @@ foreground:
   chains an earlier `EXIT` trap and PowerShell uses the engine exit event.
 - `yafp-status` reads the same cached context for an exact, on-demand timer
   report, while `yafp-refresh` requests a background refresh without blocking.
-- `yafp-ack` acknowledges the current offline incident for the session. It
+- `yafp-ack` acknowledges the current remote-check failure for the session. It
   suppresses the error expansion and changes the compact indicator to intense
   red on a transparent background until a successful check resets it.
 - The refreshing state remains visible on every render while the background
@@ -101,8 +101,13 @@ foreground:
 
 Shared states are checking, refreshing, current, ahead, behind, diverged, and
 error. The error state renders `☒🌐︎` as its compact
-indicator and the `⎝ NO INTERNET CONNECTION ⎠` expansion in both shells. Remote
-warning and error expansions reserve the row immediately above the prompt,
+indicator and the `⎝ REMOTE CHECK FAILED ⎠` expansion in both shells. This
+state covers fetch and reference-comparison failures; it does not establish
+that the internet is unavailable. Cache files are shared by shells using the
+same Git directory, including restricted processes. A manual refresh bypasses
+the cache interval and replaces the error after a successful worker completes.
+Remote warning and error expansions reserve the row immediately above the
+prompt,
 save the cursor at the compact indicator, draw the centered message one row up,
 and restore the cursor before rendering the indicator. This keeps alignment
 independent of variable-width prompt prefixes without adding a process to the
@@ -259,6 +264,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-18 01:19:49 🍎 |
+📆 2026-09-18 16:39:40 🍎 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

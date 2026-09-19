@@ -265,7 +265,7 @@ declare -F yafp-stats >/dev/null || fail 'yafp-stats command is unavailable'
 expected_help="$(printf '%s\n' \
     'yafp-status • Show remote status and refresh timer.' \
     'yafp-refresh • Request an immediate remote refresh.' \
-    'yafp-ack • Acknowledge the current offline alert.' \
+    'yafp-ack • Acknowledge the current remote error alert.' \
     'yafp-reload • Reload YAFP in the current shell.' \
     'yafp-stats • Show command execution statistics.' \
     'yafp-help • Show available YAFP commands.')"
@@ -279,8 +279,8 @@ yafp_remote_context() {
 YAFP_REMOTE_OFFLINE_ACKNOWLEDGED=0
 yafp-ack > "$TEST_ROOT/yafp-ack-output"
 assert_eq 1 "$YAFP_REMOTE_OFFLINE_ACKNOWLEDGED" \
-    'yafp-ack acknowledges the current offline alert'
-assert_eq 'Offline alert acknowledged.' \
+    'yafp-ack acknowledges the current remote error alert'
+assert_eq 'Remote error alert acknowledged.' \
     "$(< "$TEST_ROOT/yafp-ack-output")" 'yafp-ack confirmation'
 eval "$original_remote_context"
 
@@ -724,11 +724,11 @@ case "$warning" in
 esac
 assert_eq '\n' "${warning: -2}" 'offline warning line break'
 case "$indicator" in
-    *'⎝ NO INTERNET CONNECTION ⎠'*'☒🌐︎'*) ;;
+    *'⎝ REMOTE CHECK FAILED ⎠'*'☒🌐︎'*) ;;
     *) fail 'offline expansion was not rendered' ;;
 esac
 case "$indicator" in
-    *$'\033[s\033[1A\033['*D*'⎝ NO INTERNET CONNECTION ⎠'*$'\033[u'*) ;;
+    *$'\033[s\033[1A\033['*D*'⎝ REMOTE CHECK FAILED ⎠'*$'\033[u'*) ;;
     *) fail 'offline expansion was not centered above its indicator' ;;
 esac
 
@@ -739,7 +739,7 @@ indicator="$(theme_render_git_remote_status)"
 set -u
 assert_eq '' "$warning" 'acknowledged offline state reserves no banner row'
 case "$indicator" in
-    *'⎝ NO INTERNET CONNECTION ⎠'*)
+    *'⎝ REMOTE CHECK FAILED ⎠'*)
         fail 'acknowledged offline banner was still rendered'
         ;;
     *"$(ps1_wrap "$cRemoteAcknowledged")"'☒🌐︎'*) ;;
@@ -804,6 +804,31 @@ case "$indicator" in
     *'⇡1⇣1'*) ;;
     *) fail 'diverged indicator was not rendered' ;;
 esac
+
+# A local configuration failure is not evidence of an internet outage.
+# Exercise the public refresh command and recovery with an unexpired cache.
+git -C "$TEST_ROOT/local" remote set-url origin "$TEST_ROOT/missing.git"
+cd "$TEST_ROOT/local"
+yafp-refresh
+for _ in {1..100}; do
+    [ ! -d "${cache_file}.lock" ] && break
+    sleep 0.05
+done
+[ ! -d "${cache_file}.lock" ] || fail 'failed refresh did not finish'
+yafp_remote_context "$TEST_ROOT/local" main
+assert_eq error "$yafp_ctx_git_remote_state" 'invalid remote is a check error'
+assert_eq '☒🌐︎ Remote check failed' "$(yafp_remote_state_label error 0 0)" \
+    'fetch failure does not diagnose internet connectivity'
+git -C "$TEST_ROOT/local" remote set-url origin "$TEST_ROOT/origin.git"
+yafp-refresh
+for _ in {1..100}; do
+    [ ! -d "${cache_file}.lock" ] && break
+    sleep 0.05
+done
+[ ! -d "${cache_file}.lock" ] || fail 'recovery refresh did not finish'
+yafp_remote_context "$TEST_ROOT/local" main
+assert_eq diverged "$yafp_ctx_git_remote_state" \
+    'manual refresh replaces a fresh error cache after recovery'
 
 YAFP_REMOTE_COUNTDOWN_STYLE=symbols
 yafp_remote_countdown_color_index=0

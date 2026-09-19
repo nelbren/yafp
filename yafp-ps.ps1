@@ -754,7 +754,7 @@ function Format-YafpRemoteStateLabel {
         'behind' { "⇣$Behind Behind" }
         'diverged' { "⇡$Ahead⇣$Behind Diverged" }
         'checking' { '… Checking' }
-        'error' { '☒🌐︎ No internet connection' }
+        'error' { '☒🌐︎ Remote check failed' }
         default { '— unavailable' }
     }
 }
@@ -998,32 +998,32 @@ function Invoke-YafpRefresh {
 
 function Confirm-YafpRemoteAlert {
     if (-not (Get-Command git -ErrorAction Ignore)) {
-        Write-Host 'No offline alert to acknowledge.'
+        Write-Host 'No remote error alert to acknowledge.'
         return
     }
 
     $top = git rev-parse --show-toplevel 2>$null
     $branch = git symbolic-ref --short HEAD 2>$null
     if (-not $top -or -not $branch) {
-        Write-Host 'No offline alert to acknowledge.'
+        Write-Host 'No remote error alert to acknowledge.'
         return
     }
 
     $remote = Get-YafpRemoteContext -RepoRoot "$top" -Branch "$branch"
     if (-not $remote -or $remote.State -ne 'error') {
-        Write-Host 'No offline alert to acknowledge.'
+        Write-Host 'No remote error alert to acknowledge.'
         return
     }
 
     $script:YafpRemoteOfflineAcknowledged = $true
-    Write-Host 'Offline alert acknowledged.'
+    Write-Host 'Remote error alert acknowledged.'
 }
 
 function Show-YafpHelp {
     foreach ($entry in @(
         @{ Name = 'yafp-status'; Description = 'Show remote status and refresh timer.' }
         @{ Name = 'yafp-refresh'; Description = 'Request an immediate remote refresh.' }
-        @{ Name = 'yafp-ack'; Description = 'Acknowledge the current offline alert.' }
+        @{ Name = 'yafp-ack'; Description = 'Acknowledge the current remote error alert.' }
         @{ Name = 'yafp-reload'; Description = 'Reload YAFP in the current shell.' }
         @{ Name = 'yafp-stats'; Description = 'Show command execution statistics.' }
         @{ Name = 'yafp-help'; Description = 'Show available YAFP commands.' }
@@ -1389,7 +1389,7 @@ function Write-YafpRemoteExpansion {
         if ($script:YafpRemoteOfflineAcknowledged) {
             return
         }
-        $message = 'NO INTERNET CONNECTION'
+        $message = 'REMOTE CHECK FAILED'
     }
     else {
         return
