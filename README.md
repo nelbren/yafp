@@ -246,7 +246,10 @@ intense white text on a red background. `YAFP_DARKC` selects the dark or bright
 red background variant without changing that severity contract. When the
 remote check fails, YAFP displays
 `⎝ REMOTE CHECK FAILED ⎠` centered above the compact `☒🌐︎` indicator. The
-same expansion layout applies to ahead, behind, and diverged messages. It uses
+same expansion layout applies to ahead, behind, and diverged messages. All
+expansions, including staged-change messages, use `⎝ MESSAGE ⎠`, with one
+space after `⎝` and before `⎠`. Centering and terminal-edge checks include
+both delimiters and the two inner spaces. The layout uses
 the indicator's actual cursor position, so changes to the user, host, path,
 repository, or branch do not require estimating their display width. These
 expansions are cleared immediately when the prompt leaves the repository.
@@ -730,6 +733,10 @@ Use `--strict` on Unix or `-Strict` on Windows when warnings such as missing
 optional linters should also produce a failing exit code. For an alternate
 configuration file, use `--config PATH` or `-ConfigPath PATH`.
 
+The Unix doctor's summary displays passed checks in intense green, warnings
+in intense yellow, and errors in intense red, including zero counts. It uses
+plain text when output is redirected or `NO_COLOR` is set to a non-empty value.
+
 Run all Bash tests, syntax checks, and installed linters with:
 
 ```bash
@@ -778,6 +785,6 @@ overwrite a different existing `prepare-commit-msg` hook.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-18 16:39:40 🍎 |
+📆 2026-09-20 20:59:04 🍎 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

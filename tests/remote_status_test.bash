@@ -139,9 +139,9 @@ for narrow_column in 65 70; do
     esac
 done
 yafp_ctx_git_staged_indicator_column=0
-COLUMNS=15
+COLUMNS=21
 assert_eq '' "$(theme_render_staged_expansion)" \
-    'staged banner is hidden when narrower than the short text'
+    'staged banner is hidden one column below its minimum width'
 COLUMNS=72
 theme_select_expansion_message \
     'COMMIT PENDING: 12 staged files are ready to commit' \

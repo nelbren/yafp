@@ -112,6 +112,9 @@ save the cursor at the compact indicator, draw the centered message one row up,
 and restore the cursor before rendering the indicator. This keeps alignment
 independent of variable-width prompt prefixes without adding a process to the
 render path.
+Every expansion uses `⎝ MESSAGE ⎠`, with one space after the opening
+delimiter and before the closing delimiter. Width and centering calculations
+include both delimiters and the two inner spaces.
 The staged-change expansion uses the same cursor-relative mechanism, centered
 above `📦N`. When staged and remote expansions are both active, the renderer
 reserves two rows so the messages do not overwrite each other.
@@ -264,6 +267,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-18 16:39:40 🍎 |
+📆 2026-09-20 20:48:32 🍎 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

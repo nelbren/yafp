@@ -124,8 +124,8 @@ try {
     Assert-Equal '' (
         Get-YafpExpansionMessage `
             -LongMessage 'COMMIT PENDING: 12 staged files are ready to commit' `
-            -ShortMessage 'COMMIT PENDING: 12' -TerminalWidth 15
-    ) 'hide staged expansion when the terminal is narrower than the short banner'
+            -ShortMessage 'COMMIT PENDING: 12' -TerminalWidth 21
+    ) 'hide staged expansion one column below the complete banner width'
     Assert-Equal 'COMMIT PENDING: 12' (
         Get-YafpExpansionMessage `
             -LongMessage 'COMMIT PENDING: 12 staged files are ready to commit' `

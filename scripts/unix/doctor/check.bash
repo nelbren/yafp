@@ -338,8 +338,15 @@ check_theme_pairs
 DOCTOR_PREFIX='│   └── '
 check_profile
 
-printf '└── 🩺 Summary: %d passed, %d warning(s), %d error(s)\n' \
-    "$PASS_COUNT" "$WARNING_COUNT" "$ERROR_COUNT"
+printf '└── 🩺 Summary: '
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+    printf '\033[92m%d passed\033[0m, ' "$PASS_COUNT"
+    printf '\033[93m%d warning(s)\033[0m, ' "$WARNING_COUNT"
+    printf '\033[91m%d error(s)\033[0m\n' "$ERROR_COUNT"
+else
+    printf '%d passed, %d warning(s), %d error(s)\n' \
+        "$PASS_COUNT" "$WARNING_COUNT" "$ERROR_COUNT"
+fi
 
 if [ "$ERROR_COUNT" -gt 0 ] || {
     [ "$STRICT" -eq 1 ] && [ "$WARNING_COUNT" -gt 0 ]
