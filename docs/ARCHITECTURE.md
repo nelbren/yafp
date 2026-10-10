@@ -103,7 +103,7 @@ foreground:
 
 Shared states are checking, refreshing, current, ahead, behind, diverged, and
 error. The error state renders `☒🌐︎` as its compact
-indicator and the `( ☒  REMOTE CHECK FAILED )` expansion in both shells. This
+indicator and the `( ☒ REMOTE CHECK FAILED )` expansion in both shells. This
 state covers fetch and reference-comparison failures; it does not establish
 that the internet is unavailable. Cache files are shared by shells using the
 same Git directory, including restricted processes. A manual refresh bypasses
@@ -144,7 +144,7 @@ temporarily report a wider `COLUMNS` value and fonts can disagree on the cell
 width of prompt symbols.
 The first successful remote check and each later offline-to-online transition
 set a one-render announcement. It displays
-`( ✓  INTERNET CONNECTION )` with intense white text on a normal green
+`( ✓ INTERNET CONNECTION )` with intense white text on a normal green
 background and uses that same transition style for a compact `✓🌐︎`. Later
 renders restore the normal intense-green foreground and transparent background.
 The announcement takes precedence over any repository-state expansion for that

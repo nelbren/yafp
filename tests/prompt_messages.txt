@@ -1,10 +1,10 @@
-green|✓  INTERNET CONNECTION
-yellow|⚠  REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/main
-yellow|⚠  PUSH PENDING: 1
-yellow|⚠  COMMIT PENDING: 1 staged file is ready to commit
-yellow|⚠  COMMIT PENDING: 1
-red|☒  OUTDATED REPOSITORY: 1 commit is missing from origin/main
-red|☒  PULL PENDING: 1
-red|☒  DIVERGED REPOSITORY: local +1 / remote +1 relative to origin/main
-red|☒  DIVERGED: ⇡1 ⇣1
-red|☒  REMOTE CHECK FAILED
+green|✓ INTERNET CONNECTION
+yellow|⚠ REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/main
+yellow|⚠ PUSH PENDING: 1
+yellow|⚠ COMMIT PENDING: 1 staged file is ready to commit
+yellow|⚠ COMMIT PENDING: 1
+red|☒ OUTDATED REPOSITORY: 1 commit is missing from origin/main
+red|☒ PULL PENDING: 1
+red|☒ DIVERGED REPOSITORY: local +1 / remote +1 relative to origin/main
+red|☒ DIVERGED: ⇡1 ⇣1
+red|☒ REMOTE CHECK FAILED

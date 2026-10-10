@@ -1033,20 +1033,20 @@ function Confirm-YafpRemoteAlert {
 function Show-YafpMessages {
     foreach ($group in @(
         @{ Foreground = 'White'; Background = 'DarkGreen'; Messages = @(
-            '✓  INTERNET CONNECTION'
+            '✓ INTERNET CONNECTION'
         ) }
         @{ Foreground = 'Black'; Background = 'Yellow'; Messages = @(
-            '⚠  REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/main'
-            '⚠  PUSH PENDING: 1'
-            '⚠  COMMIT PENDING: 1 staged file is ready to commit'
-            '⚠  COMMIT PENDING: 1'
+            '⚠ REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/main'
+            '⚠ PUSH PENDING: 1'
+            '⚠ COMMIT PENDING: 1 staged file is ready to commit'
+            '⚠ COMMIT PENDING: 1'
         ) }
         @{ Foreground = 'White'; Background = (Get-YafpSeverityStyle -Severity error).Background; Messages = @(
-            '☒  OUTDATED REPOSITORY: 1 commit is missing from origin/main'
-            '☒  PULL PENDING: 1'
-            '☒  DIVERGED REPOSITORY: local +1 / remote +1 relative to origin/main'
-            '☒  DIVERGED: ⇡1 ⇣1'
-            '☒  REMOTE CHECK FAILED'
+            '☒ OUTDATED REPOSITORY: 1 commit is missing from origin/main'
+            '☒ PULL PENDING: 1'
+            '☒ DIVERGED REPOSITORY: local +1 / remote +1 relative to origin/main'
+            '☒ DIVERGED: ⇡1 ⇣1'
+            '☒ REMOTE CHECK FAILED'
         ) }
     )) {
         foreach ($message in $group.Messages) {
@@ -1395,7 +1395,7 @@ function Write-YafpRemoteExpansion {
     }
     $style = Get-YafpSeverityStyle -Severity error
     if ($announceConnection) {
-        $message = '✓  INTERNET CONNECTION'
+        $message = '✓ INTERNET CONNECTION'
         $style = [pscustomobject]@{
             Foreground = 'White'
             Background = 'DarkGreen'
@@ -1405,8 +1405,8 @@ function Write-YafpRemoteExpansion {
         $unit = if ($Remote.Ahead -eq 1) { 'commit' } else { 'commits' }
         $verb = if ($Remote.Ahead -eq 1) { 'has' } else { 'have' }
         $message = Get-YafpExpansionMessage `
-            -LongMessage "⚠  REMOTE NOT UPDATED: $($Remote.Ahead) local $unit $verb not been pushed to $($Remote.Upstream)" `
-            -ShortMessage "⚠  PUSH PENDING: $($Remote.Ahead)" `
+            -LongMessage "⚠ REMOTE NOT UPDATED: $($Remote.Ahead) local $unit $verb not been pushed to $($Remote.Upstream)" `
+            -ShortMessage "⚠ PUSH PENDING: $($Remote.Ahead)" `
             -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
         $style = Get-YafpSeverityStyle -Severity warning
     }
@@ -1414,21 +1414,21 @@ function Write-YafpRemoteExpansion {
         $unit = if ($Remote.Behind -eq 1) { 'commit' } else { 'commits' }
         $verb = if ($Remote.Behind -eq 1) { 'is missing' } else { 'are missing' }
         $message = Get-YafpExpansionMessage `
-            -LongMessage "☒  OUTDATED REPOSITORY: $($Remote.Behind) $unit $verb from $($Remote.Upstream)" `
-            -ShortMessage "☒  PULL PENDING: $($Remote.Behind)" `
+            -LongMessage "☒ OUTDATED REPOSITORY: $($Remote.Behind) $unit $verb from $($Remote.Upstream)" `
+            -ShortMessage "☒ PULL PENDING: $($Remote.Behind)" `
             -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
     }
     elseif ($Remote.State -eq 'diverged') {
         $message = Get-YafpExpansionMessage `
-            -LongMessage "☒  DIVERGED REPOSITORY: local +$($Remote.Ahead) / remote +$($Remote.Behind) relative to $($Remote.Upstream)" `
-            -ShortMessage "☒  DIVERGED: ⇡$($Remote.Ahead) ⇣$($Remote.Behind)" `
+            -LongMessage "☒ DIVERGED REPOSITORY: local +$($Remote.Ahead) / remote +$($Remote.Behind) relative to $($Remote.Upstream)" `
+            -ShortMessage "☒ DIVERGED: ⇡$($Remote.Ahead) ⇣$($Remote.Behind)" `
             -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
     }
     elseif ($Remote.State -eq 'error') {
         if ($script:YafpRemoteOfflineAcknowledged) {
             return
         }
-        $message = '☒  REMOTE CHECK FAILED'
+        $message = '☒ REMOTE CHECK FAILED'
     }
     else {
         return
@@ -1499,8 +1499,8 @@ function Write-YafpStagedExpansion {
     $indicatorColumn = Get-YafpCursorColumn
     $indicatorWidth = 2 + "$count".Length
     $message = Get-YafpExpansionMessage `
-        -LongMessage "⚠  COMMIT PENDING: $count staged $unit $verb ready to commit" `
-        -ShortMessage "⚠  COMMIT PENDING: $count" `
+        -LongMessage "⚠ COMMIT PENDING: $count staged $unit $verb ready to commit" `
+        -ShortMessage "⚠ COMMIT PENDING: $count" `
         -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
     if ([string]::IsNullOrEmpty($message)) { return }
     $message = Get-YafpExpansionMessage `

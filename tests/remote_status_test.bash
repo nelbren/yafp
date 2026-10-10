@@ -143,7 +143,7 @@ yafp_ctx_git_change=0
 yafp_ctx_git_new=0
 yafp_ctx_git_staged_indicator_column=$yafp_indicator_column
 case "$(theme_render_staged_expansion)" in
-    *'( ⚠  COMMIT PENDING: 12 )'*) ;;
+    *'( ⚠ COMMIT PENDING: 12 )'*) ;;
     *) fail 'colored prompt selected an overflowing detailed staged banner' ;;
 esac
 yafp_ctx_git_staged_indicator_column=0
@@ -157,26 +157,26 @@ for narrow_column in 65 70; do
     esac
 done
 yafp_ctx_git_staged_indicator_column=0
-COLUMNS=24
+COLUMNS=23
 assert_eq '' "$(theme_render_staged_expansion)" \
     'staged banner is hidden one column below its minimum width'
 COLUMNS=72
 theme_select_expansion_message \
-    '⚠  COMMIT PENDING: 12 staged files are ready to commit' \
-    '⚠  COMMIT PENDING: 12' 50 4
-assert_eq '⚠  COMMIT PENDING: 12' "$yafp_expansion_message" \
+    '⚠ COMMIT PENDING: 12 staged files are ready to commit' \
+    '⚠ COMMIT PENDING: 12' 50 4
+assert_eq '⚠ COMMIT PENDING: 12' "$yafp_expansion_message" \
     'staged expansion accounts for its indicator column'
 theme_select_expansion_message \
-    '⚠  COMMIT PENDING: 12 staged files are ready to commit' \
-    '⚠  COMMIT PENDING: 12' 30 4
-assert_eq '⚠  COMMIT PENDING: 12 staged files are ready to commit' \
+    '⚠ COMMIT PENDING: 12 staged files are ready to commit' \
+    '⚠ COMMIT PENDING: 12' 30 4
+assert_eq '⚠ COMMIT PENDING: 12 staged files are ready to commit' \
     "$yafp_expansion_message" \
     'staged expansion keeps the long message when centered text fits'
 COLUMNS=80
 theme_select_expansion_message \
-    '⚠  COMMIT PENDING: 12 staged files are ready to commit' \
-    '⚠  COMMIT PENDING: 12' 44 4
-assert_eq '⚠  COMMIT PENDING: 12' "$yafp_expansion_message" \
+    '⚠ COMMIT PENDING: 12 staged files are ready to commit' \
+    '⚠ COMMIT PENDING: 12' 44 4
+assert_eq '⚠ COMMIT PENDING: 12' "$yafp_expansion_message" \
     'staged expansion protects against a stale terminal width'
 COLUMNS=200
 
@@ -195,7 +195,7 @@ case "$git_counts" in
     *) fail 'staged Git indicator was not rendered' ;;
 esac
 case "$staged_expansion" in
-    *'( ⚠  COMMIT PENDING: 4 staged files are ready to commit )'*) ;;
+    *'( ⚠ COMMIT PENDING: 4 staged files are ready to commit )'*) ;;
     *) fail 'staged Git expansion was not rendered' ;;
 esac
 case "$git_counts" in
@@ -207,12 +207,12 @@ set +u
 staged_expansion="$(theme_render_staged_expansion)"
 set -u
 case "$staged_expansion" in
-    *'( ⚠  COMMIT PENDING: 1 staged file is ready to commit )'*) ;;
+    *'( ⚠ COMMIT PENDING: 1 staged file is ready to commit )'*) ;;
     *) fail 'singular staged Git expansion was not rendered' ;;
 esac
-COLUMNS=24
+COLUMNS=23
 case "$(theme_render_staged_expansion)" in
-    *'( ⚠  COMMIT PENDING: 1 )'*) ;;
+    *'( ⚠ COMMIT PENDING: 1 )'*) ;;
     *) fail 'compact staged Git expansion was not rendered' ;;
 esac
 COLUMNS=200
@@ -688,11 +688,11 @@ indicator="$(theme_render_git_remote_status)"
 set -u
 assert_eq '\n' "$warning" 'connection announcement row'
 case "$indicator" in
-    *'( ✓  INTERNET CONNECTION )'*'✓🌐︎'*) ;;
+    *'( ✓ INTERNET CONNECTION )'*'✓🌐︎'*) ;;
     *) fail 'connection announcement was not rendered' ;;
 esac
 case "$indicator" in
-    *"$cRemoteConnection"'( ✓  INTERNET CONNECTION )'*"$(ps1_wrap "$cRemoteConnection")"'✓🌐︎'*) ;;
+    *"$cRemoteConnection"'( ✓ INTERNET CONNECTION )'*"$(ps1_wrap "$cRemoteConnection")"'✓🌐︎'*) ;;
     *) fail 'connection transition is not intense white on normal green' ;;
 esac
 yafp_ctx_git_remote_connection_announcement=0
@@ -731,7 +731,7 @@ case "$warning" in
 esac
 assert_eq '\n' "${warning: -2}" 'ahead warning line break'
 case "$indicator" in
-    *'( ⚠  REMOTE NOT UPDATED: 2 local commits have not been pushed to origin/main )'*) ;;
+    *'( ⚠ REMOTE NOT UPDATED: 2 local commits have not been pushed to origin/main )'*) ;;
     *) fail 'ahead expansion was not rendered' ;;
 esac
 for ahead_count in 1 2; do
@@ -740,14 +740,14 @@ for ahead_count in 1 2; do
     [ "$ahead_count" -ne 1 ] || ahead_unit='commit has'
     expansion="$(theme_render_remote_expansion)"
     case "$expansion" in
-        *"${cRemotePending}( ⚠  REMOTE NOT UPDATED: ${ahead_count} local ${ahead_unit} not been pushed to origin/main )$(theme_reset)"*) ;;
+        *"${cRemotePending}( ⚠ REMOTE NOT UPDATED: ${ahead_count} local ${ahead_unit} not been pushed to origin/main )$(theme_reset)"*) ;;
         *) fail 'ahead banner must start at its delimiter with exactly one inner space' ;;
     esac
 done
 yafp_ctx_git_ahead=2
 COLUMNS=22
 case "$(theme_render_git_remote_status)" in
-    *'( ⚠  PUSH PENDING: 2 )'*) ;;
+    *'( ⚠ PUSH PENDING: 2 )'*) ;;
     *) fail 'compact ahead expansion was not rendered' ;;
 esac
 COLUMNS=200
@@ -767,11 +767,11 @@ case "$warning" in
 esac
 assert_eq '\n' "${warning: -2}" 'offline warning line break'
 case "$indicator" in
-    *'( ☒  REMOTE CHECK FAILED )'*'☒🌐︎'*) ;;
+    *'( ☒ REMOTE CHECK FAILED )'*'☒🌐︎'*) ;;
     *) fail 'offline expansion was not rendered' ;;
 esac
 case "$indicator" in
-    *$'\033[s\033[1A\033['*D*'( ☒  REMOTE CHECK FAILED )'*$'\033[u'*) ;;
+    *$'\033[s\033[1A\033['*D*'( ☒ REMOTE CHECK FAILED )'*$'\033[u'*) ;;
     *) fail 'offline expansion was not centered above its indicator' ;;
 esac
 
@@ -782,7 +782,7 @@ indicator="$(theme_render_git_remote_status)"
 set -u
 assert_eq '' "$warning" 'acknowledged offline state reserves no banner row'
 case "$indicator" in
-    *'( ☒  REMOTE CHECK FAILED )'*)
+    *'( ☒ REMOTE CHECK FAILED )'*)
         fail 'acknowledged offline banner was still rendered'
         ;;
     *"$(ps1_wrap "$cRemoteAcknowledged")"'☒🌐︎'*) ;;
@@ -798,12 +798,12 @@ warning="$(theme_reserve_remote_expansion_row)"
 indicator="$(theme_render_git_remote_status)"
 set -u
 case "$indicator" in
-    *'( ☒  OUTDATED REPOSITORY'*'1 commit is missing from origin/main )'*) ;;
+    *'( ☒ OUTDATED REPOSITORY'*'1 commit is missing from origin/main )'*) ;;
     *) fail 'behind expansion was not rendered' ;;
 esac
 COLUMNS=22
 case "$(theme_render_git_remote_status)" in
-    *'( ☒  PULL PENDING: 1 )'*) ;;
+    *'( ☒ PULL PENDING: 1 )'*) ;;
     *) fail 'compact behind expansion was not rendered' ;;
 esac
 COLUMNS=200
@@ -816,12 +816,12 @@ set +u
 indicator="$(theme_render_git_remote_status)"
 set -u
 case "$indicator" in
-    *'( ☒  DIVERGED REPOSITORY: local +2 / remote +3 relative to origin/main )'*'⇡2⇣3'*) ;;
+    *'( ☒ DIVERGED REPOSITORY: local +2 / remote +3 relative to origin/main )'*'⇡2⇣3'*) ;;
     *) fail 'diverged expansion was not rendered' ;;
 esac
 COLUMNS=22
 case "$(theme_render_git_remote_status)" in
-    *'( ☒  DIVERGED: ⇡2 ⇣3 )'*) ;;
+    *'( ☒ DIVERGED: ⇡2 ⇣3 )'*) ;;
     *) fail 'compact diverged expansion was not rendered' ;;
 esac
 COLUMNS=200

@@ -245,14 +245,14 @@ text on an intense yellow background. Error expansions and compact indicators us
 intense white text on a red background. `YAFP_DARKC` selects the dark or bright
 red background variant without changing that severity contract. When the
 remote check fails, YAFP displays
-`( ☒  REMOTE CHECK FAILED )` centered above the compact `☒🌐︎` indicator. The
+`( ☒ REMOTE CHECK FAILED )` centered above the compact `☒🌐︎` indicator. The
 same expansion layout applies to ahead, behind, and diverged messages. All
 expansions, including staged-change messages, use `( MESSAGE )`, with one
 space after `(` and before `)`.
 The delimiters are ordinary ASCII parentheses so terminal fonts display the
 inner spaces consistently.
 No colored padding precedes the opening delimiter. For example, the ahead
-banner starts with `( ⚠  REMOTE NOT UPDATED:`. Run `yafp-reload` in an existing
+banner starts with `( ⚠ REMOTE NOT UPDATED:`. Run `yafp-reload` in an existing
 shell to apply the current banner formatting after updating YAFP.
 Centering and terminal-edge checks include
 both delimiters and the two inner spaces. The layout uses
@@ -261,15 +261,15 @@ repository, or branch do not require estimating their display width. These
 expansions are cleared immediately when the prompt leaves the repository.
 Long remote messages are used only when the complete centered banner fits
 between the terminal edges at the compact indicator's current column. Narrow
-or crowded prompts automatically use `⚠  PUSH PENDING: N`,
-`☒  PULL PENDING: N`, or
-`☒  DIVERGED: ⇡N ⇣M`; all variants retain the centered `( … )` presentation.
+or crowded prompts automatically use `⚠ PUSH PENDING: N`,
+`☒ PULL PENDING: N`, or
+`☒ DIVERGED: ⇡N ⇣M`; all variants retain the centered `( … )` presentation.
 Bash keeps a small right-edge safety margin for terminals that report stale
 columns or render prompt glyphs wider than their Unicode cell estimate.
 
 After the first fresh successful check, or after connectivity recovers from an
 offline state, YAFP displays
-`( ✓  INTERNET CONNECTION )` with intense white text on a normal green
+`( ✓ INTERNET CONNECTION )` with intense white text on a normal green
 background above the compact remote indicator.
 Green banners use exact RGB `#008000` with white `#FFFFFF` text; yellow
 banners use `#FFFF00` with black text in Bash and PowerShell. These banners
@@ -323,13 +323,13 @@ expansion centered above it with matching singular or plural grammar. Both use
 black text on an intense yellow background:
 
 ```text
-( ⚠  COMMIT PENDING: 14 staged files are ready to commit )
+( ⚠ COMMIT PENDING: 14 staged files are ready to commit )
 ```
 
 The expansion uses the indicator's actual cursor position and keeps a separate
 row when a remote-status expansion is visible at the same time. If the long
 message cannot remain centered above `📦N` without crossing a terminal edge,
-it becomes `( ⚠  COMMIT PENDING: N )`.
+it becomes `( ⚠ COMMIT PENDING: N )`.
 Bash excludes both Readline-wrapped and raw terminal color sequences when
 measuring that position, so colored separators cannot make an overflowing
 detailed banner appear to fit.
@@ -384,7 +384,7 @@ without an upstream, `yafp-status` reports that the timer is unavailable and
 YAFP checks the configured Git remote, not general internet connectivity.
 Authentication, permissions, an invalid remote, DNS, or a restricted execution
 environment can all make `git fetch` fail while other internet access works.
-The `☒  REMOTE CHECK FAILED` banner reflects that uncertainty, including for
+The `☒ REMOTE CHECK FAILED` banner reflects that uncertainty, including for
 previously cached errors. To see Git's diagnostic, run `git fetch` in your
 terminal; after resolving the cause, run `yafp-refresh` and render another
 prompt once the background check finishes. A successful check replaces the
@@ -392,7 +392,7 @@ error even before its cache interval expires. Checks from restricted shells
 can write failures into the same repository cache used by your terminal.
 
 After a remote check fails, use `yafp-ack` to acknowledge the current alert. The
-`( ☒  REMOTE CHECK FAILED )` expansion then stays hidden and the compact
+`( ☒ REMOTE CHECK FAILED )` expansion then stays hidden and the compact
 `☒🌐︎` changes to intense red text on a transparent background. A successful
 remote check resets the acknowledgement, so a later remote-check failure displays
 the expansion again. Outside a remote error state, `yafp-ack` leaves
@@ -433,8 +433,8 @@ and `( MESSAGE )` spacing. The examples use one commit or staged file and
 alert acknowledgement. Run `yafp-reload` to make the command available in an
 already open shell after updating YAFP.
 Every banner begins with `✓` for success, `⚠` for warnings, or `☒` for errors
-inside its opening parenthesis, for example `( ⚠  PUSH PENDING: 1 )`.
-Two spaces separate the severity symbol from the message text.
+inside its opening parenthesis, for example `( ⚠ PUSH PENDING: 1 )`.
+One space separates the severity symbol from the message text.
 
 `yafp-stats` counts completed commands in the current shell session. Empty
 input and internal prompt renders are excluded, and `yafp-reload` preserves the
