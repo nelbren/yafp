@@ -80,6 +80,24 @@ assert_eq 'transparent/GREEN' \
 assert_eq 'intense-yellow/black' \
     "$YAFP_COLOR_REMOTE_PENDING_BG/$YAFP_COLOR_REMOTE_PENDING_FG" \
     'warning expansion color scheme'
+assert_eq 'normal-green/WHITE' \
+    "$YAFP_COLOR_REMOTE_CONNECTION_BG/$YAFP_COLOR_REMOTE_CONNECTION_FG" \
+    'connection banner uses normal green and intense white'
+saved_color_term=$TERM
+assert_eq $'\033[0;48;2;0;128;0;38;2;255;255;255m' \
+    "$cRemoteConnection" 'exact normal green and intense white banner RGB'
+assert_eq $'\033[0;48;2;255;255;0;38;2;0;0;0m' \
+    "$cRemotePending" 'exact intense yellow and black banner RGB'
+for color_term in xterm screen xterm-256color; do
+    export TERM=$color_term
+    assert_eq "$(tput sgr0)"$'\033[42m\033[97m' \
+        "$(setColor normal-green WHITE)" \
+        "connection ANSI colors with $color_term"
+    assert_eq "$(tput sgr0)"$'\033[103m'"$(tput setaf 0)" \
+        "$(setColor intense-yellow black)" \
+        "warning ANSI colors with $color_term"
+done
+export TERM=$saved_color_term
 COLUMNS=72
 # Separators contain raw terminal colors as well as Readline-wrapped colors.
 # Their bytes must not move the measured indicator or wrap it modulo COLUMNS.
@@ -125,7 +143,7 @@ yafp_ctx_git_change=0
 yafp_ctx_git_new=0
 yafp_ctx_git_staged_indicator_column=$yafp_indicator_column
 case "$(theme_render_staged_expansion)" in
-    *'⎝ COMMIT PENDING: 12 ⎠'*) ;;
+    *'( ⚠  COMMIT PENDING: 12 )'*) ;;
     *) fail 'colored prompt selected an overflowing detailed staged banner' ;;
 esac
 yafp_ctx_git_staged_indicator_column=0
@@ -139,26 +157,26 @@ for narrow_column in 65 70; do
     esac
 done
 yafp_ctx_git_staged_indicator_column=0
-COLUMNS=21
+COLUMNS=24
 assert_eq '' "$(theme_render_staged_expansion)" \
     'staged banner is hidden one column below its minimum width'
 COLUMNS=72
 theme_select_expansion_message \
-    'COMMIT PENDING: 12 staged files are ready to commit' \
-    'COMMIT PENDING: 12' 50 4
-assert_eq 'COMMIT PENDING: 12' "$yafp_expansion_message" \
+    '⚠  COMMIT PENDING: 12 staged files are ready to commit' \
+    '⚠  COMMIT PENDING: 12' 50 4
+assert_eq '⚠  COMMIT PENDING: 12' "$yafp_expansion_message" \
     'staged expansion accounts for its indicator column'
 theme_select_expansion_message \
-    'COMMIT PENDING: 12 staged files are ready to commit' \
-    'COMMIT PENDING: 12' 30 4
-assert_eq 'COMMIT PENDING: 12 staged files are ready to commit' \
+    '⚠  COMMIT PENDING: 12 staged files are ready to commit' \
+    '⚠  COMMIT PENDING: 12' 30 4
+assert_eq '⚠  COMMIT PENDING: 12 staged files are ready to commit' \
     "$yafp_expansion_message" \
     'staged expansion keeps the long message when centered text fits'
 COLUMNS=80
 theme_select_expansion_message \
-    'COMMIT PENDING: 12 staged files are ready to commit' \
-    'COMMIT PENDING: 12' 44 4
-assert_eq 'COMMIT PENDING: 12' "$yafp_expansion_message" \
+    '⚠  COMMIT PENDING: 12 staged files are ready to commit' \
+    '⚠  COMMIT PENDING: 12' 44 4
+assert_eq '⚠  COMMIT PENDING: 12' "$yafp_expansion_message" \
     'staged expansion protects against a stale terminal width'
 COLUMNS=200
 
@@ -177,7 +195,7 @@ case "$git_counts" in
     *) fail 'staged Git indicator was not rendered' ;;
 esac
 case "$staged_expansion" in
-    *'⎝ COMMIT PENDING: 4 staged files are ready to commit ⎠'*) ;;
+    *'( ⚠  COMMIT PENDING: 4 staged files are ready to commit )'*) ;;
     *) fail 'staged Git expansion was not rendered' ;;
 esac
 case "$git_counts" in
@@ -189,12 +207,12 @@ set +u
 staged_expansion="$(theme_render_staged_expansion)"
 set -u
 case "$staged_expansion" in
-    *'⎝ COMMIT PENDING: 1 staged file is ready to commit ⎠'*) ;;
+    *'( ⚠  COMMIT PENDING: 1 staged file is ready to commit )'*) ;;
     *) fail 'singular staged Git expansion was not rendered' ;;
 esac
-COLUMNS=21
+COLUMNS=24
 case "$(theme_render_staged_expansion)" in
-    *'⎝ COMMIT PENDING: 1 ⎠'*) ;;
+    *'( ⚠  COMMIT PENDING: 1 )'*) ;;
     *) fail 'compact staged Git expansion was not rendered' ;;
 esac
 COLUMNS=200
@@ -262,14 +280,28 @@ declare -F yafp-ack >/dev/null || fail 'yafp-ack command is unavailable'
 declare -F yafp-demo >/dev/null || fail 'yafp-demo command is unavailable'
 declare -F yafp-help >/dev/null || fail 'yafp-help command is unavailable'
 declare -F yafp-stats >/dev/null || fail 'yafp-stats command is unavailable'
+declare -F yafp-msgs >/dev/null || fail 'yafp-msgs command is unavailable'
 expected_help="$(printf '%s\n' \
     'yafp-status • Show remote status and refresh timer.' \
     'yafp-refresh • Request an immediate remote refresh.' \
     'yafp-ack • Acknowledge the current remote error alert.' \
     'yafp-reload • Reload YAFP in the current shell.' \
     'yafp-stats • Show command execution statistics.' \
+    'yafp-msgs • Show all prompt banners in severity order.' \
     'yafp-help • Show available YAFP commands.')"
 assert_eq "$expected_help" "$(yafp-help)" 'yafp-help output'
+
+expected_messages=''
+while IFS='|' read -r severity message; do
+    case "$severity" in
+        green) message_color="$cRemoteConnection" ;;
+        yellow) message_color="$cRemotePending" ;;
+        red) message_color="$cRemoteProblem" ;;
+    esac
+    expected_messages+="${message_color}( ${message} )"$'\033[0m\n'
+done < "$ROOT_DIR/tests/prompt_messages.txt"
+assert_eq "${expected_messages%$'\n'}" "$(yafp-msgs)" \
+    'message catalog text, severity order, colors, spacing, and resets'
 
 original_remote_context="$(declare -f yafp_remote_context)"
 # shellcheck disable=SC2329
@@ -656,11 +688,11 @@ indicator="$(theme_render_git_remote_status)"
 set -u
 assert_eq '\n' "$warning" 'connection announcement row'
 case "$indicator" in
-    *'⎝ INTERNET CONNECTION ⎠'*'✓🌐︎'*) ;;
+    *'( ✓  INTERNET CONNECTION )'*'✓🌐︎'*) ;;
     *) fail 'connection announcement was not rendered' ;;
 esac
 case "$indicator" in
-    *"$cRemoteConnection"'⎝ INTERNET CONNECTION ⎠'*"$(ps1_wrap "$cRemoteConnection")"'✓🌐︎'*) ;;
+    *"$cRemoteConnection"'( ✓  INTERNET CONNECTION )'*"$(ps1_wrap "$cRemoteConnection")"'✓🌐︎'*) ;;
     *) fail 'connection transition is not intense white on normal green' ;;
 esac
 yafp_ctx_git_remote_connection_announcement=0
@@ -699,12 +731,23 @@ case "$warning" in
 esac
 assert_eq '\n' "${warning: -2}" 'ahead warning line break'
 case "$indicator" in
-    *'⎝ REMOTE NOT UPDATED: 2 local commits have not been pushed to origin/main ⎠'*) ;;
+    *'( ⚠  REMOTE NOT UPDATED: 2 local commits have not been pushed to origin/main )'*) ;;
     *) fail 'ahead expansion was not rendered' ;;
 esac
-COLUMNS=20
+for ahead_count in 1 2; do
+    yafp_ctx_git_ahead=$ahead_count
+    ahead_unit='commits have'
+    [ "$ahead_count" -ne 1 ] || ahead_unit='commit has'
+    expansion="$(theme_render_remote_expansion)"
+    case "$expansion" in
+        *"${cRemotePending}( ⚠  REMOTE NOT UPDATED: ${ahead_count} local ${ahead_unit} not been pushed to origin/main )$(theme_reset)"*) ;;
+        *) fail 'ahead banner must start at its delimiter with exactly one inner space' ;;
+    esac
+done
+yafp_ctx_git_ahead=2
+COLUMNS=22
 case "$(theme_render_git_remote_status)" in
-    *'⎝ PUSH PENDING: 2 ⎠'*) ;;
+    *'( ⚠  PUSH PENDING: 2 )'*) ;;
     *) fail 'compact ahead expansion was not rendered' ;;
 esac
 COLUMNS=200
@@ -724,11 +767,11 @@ case "$warning" in
 esac
 assert_eq '\n' "${warning: -2}" 'offline warning line break'
 case "$indicator" in
-    *'⎝ REMOTE CHECK FAILED ⎠'*'☒🌐︎'*) ;;
+    *'( ☒  REMOTE CHECK FAILED )'*'☒🌐︎'*) ;;
     *) fail 'offline expansion was not rendered' ;;
 esac
 case "$indicator" in
-    *$'\033[s\033[1A\033['*D*'⎝ REMOTE CHECK FAILED ⎠'*$'\033[u'*) ;;
+    *$'\033[s\033[1A\033['*D*'( ☒  REMOTE CHECK FAILED )'*$'\033[u'*) ;;
     *) fail 'offline expansion was not centered above its indicator' ;;
 esac
 
@@ -739,7 +782,7 @@ indicator="$(theme_render_git_remote_status)"
 set -u
 assert_eq '' "$warning" 'acknowledged offline state reserves no banner row'
 case "$indicator" in
-    *'⎝ REMOTE CHECK FAILED ⎠'*)
+    *'( ☒  REMOTE CHECK FAILED )'*)
         fail 'acknowledged offline banner was still rendered'
         ;;
     *"$(ps1_wrap "$cRemoteAcknowledged")"'☒🌐︎'*) ;;
@@ -755,12 +798,12 @@ warning="$(theme_reserve_remote_expansion_row)"
 indicator="$(theme_render_git_remote_status)"
 set -u
 case "$indicator" in
-    *'⎝ OUTDATED REPOSITORY'*'1 commit is missing from origin/main ⎠'*) ;;
+    *'( ☒  OUTDATED REPOSITORY'*'1 commit is missing from origin/main )'*) ;;
     *) fail 'behind expansion was not rendered' ;;
 esac
-COLUMNS=20
+COLUMNS=22
 case "$(theme_render_git_remote_status)" in
-    *'⎝ PULL PENDING: 1 ⎠'*) ;;
+    *'( ☒  PULL PENDING: 1 )'*) ;;
     *) fail 'compact behind expansion was not rendered' ;;
 esac
 COLUMNS=200
@@ -773,12 +816,12 @@ set +u
 indicator="$(theme_render_git_remote_status)"
 set -u
 case "$indicator" in
-    *'⎝ DIVERGED REPOSITORY: local +2 / remote +3 relative to origin/main ⎠'*'⇡2⇣3'*) ;;
+    *'( ☒  DIVERGED REPOSITORY: local +2 / remote +3 relative to origin/main )'*'⇡2⇣3'*) ;;
     *) fail 'diverged expansion was not rendered' ;;
 esac
-COLUMNS=20
+COLUMNS=22
 case "$(theme_render_git_remote_status)" in
-    *'⎝ DIVERGED: ⇡2 ⇣3 ⎠'*) ;;
+    *'( ☒  DIVERGED: ⇡2 ⇣3 )'*) ;;
     *) fail 'compact diverged expansion was not rendered' ;;
 esac
 COLUMNS=200

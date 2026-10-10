@@ -41,6 +41,8 @@ The OSC 133 integration uses the `DEBUG` trap to mark the beginning of a
 command and `PROMPT_COMMAND` to close the block with its exit code.
 Background intensity is selected during color construction through
 `YAFP_DARKC`; transparent backgrounds remain unchanged.
+Bright foreground and background colors use ANSI SGR codes directly because
+eight-color terminfo entries can misencode palette indexes 8 through 15.
 
 ## PowerShell loading flow
 
@@ -101,7 +103,7 @@ foreground:
 
 Shared states are checking, refreshing, current, ahead, behind, diverged, and
 error. The error state renders `☒🌐︎` as its compact
-indicator and the `⎝ REMOTE CHECK FAILED ⎠` expansion in both shells. This
+indicator and the `( ☒  REMOTE CHECK FAILED )` expansion in both shells. This
 state covers fetch and reference-comparison failures; it does not establish
 that the internet is unavailable. Cache files are shared by shells using the
 same Git directory, including restricted processes. A manual refresh bypasses
@@ -112,14 +114,20 @@ save the cursor at the compact indicator, draw the centered message one row up,
 and restore the cursor before rendering the indicator. This keeps alignment
 independent of variable-width prompt prefixes without adding a process to the
 render path.
-Every expansion uses `⎝ MESSAGE ⎠`, with one space after the opening
+Every expansion uses `( MESSAGE )`, with one space after the opening
 delimiter and before the closing delimiter. Width and centering calculations
 include both delimiters and the two inner spaces.
+Message text includes a severity symbol (`✓`, `⚠`, or `☒`), so the fit and
+centering calculations include its width too. Connection and warning styles
+use explicit RGB green/white and yellow/black in both shells, independent of
+the terminal's configurable ANSI palette.
+The delimiters are ASCII parentheses, avoiding font-dependent placement of
+the Unicode parenthesis pieces previously used by the banners.
 The staged-change expansion uses the same cursor-relative mechanism, centered
 above `📦N`. When staged and remote expansions are both active, the renderer
 reserves two rows so the messages do not overwrite each other.
 Detailed staged and remote messages are selected only when their complete
-`⎝ … ⎠` banner fits at the compact indicator's actual column. PowerShell reads
+`( … )` banner fits at the compact indicator's actual column. PowerShell reads
 the host cursor column; Bash measures a marker-only render of the prompt prefix
 with shell built-ins. Both select a compact alternative without adding an
 external process or querying the terminal interactively.
@@ -136,7 +144,7 @@ temporarily report a wider `COLUMNS` value and fonts can disagree on the cell
 width of prompt symbols.
 The first successful remote check and each later offline-to-online transition
 set a one-render announcement. It displays
-`⎝ INTERNET CONNECTION ⎠` with intense white text on a normal green
+`( ✓  INTERNET CONNECTION )` with intense white text on a normal green
 background and uses that same transition style for a compact `✓🌐︎`. Later
 renders restore the normal intense-green foreground and transparent background.
 The announcement takes precedence over any repository-state expansion for that

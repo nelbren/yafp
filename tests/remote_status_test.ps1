@@ -90,14 +90,14 @@ try {
     $stagedExpansion = Write-YafpStagedExpansion `
         -Git $stagedContext.Git 6>&1 | Out-String
     if ($stagedExpansion -notmatch
-        '⎝ COMMIT PENDING: 4 staged files are ready to commit ⎠') {
+        '\( ⚠  COMMIT PENDING: 4 staged files are ready to commit \)') {
         throw 'staged Git expansion was not rendered'
     }
     $stagedContext.Git.StagedCount = 1
     $stagedExpansion = Write-YafpStagedExpansion `
         -Git $stagedContext.Git 6>&1 | Out-String
     if ($stagedExpansion -notmatch
-        '⎝ COMMIT PENDING: 1 staged file is ready to commit ⎠') {
+        '\( ⚠  COMMIT PENDING: 1 staged file is ready to commit \)') {
         throw 'singular staged Git expansion was not rendered'
     }
     $stagedContext.Git.RemoteStatus = [pscustomobject]@{
@@ -110,32 +110,32 @@ try {
     if (-not $stagedExpansion.Contains($twoRowsUp)) {
         throw 'staged Git expansion did not preserve the remote expansion row'
     }
-    Assert-Equal 'COMMIT PENDING: 1' (
+    Assert-Equal '⚠  COMMIT PENDING: 1' (
         Get-YafpExpansionMessage `
-            -LongMessage 'COMMIT PENDING: 1 staged file is ready to commit' `
-            -ShortMessage 'COMMIT PENDING: 1' -TerminalWidth 21
+            -LongMessage '⚠  COMMIT PENDING: 1 staged file is ready to commit' `
+            -ShortMessage '⚠  COMMIT PENDING: 1' -TerminalWidth 24
     ) 'compact staged Git expansion message'
     Assert-Equal '' (
         Get-YafpExpansionMessage `
-            -LongMessage 'COMMIT PENDING: 12 staged files are ready to commit' `
-            -ShortMessage 'COMMIT PENDING: 12' -TerminalWidth 72 `
+            -LongMessage '⚠  COMMIT PENDING: 12 staged files are ready to commit' `
+            -ShortMessage '⚠  COMMIT PENDING: 12' -TerminalWidth 72 `
             -IndicatorColumn 65 -IndicatorWidth 4
     ) 'hide staged expansion when the short banner crosses the right edge'
     Assert-Equal '' (
         Get-YafpExpansionMessage `
-            -LongMessage 'COMMIT PENDING: 12 staged files are ready to commit' `
-            -ShortMessage 'COMMIT PENDING: 12' -TerminalWidth 21
+            -LongMessage '⚠  COMMIT PENDING: 12 staged files are ready to commit' `
+            -ShortMessage '⚠  COMMIT PENDING: 12' -TerminalWidth 24
     ) 'hide staged expansion one column below the complete banner width'
-    Assert-Equal 'COMMIT PENDING: 12' (
+    Assert-Equal '⚠  COMMIT PENDING: 12' (
         Get-YafpExpansionMessage `
-            -LongMessage 'COMMIT PENDING: 12 staged files are ready to commit' `
-            -ShortMessage 'COMMIT PENDING: 12' -TerminalWidth 72 `
+            -LongMessage '⚠  COMMIT PENDING: 12 staged files are ready to commit' `
+            -ShortMessage '⚠  COMMIT PENDING: 12' -TerminalWidth 72 `
             -IndicatorColumn 50 -IndicatorWidth 4
     ) 'staged expansion accounts for its indicator column'
-    Assert-Equal 'COMMIT PENDING: 12 staged files are ready to commit' (
+    Assert-Equal '⚠  COMMIT PENDING: 12 staged files are ready to commit' (
         Get-YafpExpansionMessage `
-            -LongMessage 'COMMIT PENDING: 12 staged files are ready to commit' `
-            -ShortMessage 'COMMIT PENDING: 12' -TerminalWidth 72 `
+            -LongMessage '⚠  COMMIT PENDING: 12 staged files are ready to commit' `
+            -ShortMessage '⚠  COMMIT PENDING: 12' -TerminalWidth 72 `
             -IndicatorColumn 30 -IndicatorWidth 4
     ) 'staged expansion keeps the long message when centered text fits'
 
@@ -215,6 +215,18 @@ try {
     Set-Item -LiteralPath Function:Get-YafpRemoteContext `
         -Value $originalGetYafpRemoteContext
     $script:YafpRemoteOfflineAcknowledged = $false
+    foreach ($rgbCase in @(
+        @('White', 'DarkGreen', '0;48;2;0;128;0;38;2;255;255;255')
+        @('Black', 'Yellow', '0;48;2;255;255;0;38;2;0;0;0')
+    )) {
+        $rgbRecords = @(Write-YafpText -Text 'sample' `
+            -ForegroundColor $rgbCase[0] -BackgroundColor $rgbCase[1] 6>&1 |
+            ForEach-Object { $_.ToString() })
+        $expectedRgb = "$([char]27)[$($rgbCase[2])msample$([char]27)[0m"
+        if ($rgbRecords -notcontains $expectedRgb) {
+            throw 'banner output must use exact RGB colors and reset them'
+        }
+    }
     $originalWriteYafpText = (Get-Command Write-YafpText).ScriptBlock
     $script:helpWrites = [Collections.Generic.List[object]]::new()
     function Write-YafpText {
@@ -227,6 +239,7 @@ try {
         $script:helpWrites.Add([pscustomobject]@{
             Text = $Text
             Color = $ForegroundColor
+            Background = $BackgroundColor
             NoNewline = [bool]$NoNewline
         })
     }
@@ -247,6 +260,9 @@ try {
         [pscustomobject]@{ Text = 'yafp-stats'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Show command execution statistics.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'yafp-msgs'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'Show all prompt banners in severity order.'; Color = 'White'; NoNewline = $false }
         [pscustomobject]@{ Text = 'yafp-help'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Show available YAFP commands.'; Color = 'White'; NoNewline = $false }
@@ -261,6 +277,33 @@ try {
         Assert-Equal $expectedHelpWrites[$index].NoNewline `
             $script:helpWrites[$index].NoNewline "yafp-help newline $index"
     }
+    Assert-Equal Show-YafpMessages (Get-Alias yafp-msgs).Definition `
+        'yafp-msgs command'
+    $savedDarkColors = $global:YAFP_DARKC
+    foreach ($darkColors in 0, 1) {
+        $global:YAFP_DARKC = $darkColors
+        $script:helpWrites.Clear()
+        yafp-msgs
+        $expectedMessages = @(Get-Content -LiteralPath (
+            Join-Path $rootDir 'tests/prompt_messages.txt'
+        ))
+        Assert-Equal $expectedMessages.Count $script:helpWrites.Count `
+            'message catalog count'
+        for ($index = 0; $index -lt $expectedMessages.Count; $index++) {
+            $severity, $message = $expectedMessages[$index].Split('|', 2)
+            $foreground, $background = switch ($severity) {
+                green { 'White'; 'DarkGreen' }
+                yellow { 'Black'; 'Yellow' }
+                red { 'White'; if ($darkColors) { 'DarkRed' } else { 'Red' } }
+            }
+            $write = $script:helpWrites[$index]
+            Assert-Equal "( $message )" $write.Text "message text $index"
+            Assert-Equal $foreground $write.Color "message foreground $index"
+            Assert-Equal $background $write.Background "message background $index"
+            Assert-Equal $false $write.NoNewline "message newline $index"
+        }
+    }
+    $global:YAFP_DARKC = $savedDarkColors
     Set-Item -LiteralPath Function:Write-YafpText `
         -Value $originalWriteYafpText
 
@@ -617,7 +660,7 @@ try {
     }
     $expansion = Write-YafpRemoteExpansion -Remote $connectedStatus `
         -IndicatorText '✓🌐︎' 6>&1 | Out-String
-    if ($expansion -notmatch '⎝ INTERNET CONNECTION ⎠') {
+    if ($expansion -notmatch '\( ✓  INTERNET CONNECTION \)') {
         throw 'connection announcement was not rendered'
     }
     $originalWriteYafpText = (Get-Command Write-YafpText).ScriptBlock
@@ -641,7 +684,7 @@ try {
     $transitionIndicator = $script:connectionWrites |
         Where-Object Text -EQ '✓🌐︎' | Select-Object -Last 1
     $transitionBanner = $script:connectionWrites |
-        Where-Object Text -EQ '⎝ INTERNET CONNECTION ⎠' |
+        Where-Object Text -EQ '( ✓  INTERNET CONNECTION )' |
         Select-Object -Last 1
     Assert-Equal White $transitionBanner.Foreground `
         'connection banner foreground'
@@ -707,7 +750,7 @@ try {
     }
     $expansion = Write-YafpRemoteExpansion -Remote $offlineStatus `
         -IndicatorText '☒🌐︎' 6>&1 | Out-String
-    if ($expansion -notmatch '⎝ REMOTE CHECK FAILED ⎠') {
+    if ($expansion -notmatch '\( ☒  REMOTE CHECK FAILED \)') {
         throw 'offline expansion was not rendered'
     }
     if ($expansion -notmatch ([regex]::Escape("$([char]27)[s$([char]27)[1A"))) {
@@ -760,8 +803,8 @@ try {
     }
     $expansion = Write-YafpRemoteExpansion -Remote $remote `
         -IndicatorText '⇣1' 6>&1 | Out-String
-    if ($expansion -notmatch '⎝ OUTDATED REPOSITORY' -or
-        $expansion -notmatch '1 commit is missing from origin/main ⎠') {
+    if ($expansion -notmatch '\( ☒  OUTDATED REPOSITORY' -or
+        $expansion -notmatch '1 commit is missing from origin/main \)') {
         throw 'behind expansion was not rendered'
     }
 
@@ -785,11 +828,24 @@ try {
     $expansion = Write-YafpRemoteExpansion -Remote $aheadStatus `
         -IndicatorText '⇡2' 6>&1 | Out-String
     if ($expansion -notmatch (
-        '⎝ REMOTE NOT UPDATED: 2 local commits have not been pushed ' +
-        'to origin/main ⎠'
+        '\( ⚠  REMOTE NOT UPDATED: 2 local commits have not been pushed ' +
+        'to origin/main \)'
     )) {
         throw 'ahead expansion was not rendered'
     }
+
+    foreach ($aheadCount in 1, 2) {
+        $aheadStatus.Ahead = $aheadCount
+        $aheadUnit = if ($aheadCount -eq 1) { 'commit has' } else { 'commits have' }
+        $bannerRecords = @(Write-YafpRemoteExpansion -Remote $aheadStatus `
+            -IndicatorText "⇡$aheadCount" 6>&1 |
+            ForEach-Object { $_.ToString() -replace '\x1b\[[0-9;]*m', '' })
+        $expectedBanner = "( ⚠  REMOTE NOT UPDATED: $aheadCount local $aheadUnit not been pushed to origin/main )"
+        if ($bannerRecords -notcontains $expectedBanner) {
+            throw 'ahead banner must have no outer padding and exactly one inner space'
+        }
+    }
+    $aheadStatus.Ahead = 2
 
     $divergedStatus = [pscustomobject]@{
         State = 'diverged'
@@ -803,25 +859,25 @@ try {
     $expansion = Write-YafpRemoteExpansion -Remote $divergedStatus `
         -IndicatorText '⇡2⇣3' 6>&1 | Out-String
     if ($expansion -notmatch (
-        '⎝ DIVERGED REPOSITORY: local \+2 / remote \+3 relative to ' +
-        'origin/main ⎠'
+        '\( ☒  DIVERGED REPOSITORY: local \+2 / remote \+3 relative to ' +
+        'origin/main \)'
     )) {
         throw 'diverged expansion was not rendered'
     }
-    Assert-Equal 'PUSH PENDING: 2' (
+    Assert-Equal '⚠  PUSH PENDING: 2' (
         Get-YafpExpansionMessage `
-            -LongMessage 'REMOTE NOT UPDATED: 2 local commits have not been pushed to origin/main' `
-            -ShortMessage 'PUSH PENDING: 2' -TerminalWidth 20
+            -LongMessage '⚠  REMOTE NOT UPDATED: 2 local commits have not been pushed to origin/main' `
+            -ShortMessage '⚠  PUSH PENDING: 2' -TerminalWidth 22
     ) 'compact ahead expansion message'
-    Assert-Equal 'PULL PENDING: 1' (
+    Assert-Equal '☒  PULL PENDING: 1' (
         Get-YafpExpansionMessage `
-            -LongMessage 'OUTDATED REPOSITORY: 1 commit is missing from origin/main' `
-            -ShortMessage 'PULL PENDING: 1' -TerminalWidth 20
+            -LongMessage '☒  OUTDATED REPOSITORY: 1 commit is missing from origin/main' `
+            -ShortMessage '☒  PULL PENDING: 1' -TerminalWidth 22
     ) 'compact behind expansion message'
-    Assert-Equal 'DIVERGED: ⇡2 ⇣3' (
+    Assert-Equal '☒  DIVERGED: ⇡2 ⇣3' (
         Get-YafpExpansionMessage `
-            -LongMessage 'DIVERGED REPOSITORY: local +2 / remote +3 relative to origin/main' `
-            -ShortMessage 'DIVERGED: ⇡2 ⇣3' -TerminalWidth 20
+            -LongMessage '☒  DIVERGED REPOSITORY: local +2 / remote +3 relative to origin/main' `
+            -ShortMessage '☒  DIVERGED: ⇡2 ⇣3' -TerminalWidth 22
     ) 'compact diverged expansion message'
 
     & git -C $local config user.name 'YAFP Test'

@@ -95,6 +95,17 @@ function Write-YafpText {
     if (-not [string]::IsNullOrEmpty($BackgroundColor)) {
         $writeHostParams.BackgroundColor = $BackgroundColor
     }
+    # ConsoleColor names use the terminal palette; banner colors must be exact.
+    $rgb = if ($ForegroundColor -eq 'White' -and $BackgroundColor -eq 'DarkGreen') {
+        "$([char]27)[0;48;2;0;128;0;38;2;255;255;255m"
+    }
+    elseif ($ForegroundColor -eq 'Black' -and $BackgroundColor -eq 'Yellow') {
+        "$([char]27)[0;48;2;255;255;0;38;2;0;0;0m"
+    }
+    else { '' }
+    if ($rgb) {
+        $writeHostParams.Object = "$rgb$Text$([char]27)[0m"
+    }
     Write-Host @writeHostParams
     if (-not $NoNewline) {
         # Reset the colors before scrolling creates a new terminal row.
@@ -1019,6 +1030,33 @@ function Confirm-YafpRemoteAlert {
     Write-Host 'Remote error alert acknowledged.'
 }
 
+function Show-YafpMessages {
+    foreach ($group in @(
+        @{ Foreground = 'White'; Background = 'DarkGreen'; Messages = @(
+            '✓  INTERNET CONNECTION'
+        ) }
+        @{ Foreground = 'Black'; Background = 'Yellow'; Messages = @(
+            '⚠  REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/main'
+            '⚠  PUSH PENDING: 1'
+            '⚠  COMMIT PENDING: 1 staged file is ready to commit'
+            '⚠  COMMIT PENDING: 1'
+        ) }
+        @{ Foreground = 'White'; Background = (Get-YafpSeverityStyle -Severity error).Background; Messages = @(
+            '☒  OUTDATED REPOSITORY: 1 commit is missing from origin/main'
+            '☒  PULL PENDING: 1'
+            '☒  DIVERGED REPOSITORY: local +1 / remote +1 relative to origin/main'
+            '☒  DIVERGED: ⇡1 ⇣1'
+            '☒  REMOTE CHECK FAILED'
+        ) }
+    )) {
+        foreach ($message in $group.Messages) {
+            Write-YafpText -Text "( $message )" `
+                -ForegroundColor $group.Foreground `
+                -BackgroundColor $group.Background
+        }
+    }
+}
+
 function Show-YafpHelp {
     foreach ($entry in @(
         @{ Name = 'yafp-status'; Description = 'Show remote status and refresh timer.' }
@@ -1026,6 +1064,7 @@ function Show-YafpHelp {
         @{ Name = 'yafp-ack'; Description = 'Acknowledge the current remote error alert.' }
         @{ Name = 'yafp-reload'; Description = 'Reload YAFP in the current shell.' }
         @{ Name = 'yafp-stats'; Description = 'Show command execution statistics.' }
+        @{ Name = 'yafp-msgs'; Description = 'Show all prompt banners in severity order.' }
         @{ Name = 'yafp-help'; Description = 'Show available YAFP commands.' }
     )) {
         Write-YafpText -Text $entry.Name -ForegroundColor Yellow `
@@ -1356,7 +1395,7 @@ function Write-YafpRemoteExpansion {
     }
     $style = Get-YafpSeverityStyle -Severity error
     if ($announceConnection) {
-        $message = 'INTERNET CONNECTION'
+        $message = '✓  INTERNET CONNECTION'
         $style = [pscustomobject]@{
             Foreground = 'White'
             Background = 'DarkGreen'
@@ -1366,8 +1405,8 @@ function Write-YafpRemoteExpansion {
         $unit = if ($Remote.Ahead -eq 1) { 'commit' } else { 'commits' }
         $verb = if ($Remote.Ahead -eq 1) { 'has' } else { 'have' }
         $message = Get-YafpExpansionMessage `
-            -LongMessage "REMOTE NOT UPDATED: $($Remote.Ahead) local $unit $verb not been pushed to $($Remote.Upstream)" `
-            -ShortMessage "PUSH PENDING: $($Remote.Ahead)" `
+            -LongMessage "⚠  REMOTE NOT UPDATED: $($Remote.Ahead) local $unit $verb not been pushed to $($Remote.Upstream)" `
+            -ShortMessage "⚠  PUSH PENDING: $($Remote.Ahead)" `
             -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
         $style = Get-YafpSeverityStyle -Severity warning
     }
@@ -1375,21 +1414,21 @@ function Write-YafpRemoteExpansion {
         $unit = if ($Remote.Behind -eq 1) { 'commit' } else { 'commits' }
         $verb = if ($Remote.Behind -eq 1) { 'is missing' } else { 'are missing' }
         $message = Get-YafpExpansionMessage `
-            -LongMessage "OUTDATED REPOSITORY: $($Remote.Behind) $unit $verb from $($Remote.Upstream)" `
-            -ShortMessage "PULL PENDING: $($Remote.Behind)" `
+            -LongMessage "☒  OUTDATED REPOSITORY: $($Remote.Behind) $unit $verb from $($Remote.Upstream)" `
+            -ShortMessage "☒  PULL PENDING: $($Remote.Behind)" `
             -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
     }
     elseif ($Remote.State -eq 'diverged') {
         $message = Get-YafpExpansionMessage `
-            -LongMessage "DIVERGED REPOSITORY: local +$($Remote.Ahead) / remote +$($Remote.Behind) relative to $($Remote.Upstream)" `
-            -ShortMessage "DIVERGED: ⇡$($Remote.Ahead) ⇣$($Remote.Behind)" `
+            -LongMessage "☒  DIVERGED REPOSITORY: local +$($Remote.Ahead) / remote +$($Remote.Behind) relative to $($Remote.Upstream)" `
+            -ShortMessage "☒  DIVERGED: ⇡$($Remote.Ahead) ⇣$($Remote.Behind)" `
             -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
     }
     elseif ($Remote.State -eq 'error') {
         if ($script:YafpRemoteOfflineAcknowledged) {
             return
         }
-        $message = 'REMOTE CHECK FAILED'
+        $message = '☒  REMOTE CHECK FAILED'
     }
     else {
         return
@@ -1400,7 +1439,7 @@ function Write-YafpRemoteExpansion {
         -LongMessage $message -ShortMessage $message `
         -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
     if ([string]::IsNullOrEmpty($message)) { return }
-    $banner = "⎝ $message ⎠"
+    $banner = "( $message )"
     $left = [Math]::Max(
         0,
         [Math]::Floor(($banner.Length - $indicatorWidth) / 2)
@@ -1460,15 +1499,15 @@ function Write-YafpStagedExpansion {
     $indicatorColumn = Get-YafpCursorColumn
     $indicatorWidth = 2 + "$count".Length
     $message = Get-YafpExpansionMessage `
-        -LongMessage "COMMIT PENDING: $count staged $unit $verb ready to commit" `
-        -ShortMessage "COMMIT PENDING: $count" `
+        -LongMessage "⚠  COMMIT PENDING: $count staged $unit $verb ready to commit" `
+        -ShortMessage "⚠  COMMIT PENDING: $count" `
         -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
     if ([string]::IsNullOrEmpty($message)) { return }
     $message = Get-YafpExpansionMessage `
         -LongMessage $message -ShortMessage $message `
         -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
     if ([string]::IsNullOrEmpty($message)) { return }
-    $banner = "⎝ $message ⎠"
+    $banner = "( $message )"
     $left = [Math]::Max(
         0,
         [Math]::Floor(($banner.Length - $indicatorWidth) / 2)
@@ -1619,6 +1658,7 @@ Set-Alias -Name yafp-demo -Value Show-YafpDemo -Scope Global -Force
 Set-Alias -Name yafp-reload -Value Invoke-YafpReload -Scope Global -Force
 Set-Alias -Name yafp-help -Value Show-YafpHelp -Scope Global -Force
 Set-Alias -Name yafp-stats -Value Show-YafpStats -Scope Global -Force
+Set-Alias -Name yafp-msgs -Value Show-YafpMessages -Scope Global -Force
 
 Import-YafpTheme
 $script:YafpLoadedCommit = Get-YafpCurrentCommit

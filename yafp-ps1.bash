@@ -5,7 +5,7 @@
 # Main engine of YAFP
 #
 
-YAFP_VERSION=0.3.3
+YAFP_VERSION=0.3.4
 
 # Customize in themes...
 
@@ -272,9 +272,8 @@ theme_build() {
         "$YAFP_COLOR_REMOTE_OK_BG" \
         "$YAFP_COLOR_REMOTE_OK_FG")"
 
-    cRemoteConnection="$(theme_color \
-        "$YAFP_COLOR_REMOTE_CONNECTION_BG" \
-        "$YAFP_COLOR_REMOTE_CONNECTION_FG")"
+    # Exact banner colors do not depend on the terminal's ANSI palette.
+    cRemoteConnection=$'\033[0;48;2;0;128;0;38;2;255;255;255m'
 
     cRemoteAcknowledged="$(theme_color \
         "$YAFP_COLOR_REMOTE_ACKNOWLEDGED_BG" \
@@ -292,9 +291,8 @@ theme_build() {
         "$YAFP_COLOR_REMOTE_NEUTRAL_BG" \
         WHITE)"
 
-    cRemotePending="$(theme_color \
-        "$YAFP_COLOR_REMOTE_PENDING_BG" \
-        "$YAFP_COLOR_REMOTE_PENDING_FG")"
+    cRemotePending=$'\033[0;48;2;255;255;0;38;2;0;0;0m'
+    cGitStaged=$cRemotePending
 
     cRemoteProblem="$(theme_color \
         "$YAFP_COLOR_REMOTE_PROBLEM_BG" \
@@ -601,7 +599,7 @@ theme_select_expansion_message() {
     yafp_expansion_message=""
     local candidate
     for candidate in "$long_message" "$short_message"; do
-        yafp_text_display_width "⎝ ${candidate} ⎠"
+        yafp_text_display_width "( ${candidate} )"
         banner_width=$yafp_display_width
         left=$(((banner_width - indicator_width) / 2))
         ((left >= 0)) || left=0
@@ -646,12 +644,12 @@ theme_render_staged_expansion() {
 
     indicator_width=$((2 + ${#count}))
     theme_select_expansion_message \
-        "COMMIT PENDING: ${count} staged ${unit} ${verb} ready to commit" \
-        "COMMIT PENDING: ${count}" \
+        "⚠  COMMIT PENDING: ${count} staged ${unit} ${verb} ready to commit" \
+        "⚠  COMMIT PENDING: ${count}" \
         "${yafp_ctx_git_staged_indicator_column:-0}" \
         "$indicator_width"
     [ -n "$yafp_expansion_message" ] || return 0
-    banner="⎝ ${yafp_expansion_message} ⎠"
+    banner="( ${yafp_expansion_message} )"
     yafp_text_display_width "$banner"
     left=$(((yafp_display_width - indicator_width) / 2))
     [ "$left" -ge 0 ] || left=0
@@ -688,7 +686,7 @@ theme_render_remote_expansion() {
     fi
 
     if [ "${yafp_ctx_git_remote_connection_announcement:-0}" -eq 1 ]; then
-        message="INTERNET CONNECTION"
+        message="✓  INTERNET CONNECTION"
         color="$cRemoteConnection"
         case "${yafp_ctx_git_remote_state:-}" in
             ahead) indicator_width=$((1 + ${#yafp_ctx_git_ahead})) ;;
@@ -710,8 +708,8 @@ theme_render_remote_expansion() {
             fi
             indicator_width=$((1 + ${#yafp_ctx_git_ahead}))
             theme_select_expansion_message \
-                "REMOTE NOT UPDATED: ${yafp_ctx_git_ahead} local ${unit} ${verb} not been pushed to ${yafp_ctx_git_upstream}" \
-                "PUSH PENDING: ${yafp_ctx_git_ahead}" \
+                "⚠  REMOTE NOT UPDATED: ${yafp_ctx_git_ahead} local ${unit} ${verb} not been pushed to ${yafp_ctx_git_upstream}" \
+                "⚠  PUSH PENDING: ${yafp_ctx_git_ahead}" \
                 "${yafp_ctx_git_remote_indicator_column:-0}" \
                 "$indicator_width"
             message="$yafp_expansion_message"
@@ -726,8 +724,8 @@ theme_render_remote_expansion() {
             fi
             indicator_width=$((1 + ${#yafp_ctx_git_behind}))
             theme_select_expansion_message \
-                "OUTDATED REPOSITORY: ${yafp_ctx_git_behind} ${unit} ${verb} from ${yafp_ctx_git_upstream}" \
-                "PULL PENDING: ${yafp_ctx_git_behind}" \
+                "☒  OUTDATED REPOSITORY: ${yafp_ctx_git_behind} ${unit} ${verb} from ${yafp_ctx_git_upstream}" \
+                "☒  PULL PENDING: ${yafp_ctx_git_behind}" \
                 "${yafp_ctx_git_remote_indicator_column:-0}" \
                 "$indicator_width"
             message="$yafp_expansion_message"
@@ -736,8 +734,8 @@ theme_render_remote_expansion() {
         diverged)
             indicator_width=$((2 + ${#yafp_ctx_git_ahead} + ${#yafp_ctx_git_behind}))
             theme_select_expansion_message \
-                "DIVERGED REPOSITORY: local +${yafp_ctx_git_ahead} / remote +${yafp_ctx_git_behind} relative to ${yafp_ctx_git_upstream}" \
-                "DIVERGED: ⇡${yafp_ctx_git_ahead} ⇣${yafp_ctx_git_behind}" \
+                "☒  DIVERGED REPOSITORY: local +${yafp_ctx_git_ahead} / remote +${yafp_ctx_git_behind} relative to ${yafp_ctx_git_upstream}" \
+                "☒  DIVERGED: ⇡${yafp_ctx_git_ahead} ⇣${yafp_ctx_git_behind}" \
                 "${yafp_ctx_git_remote_indicator_column:-0}" \
                 "$indicator_width"
             message="$yafp_expansion_message"
@@ -745,7 +743,7 @@ theme_render_remote_expansion() {
             ;;
         error)
             [ "${YAFP_REMOTE_OFFLINE_ACKNOWLEDGED:-0}" -eq 0 ] || return 0
-            message="REMOTE CHECK FAILED"
+            message="☒  REMOTE CHECK FAILED"
             color="$cRemoteProblem"
             indicator_width=3
             ;;
@@ -757,7 +755,7 @@ theme_render_remote_expansion() {
     theme_select_expansion_message "$message" "$message" \
         "${yafp_ctx_git_remote_indicator_column:-0}" "$indicator_width"
     [ -n "$yafp_expansion_message" ] || return 0
-    banner="⎝ ${message} ⎠"
+    banner="( ${message} )"
     yafp_text_display_width "$banner"
     left=$(((yafp_display_width - indicator_width) / 2))
     [ "$left" -ge 0 ] || left=0
@@ -1303,10 +1301,19 @@ setColor() {
 
     if [ "$colorBG" != "transparent" ]; then
         indexBG=$(getColorIndex "$colorBG")
-        codes="${codes}$(tput setab "$indexBG")"
+        if [ "$indexBG" -ge 8 ]; then
+            # Eight-color terminfo entries cannot encode bright palette indexes.
+            printf -v codes '%s\033[%sm' "$codes" "$((100 + indexBG - 8))"
+        else
+            codes="${codes}$(tput setab "$indexBG")"
+        fi
     fi
 
-    codes="${codes}$(tput setaf "$indexFG")"
+    if [ "$indexFG" -ge 8 ]; then
+        printf -v codes '%s\033[%sm' "$codes" "$((90 + indexFG - 8))"
+    else
+        codes="${codes}$(tput setaf "$indexFG")"
+    fi
 
     printf "%s" "$codes"
 }
@@ -2215,6 +2222,33 @@ yafp-ack() {
 }
 
 
+yafp-msgs() {
+    local color
+    local message
+    local severity
+
+    while IFS='|' read -r severity message; do
+        case "$severity" in
+            green) color="$cRemoteConnection" ;;
+            yellow) color="$cRemotePending" ;;
+            red) color="$cRemoteProblem" ;;
+        esac
+        printf '%s%s%s\n' "$color" "( ${message} )" $'\033[0m'
+    done <<'EOF'
+green|✓  INTERNET CONNECTION
+yellow|⚠  REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/main
+yellow|⚠  PUSH PENDING: 1
+yellow|⚠  COMMIT PENDING: 1 staged file is ready to commit
+yellow|⚠  COMMIT PENDING: 1
+red|☒  OUTDATED REPOSITORY: 1 commit is missing from origin/main
+red|☒  PULL PENDING: 1
+red|☒  DIVERGED REPOSITORY: local +1 / remote +1 relative to origin/main
+red|☒  DIVERGED: ⇡1 ⇣1
+red|☒  REMOTE CHECK FAILED
+EOF
+}
+
+
 yafp-help() {
     local description
     local name
@@ -2236,6 +2270,7 @@ yafp-refresh|Request an immediate remote refresh.
 yafp-ack|Acknowledge the current remote error alert.
 yafp-reload|Reload YAFP in the current shell.
 yafp-stats|Show command execution statistics.
+yafp-msgs|Show all prompt banners in severity order.
 yafp-help|Show available YAFP commands.
 EOF
 }
