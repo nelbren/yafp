@@ -64,6 +64,30 @@ assert_eq $'\033[0;48;2;255;255;0;38;2;0;0;0m' "$cRemotePending" 'exact warning 
 assert_eq $'\033[0;48;2;0;128;0;38;2;255;255;255m' "$cRemoteConnection" 'exact recovery colors'
 yafp_strip_terminal_styles $'\033[31mred\033[0m'
 assert_eq red "$yafp_plain_text" 'ANSI stripping uses native match'
+available_locales="$(locale -a)"
+original_lc_all="${LC_ALL-}"
+original_lc_all_set=${+LC_ALL}
+for test_locale in en_US.UTF-8 es_ES.UTF-8; do
+    case "$available_locales" in
+        *"$test_locale"*) ;;
+        *) continue ;;
+    esac
+    LC_ALL="$test_locale"
+    yafp_zsh_wrap_styles $'\033[31mred\033[0m' \
+        > "$TEST_RUNTIME/wrapped-styles" 2> "$TEST_RUNTIME/wrapped-styles.err"
+    out="$(<"$TEST_RUNTIME/wrapped-styles")"
+    err="$(<"$TEST_RUNTIME/wrapped-styles.err")"
+    assert_eq $'%{\033[31m%}red%{\033[0m%}' "$out" \
+        "ANSI wrapping under $test_locale"
+    assert_eq '' "$err" "ANSI wrapping diagnostics under $test_locale"
+    assert_eq "$test_locale" "$LC_ALL" \
+        "ANSI wrapping preserves caller locale under $test_locale"
+done
+if (( original_lc_all_set )); then
+    LC_ALL="$original_lc_all"
+else
+    unset LC_ALL
+fi
 yafp_text_display_width 'abc🌐'
 assert_eq 5 "$yafp_display_width" 'Unicode width'
 

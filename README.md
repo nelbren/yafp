@@ -383,8 +383,9 @@ it becomes `( ⚠ COMMIT PENDING: N )`.
 Bash excludes both Readline-wrapped and raw terminal color sequences when
 measuring that position, so colored separators cannot make an overflowing
 detailed banner appear to fit.
-ANSI removal uses locale-independent byte matching, while visible text keeps
-Unicode width measurement. This also applies with macOS UTF-8 locales.
+ANSI recognition and removal in Bash and zsh use locale-independent byte
+matching, while visible text keeps Unicode width measurement. This also applies
+with macOS UTF-8 locales.
 If even the short banner would cross the right edge, YAFP omits the expansion
 and keeps the `📦N` indicator. The same fit check applies to remote banners;
 their compact status indicators remain visible.

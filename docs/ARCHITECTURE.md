@@ -173,8 +173,9 @@ external process or querying the terminal interactively.
 The Bash measurement strips both Readline nonprinting spans and raw ANSI style
 sequences, including character-set resets emitted by `tput`. Invisible separator
 styles must not contribute to the column or its wrapping calculation.
-Only ANSI stripping runs under the `C` locale: macOS locale collation can reject
-the ASCII regex ranges. Unicode cell measurement retains the caller's locale.
+Only ANSI stripping and zsh prompt-style wrapping run under the `C` locale:
+macOS locale collation can reject the ASCII regex ranges. Unicode cell
+measurement retains the caller's locale.
 All three shells check the short alternative too and emit no banner text or cursor
 movement when neither variant fits. Fixed connectivity messages use the same
 check. Compact indicators remain visible; reserved expansion rows may stay empty.

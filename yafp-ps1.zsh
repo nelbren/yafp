@@ -2481,6 +2481,7 @@ yafp_prompt_command() {
 
 yafp_zsh_wrap_styles() {
     emulate -L zsh -o KSH_ARRAYS
+    local LC_ALL=C
     local text="$1" out='' char pair rest
     local index=0 invisible=0
     local ansi=$'^\033(\\[[0-?]*[ -/]*[@-~]|[()][0-2A-Z])'
