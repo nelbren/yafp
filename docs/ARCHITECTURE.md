@@ -12,10 +12,13 @@ be preserved when changing or modularizing the project.
 | Component                     | Responsibility                                         |
 | ----------------------------- | ------------------------------------------------------ |
 | `yafp-ps1.bash`               | Bash prompt core, context, hooks, and rendering        |
+| `yafp-ps1.zsh`                | Native zsh context, hooks, workers, and rendering      |
 | `yafp-ps.ps1`                 | PowerShell prompt core, context, jobs, and rendering   |
 | `themes/*.bash`               | Bash-specific presentation for each theme              |
+| `themes/*.zsh`                | zsh presentation for each theme                        |
 | `themes/*.ps1`                | PowerShell-specific presentation for each theme        |
 | `yafp-cfg.bash.example`       | Bash configuration template                            |
+| `yafp-cfg.zsh.example`        | zsh configuration template                             |
 | `yafp-cfg.ps1.example`        | PowerShell configuration template                      |
 | `tests/`                      | Logic and integration tests                            |
 | `scripts/*/setup/quality.*`   | Platform-specific quality tool installation            |
@@ -44,6 +47,42 @@ Background intensity is selected during color construction through
 Bright foreground and background colors use ANSI SGR codes directly because
 eight-color terminfo entries can misencode palette indexes 8 through 15.
 
+## zsh loading flow
+
+1. `yafp-ps1.zsh` resolves its own location using native filename expansion.
+2. It loads `yafp-cfg.zsh`, or the file selected through `YAFP_CONFIG_FILE`.
+3. It loads `zsh/datetime`, applies defaults, and builds the selected native
+   theme, falling back to `default`.
+4. In interactive shells, `add-zsh-hook` registers `preexec`, `precmd`, and
+   `zshexit` functions. Repeated sourcing does not duplicate registrations.
+   Tests can disable registration with `YAFP_NO_INSTALL_HOOKS=1`.
+5. `preexec` captures the full executed command and emits OSC 133 C.
+6. `precmd` captures `$?` and `pipestatus` before running other commands,
+   completes the previous block with OSC 133 D, collects context, and builds
+   the prompt with A/B markers. It returns success so other hooks can run.
+
+The zsh engine is independent of the Bash engine. It retains the existing
+context and theme contract without moving Bash or PowerShell behavior into
+shared modules. Each function uses a local native option scope with
+`KSH_ARRAYS` for its internal arrays; those options do not leak into the user's
+session. The interactive prompt explicitly enables `PROMPT_PERCENT` and
+`PROMPT_SUBST` and disables `PROMPT_BANG`.
+
+A single parameter expansion supplies the precomputed prompt. Literal data
+escapes percent syntax; inserted data is not evaluated as shell code. Native
+`%{…%}` spans mark terminal styles and cursor-relative banners as nonprinting.
+Prefix measurement expands native prompt escapes, removes terminal styles, and
+uses the same Unicode width and terminal-edge rules as Bash. Prompt timestamps
+and metrics use the loaded native datetime module.
+
+Background workers disable zsh's automatic job niceness and are disowned at
+launch. They reuse the Bash-compatible Git cache and locking contract, perform
+non-interactive fetches, and never redraw the line editor when they finish.
+The next prompt collects their result. Command serial numbers distinguish
+repeated identical input without depending on history settings. Reloads
+preserve counters and remote acknowledgement; `zshexit` prints statistics
+without replacing existing exit hooks.
+
 ## PowerShell loading flow
 
 1. `yafp-ps.ps1` calculates the root from `$MyInvocation`.
@@ -64,8 +103,8 @@ synthesize C, preserving existing interactive bindings and reload safety.
 Local context is collected during rendering. Remote queries never run in the
 foreground:
 
-- Bash starts a background worker and stores the result inside the actual Git
-  directory.
+- Bash and zsh start a background worker and store the result inside the actual
+  Git directory.
 - PowerShell uses a background job and the same conceptual cache format.
 - A lock prevents concurrent workers and is removed when it becomes stale.
 - The first repository prompt after loading forces a background refresh; the
@@ -103,7 +142,7 @@ foreground:
 
 Shared states are checking, refreshing, current, ahead, behind, diverged, and
 error. The error state renders `☒🌐︎` as its compact
-indicator and the `( ☒ REMOTE CHECK FAILED )` expansion in both shells. This
+indicator and the `( ☒ REMOTE CHECK FAILED )` expansion in all three shells. This
 state covers fetch and reference-comparison failures; it does not establish
 that the internet is unavailable. Cache files are shared by shells using the
 same Git directory, including restricted processes. A manual refresh bypasses
@@ -119,7 +158,7 @@ delimiter and before the closing delimiter. Width and centering calculations
 include both delimiters and the two inner spaces.
 Message text includes a severity symbol (`✓`, `⚠`, or `☒`), so the fit and
 centering calculations include its width too. Connection and warning styles
-use explicit RGB green/white and yellow/black in both shells, independent of
+use explicit RGB green/white and yellow/black in all three shells, independent of
 the terminal's configurable ANSI palette.
 The delimiters are ASCII parentheses, avoiding font-dependent placement of
 the Unicode parenthesis pieces previously used by the banners.
@@ -136,7 +175,7 @@ sequences, including character-set resets emitted by `tput`. Invisible separator
 styles must not contribute to the column or its wrapping calculation.
 Only ANSI stripping runs under the `C` locale: macOS locale collation can reject
 the ASCII regex ranges. Unicode cell measurement retains the caller's locale.
-Both shells check the short alternative too and emit no banner text or cursor
+All three shells check the short alternative too and emit no banner text or cursor
 movement when neither variant fits. Fixed connectivity messages use the same
 check. Compact indicators remain visible; reserved expansion rows may stay empty.
 Bash also reserves a small right-edge margin because browser terminals can
@@ -150,7 +189,7 @@ renders restore the normal intense-green foreground and transparent background.
 The announcement takes precedence over any repository-state expansion for that
 one prompt. Cached success from before the session does not trigger the initial
 announcement, and reloads preserve the current connectivity state.
-Bash and PowerShell render the compact current-state `✓🌐︎` in intense green.
+Bash, zsh, and PowerShell render the compact current-state `✓🌐︎` in intense green.
 Expansions and compact prompt indicators share one severity contract: warnings
 use black text on an intense yellow background, while errors use intense white
 text on a red background. The warning background remains intense for contrast,
@@ -191,8 +230,8 @@ Each implementation must represent, when applicable:
   transparent background independently from banner severity styles;
 - development metrics.
 
-Adding a theme requires Bash and PowerShell implementations, safe fallback,
-and loading tests.
+Adding a theme requires Bash, zsh, and PowerShell implementations, safe
+fallback, and loading tests.
 
 ## Integration boundaries
 
@@ -262,6 +301,16 @@ bash scripts/unix/quality/check.bash
 pwsh -NoProfile -File scripts/windows/quality/check.ps1
 ```
 
+The Unix runner includes zsh checks when installed. The dedicated entry point
+`bash scripts/unix/quality/zsh.bash` requires zsh 5.9 or later and Python 3
+for pseudo-terminal tests. It checks syntax, all themes, native context,
+banners, reload, local Git state transitions, nonblocking refreshes, abandoned
+locks, worktrees, and live OSC 133 hooks, pipelines, and interruption. Linux
+and macOS CI set `YAFP_REQUIRE_ZSH=1`.
+
+The Bash preview test measures the visible prompt mark after stripping ANSI;
+it accepts equivalent reset sequences from different terminfo entries.
+
 CI runs these same entry points. The `YAFP_REQUIRE_LINTERS=1` variable turns a
 missing optional analyzer into an error.
 
@@ -275,6 +324,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-20 20:48:32 🍎 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-10-11 00:52:30 🍎 MBP03 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

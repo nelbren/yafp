@@ -15,10 +15,14 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
       - name: Install linters
-        run: bash scripts/unix/setup/quality.bash
+        run: |
+          bash scripts/unix/setup/quality.bash
+          sudo apt-get update
+          sudo apt-get install -y zsh
       - name: Run Unix checks
         env:
           YAFP_REQUIRE_LINTERS: 1
+          YAFP_REQUIRE_ZSH: 1
         run: bash scripts/unix/quality/check.bash
 
   bash-macos:
@@ -28,6 +32,8 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
       - name: Run Unix checks
+        env:
+          YAFP_REQUIRE_ZSH: 1
         run: bash scripts/unix/quality/check.bash
 
   powershell-windows:

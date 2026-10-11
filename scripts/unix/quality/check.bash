@@ -111,6 +111,15 @@ bash tests/remote_status_test.bash 2>&1 | colorize_quality_output
 bash tests/origin_device_hook_test.bash 2>&1 | colorize_quality_output
 bash tests/psscriptanalyzer_setup_test.bash 2>&1 | colorize_quality_output
 
+if command -v zsh >/dev/null 2>&1; then
+    bash scripts/unix/quality/zsh.bash 2>&1 | colorize_quality_output
+elif [ "${YAFP_REQUIRE_ZSH:-0}" -eq 1 ]; then
+    print_quality_error 'Required runtime not found: zsh'
+    exit 1
+else
+    print_quality_warning 'zsh checks skipped: runtime not installed'
+fi
+
 if command -v shellcheck >/dev/null 2>&1; then
     while IFS= read -r -d '' file; do
         # Themes and tests are sourced modules that intentionally exchange

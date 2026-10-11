@@ -1,11 +1,14 @@
 # :computer: Yet Another Fancy Prompt 🖥️
 
 [![made-with-bash][badge-bash]][bash]
+[![made-with-zsh][badge-zsh]][zsh]
 [![made-with-powershell][badge-powershell]][powershell]
 ![version][badge-version]
 ![themes][badge-themes]
 
 [badge-bash]: https://img.shields.io/badge/Made%20with-Bash-1f425f.svg
+[badge-zsh]: https://img.shields.io/badge/Made%20with-Zsh-1f425f
+[zsh]: https://zsh.sourceforge.io/
 [badge-powershell]: https://img.shields.io/badge/Made%20with-PowerShell-5391FE.svg?logo=powershell
 [badge-version]: https://img.shields.io/badge/version-0.3.4-green
 [badge-themes]: https://img.shields.io/badge/themes-8A2BE2?logo=educative
@@ -48,6 +51,53 @@
 ![PowerShell](docs/images/windows_powershell.png)
 
 ---
+
+### zsh on macOS and Linux
+
+YAFP supports zsh 5.9 or later alongside Bash and PowerShell. It uses a native
+engine and the same `default`, `minimal`, and `light` themes and configuration
+options. Git remains optional. The Bash-style option assignments shown below
+also apply to `yafp-cfg.zsh`.
+
+From your YAFP checkout, create the personal configuration:
+
+```zsh
+cp yafp-cfg.zsh.example yafp-cfg.zsh
+```
+
+Add the following line to your `~/.zshrc`, using your checkout's absolute path:
+
+```zsh
+source /path/to/yafp/yafp-ps1.zsh
+```
+
+Load it in your existing zsh session with the same command. For a configuration
+stored elsewhere, set `YAFP_CONFIG_FILE` to its absolute path before sourcing.
+Personal `yafp-cfg.zsh` files are ignored by Git.
+
+If you use Oh My Zsh, set `ZSH_THEME=""` and source YAFP after the framework.
+YAFP owns the visible prompt; other successful `precmd`, `preexec`, and
+`zshexit` hooks remain registered. It enables `PROMPT_PERCENT` and
+`PROMPT_SUBST` and disables `PROMPT_BANG`. Its implementation options, including
+array indexing, stay local to YAFP functions. Prompt data is expanded once,
+so paths and names containing substitution syntax cannot execute commands.
+
+The zsh implementation includes the remote checks, staged and remote banners,
+virtual environments, previous-command exit status, execution statistics,
+OSC 133, reload, development timing, and the `yafp-*` helper commands described
+below. It does not invoke Bash to render the prompt. Remote workers are silent
+and run in the background; the next prompt reads their cached result.
+
+Run the zsh syntax, logic, local Git, and interactive terminal tests with:
+
+```bash
+bash scripts/unix/quality/zsh.bash
+```
+
+The test runner requires zsh and Python 3; Python is not a prompt dependency.
+The normal Unix quality command also runs these checks when zsh is installed.
+Set `YAFP_REQUIRE_ZSH=1` to require the runtime, as Linux and macOS CI do.
+The existing Unix doctor continues to diagnose Bash configuration and profiles.
 
 ## :art: Styles
 
@@ -398,7 +448,7 @@ remote check resets the acknowledgement, so a later remote-check failure display
 the expansion again. Outside a remote error state, `yafp-ack` leaves
 the prompt unchanged.
 
-Use `yafp-reload` to reload the active Bash or PowerShell prompt after changing
+Use `yafp-reload` to reload the active Bash, zsh, or PowerShell prompt after changing
 its implementation or personal configuration. YAFP also records the commit
 from which it was loaded. After a successful `git pull`, it checks `HEAD` in
 the YAFP repository and reloads automatically when that hash changed. Pulling
@@ -425,7 +475,7 @@ yafp-msgs • Show all prompt banners in severity order.
 yafp-help • Show available YAFP commands.
 ```
 
-Use `yafp-msgs` in Bash or PowerShell to preview all prompt banners, including
+Use `yafp-msgs` in Bash, zsh, or PowerShell to preview all prompt banners, including
 their detailed and compact variants. It prints green banners first, then
 yellow warnings, and finally red errors, using the prompt's severity colors
 and `( MESSAGE )` spacing. The examples use one commit or staged file and
@@ -808,6 +858,6 @@ overwrite a different existing `prepare-commit-msg` hook.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-20 20:59:04 🍎 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-10-11 00:52:30 🍎 MBP03 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6.1-Sol Medium & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

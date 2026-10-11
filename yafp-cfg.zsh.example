@@ -1,0 +1,45 @@
+#!/usr/bin/env zsh
+
+DEV='ndev-'
+PRO='npro-'
+
+YAFP_REPOS=1
+YAFP_TITLE=1
+YAFP_ERROR=1
+YAFP_PVENV=1
+
+# Use darker background variants in the default and minimal themes.
+# The light theme has no colored backgrounds, so this setting does not apply.
+YAFP_DARKC=1
+
+# Display prompt timestamps; set to 0 to hide them in every theme.
+YAFP_CLOCK=1
+
+# Emit OSC 133 shell-integration markers so compatible terminals can group
+# each command as a semantic block. Set to 0 if your terminal misbehaves.
+YAFP_OSC133=1
+
+# Check the configured upstream in the background. The value is the cache
+# lifetime in seconds; set it to 0 to disable remote checks completely.
+YAFP_REMOTE_CHECK_INTERVAL=300
+
+# Display the remote refresh countdown as seconds (numeric) or as one
+# progressively emptying Braille cell (symbols).
+YAFP_REMOTE_COUNTDOWN_STYLE="numeric"
+
+# Display the yafp-status progress bar with blocks or Braille symbols.
+YAFP_STATUS_PROGRESS_STYLE="blocks"
+
+# Display prompt construction timing; set it to 0 to disable the metrics.
+YAFP_DEVEL=0
+
+# Reload YAFP automatically when a successful git pull changes its commit.
+# The yafp-reload command remains available when this option is disabled.
+YAFP_AUTO_RELOAD=1
+
+# Print per-session command statistics during a normal shell exit.
+YAFP_STATS_ON_EXIT=1
+
+# YAFP_THEME="default"
+# YAFP_THEME="minimal"
+YAFP_THEME="light"

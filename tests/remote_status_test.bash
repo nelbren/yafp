@@ -411,8 +411,10 @@ preview_prompt_symbol='$'
 if [ "${EUID:-1}" -eq 0 ]; then
     preview_prompt_symbol='#'
 fi
-case "$preview_output" in
-    *"$preview_prompt_symbol"$'\033[0m\033[K '*) ;;
+# Terminfo can spell a full reset differently across terminals.
+yafp_strip_terminal_styles "$preview_output"
+case "$yafp_plain_text" in
+    *"$preview_prompt_symbol ") ;;
     *) fail 'Bash prompt preview omitted the rendered prompt mark' ;;
 esac
 case "$preview_output" in

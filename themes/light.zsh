@@ -1,0 +1,271 @@
+#!/usr/bin/env zsh
+#
+# themes/minimal.zsh
+#
+
+YAFP_THEME_NAME="light"
+YAFP_THEME_VERSION="1.0"
+
+# Base colors
+
+YAFP_COLOR_NORMAL_BG="transparent"
+YAFP_COLOR_NORMAL_FG="white"
+
+YAFP_COLOR_DIR_BG="transparent"
+YAFP_COLOR_DIR_FG="YELLOW"
+
+YAFP_COLOR_TIMESTAMP_BG="transparent"
+YAFP_COLOR_TIMESTAMP_FG="white"
+
+YAFP_COLOR_STATUS_OK_BG="transparent"
+YAFP_COLOR_STATUS_OK_FG="GREEN"
+
+YAFP_COLOR_STATUS_WARNING_BG="intense-yellow"
+YAFP_COLOR_STATUS_WARNING_FG="black"
+
+YAFP_COLOR_STATUS_ERROR_BG="RED"
+YAFP_COLOR_STATUS_ERROR_FG="WHITE"
+YAFP_COLOR_STATUS_ERROR_ATTRS="blink"
+
+YAFP_COLOR_STATUS_NEXT_BG="transparent"
+YAFP_COLOR_STATUS_NEXT_FG="cyan"
+
+YAFP_COLOR_USER_BG="transparent"
+YAFP_COLOR_USER_FG="CYAN"
+
+YAFP_COLOR_ROOT_BG="transparent"
+YAFP_COLOR_ROOT_FG="RED"
+
+YAFP_COLOR_HOST_DEV_BG="transparent"
+YAFP_COLOR_HOST_DEV_FG="GREEN"
+
+YAFP_COLOR_HOST_PRO_BG="transparent"
+YAFP_COLOR_HOST_PRO_FG="MAGENTA"
+
+YAFP_COLOR_PROMPT_USER_BG="transparent"
+YAFP_COLOR_PROMPT_USER_FG="GREEN"
+
+YAFP_COLOR_PROMPT_ROOT_BG="transparent"
+YAFP_COLOR_PROMPT_ROOT_FG="RED"
+
+YAFP_COLOR_VENV_BG="transparent"
+YAFP_COLOR_VENV_FG="MAGENTA"
+
+YAFP_COLOR_GIT_BG="transparent"
+YAFP_COLOR_GIT_FG="WHITE"
+
+YAFP_COLOR_REPO_BG="yellow"
+YAFP_COLOR_REPO_FG="black"
+
+# Executed command block
+YAFP_COLOR_CMD_OK_BG="transparent"
+YAFP_COLOR_CMD_OK_FG="GREEN"
+
+YAFP_COLOR_CMD_ERROR_BG="transparent"
+YAFP_COLOR_CMD_ERROR_FG="RED"
+
+# Check / warning blocks
+YAFP_COLOR_OK_ICON_BG="transparent"
+YAFP_COLOR_OK_ICON_FG="GREEN"
+
+YAFP_COLOR_WARN_ICON_BG="intense-yellow"
+YAFP_COLOR_WARN_ICON_FG="black"
+
+# Git counters
+YAFP_COLOR_GIT_DELETE_BG="transparent"
+YAFP_COLOR_GIT_DELETE_FG="RED"
+YAFP_COLOR_GIT_DELETE_ATTRS=""
+
+YAFP_COLOR_GIT_CHANGE_BG="transparent"
+YAFP_COLOR_GIT_CHANGE_FG="YELLOW"
+YAFP_COLOR_GIT_CHANGE_ATTRS=""
+
+YAFP_COLOR_GIT_NEW_BG="transparent"
+YAFP_COLOR_GIT_NEW_FG="CYAN"
+YAFP_COLOR_GIT_NEW_ATTRS=""
+
+# Extra blocks
+YAFP_COLOR_CLIENT_BG="transparent"
+YAFP_COLOR_CLIENT_FG="WHITE"
+
+YAFP_COLOR_COUNTRY_BG="transparent"
+YAFP_COLOR_COUNTRY_FG="CYAN"
+
+YAFP_COLOR_GIT_BRANCH_BG="transparent"
+YAFP_COLOR_GIT_BRANCH_FG="BLUE"
+
+YAFP_SYMBOL_REMOTE="↯"
+YAFP_SYMBOL_GIT_DELETE_EMOJI=""
+YAFP_SYMBOL_GIT_CHANGE_EMOJI=""
+YAFP_SYMBOL_GIT_NEW_EMOJI=""
+
+YAFP_CLOCK_EMOJI="⧖"
+YAFP_SYMBOL_ERROR="☒"
+YAFP_SYMBOL_OK="✓"
+
+theme_render_general_block() {
+    emulate -L zsh -o KSH_ARRAYS
+    local cUserPS1
+    local cHostPS1
+    local cNormalPS1
+    local cDirPS1
+    local cClientPS1
+    local cCountryPS1
+    local emojiClient
+    local country_text
+
+    cUserPS1="$(ps1_wrap "$(theme_ps1_user_color)")"
+    cHostPS1="$(ps1_wrap "$(theme_ps1_host_color)")"
+    cNormalPS1="$(theme_ps1_reset)"
+    cDirPS1="$(ps1_wrap "$cDir")"
+    cClientPS1="$(ps1_wrap "$cClient")"
+    cCountryPS1="$(ps1_wrap "$cCountry")"
+    cTimestampPS1="$(ps1_wrap "$cTimestamp")"
+
+    if [ -n "$SSH_CLIENT" ]; then
+        emojiClient="${cClientPS1}${CLIENT_OS_EMOJI}"
+    else
+        emojiClient="${cClientPS1}LOCAL"
+    fi
+
+    country_text="${OMP_GEOIP_COUNTRY:-🏠}"
+
+    local parts=(
+        "$SERVER_OS_EMOJI "
+        "$cUserPS1%n"
+        "$cSeparator @ "
+        "$cHostPS1%m"
+        "$cSeparator ⌂ "
+        "$cDirPS1%~"
+        "$cSeparator"
+    )
+
+    printf '%s' "${parts[@]}"
+}
+
+
+theme_render_git_block() {
+    emulate -L zsh -o KSH_ARRAYS
+    local remote_symbol
+    local remote_status
+    local counts
+    local cGitBranchPS1
+    local cNormalPS1
+    local emojiGit
+
+    [ "$yafp_ctx_git_has_repo" = "1" ] || return
+
+    counts="$(theme_render_git_counts)"
+    remote_status="$(theme_render_git_remote_status)"
+    [ -z "$remote_status" ] || remote_status=" ${remote_status} "
+    cGitBranchPS1="$(ps1_wrap "$cGitBranch")"
+    cNormalPS1="$(theme_ps1_reset)"
+
+    if [ "$yafp_ctx_git_remote" = "remote" ]; then
+        remote_symbol="$YAFP_SYMBOL_REMOTE"
+    else
+        remote_symbol="$YAFP_SYMBOL_LOCAL"
+    fi
+
+    if [ -z "$counts" ]; then
+        text="${cStatusOk}✓${cSeparator}"
+    else
+        text="⇢[${counts}${cSeparator}]"
+    fi
+
+    local parts=(
+        "$cSeparator $YAFP_SYMBOL_GIT_EMOJI"
+        "$remote_status"
+        "$cGitBranchPS1"
+        "${yafp_ctx_git_branch//\%/%%}"
+        "$cSeparator"
+        "$remote_symbol"
+        "$text"
+    )
+
+    printf '%s' "${parts[@]}"
+}
+
+
+theme_render_venv_block() {
+    emulate -L zsh -o KSH_ARRAYS
+    local cVenvPS1
+
+    [ -n "${yafp_venv_segment//\%/%%}" ] || return
+
+    cVenvPS1="$(ps1_wrap "$cVenv")"
+
+    local parts=(
+        "$cSeparator $YAFP_SYMBOL_VENV_EMOJI "
+        "${cVenvPS1}${yafp_venv_segment//\%/%%}"
+    )
+
+    printf '%s' "${parts[@]}"
+}
+
+
+theme_render_timestamp() {
+    emulate -L zsh -o KSH_ARRAYS
+    local parts=(
+        "$cSeparator $YAFP_CLOCK_EMOJI "
+        "${cTimestamp}$yafp_ctx_timestamp"
+        "$cFullReset"
+    )
+
+    printf '%s' "${parts[@]}"
+}
+
+theme_render_status_ok_block() {
+    emulate -L zsh -o KSH_ARRAYS
+    local cExitPS1
+    local cNormalPS1
+
+    cExitPS1="$(ps1_wrap "$cStatusOk")"
+    cNormalPS1="$(theme_ps1_reset)"
+
+    local parts=(
+        "${cSeparator} "
+        "${cExitPS1}"
+        "$YAFP_SYMBOL_OK "
+        # "$yafp_ctx_exit"
+        "$cFullReset"
+    )
+
+    printf '%s' "${parts[@]}"
+}
+
+
+theme_render_status_error_block() {
+    emulate -L zsh -o KSH_ARRAYS
+    local cExitPS1
+    local cNormalPS1
+
+    cExitPS1="$(ps1_wrap "$cExit")"
+    cNormalPS1="$(theme_ps1_reset)"
+
+    local parts=(
+        "${cSeparator} "
+        "${cExitPS1}"
+        "$YAFP_SYMBOL_ERROR "
+        "$yafp_ctx_exit"
+        "$cFullReset"
+    )
+
+    printf '%s' "${parts[@]}"
+}
+
+
+theme_render_ps1() {
+    emulate -L zsh -o KSH_ARRAYS
+    local ps1='' main promptMark cFullResetPS1
+    cFullResetPS1="$(ps1_wrap "$cFullReset")"
+    theme_prepare_expansion_columns
+    main="$(theme_render_main_block)"
+    promptMark="$(theme_ps1_prompt_mark)"
+    (( ${yafp_ctx_git_staged:-0} > 0 )) && ps1+=$'\n'
+    theme_remote_expansion_visible && ps1+=$'\n'
+    ps1+="${main}"$'\n'
+    [[ "${YAFP_DEVEL:-0}" == 1 ]] && ps1+="$(yafp_dev_segment)"$'\n'
+    ps1+="${promptMark}${cFullResetPS1} "
+    printf '%s' "$ps1"
+}

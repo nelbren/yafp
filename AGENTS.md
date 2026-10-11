@@ -2,7 +2,7 @@
 
 ## Project scope
 
-YAFP implements equivalent prompts for Bash and PowerShell. Before changing
+YAFP implements equivalent prompts for Bash, zsh, and PowerShell. Before changing
 the repository, review `README.md`, `docs/ARCHITECTURE.md`, and the global
 documentation base for the current operating system.
 
@@ -12,10 +12,11 @@ a difference is found, correct the documentation as part of the same change.
 ## Supported platforms
 
 - Bash on Linux, macOS, WSL2, and Git Bash.
+- zsh 5.9 or later on Linux and macOS.
 - PowerShell 7 on Windows.
 - Git as an optional dependency for repository sections.
 
-Do not assume support for zsh, fish, or Windows PowerShell 5.1 without a
+Do not assume support for fish or Windows PowerShell 5.1 without a
 specific implementation and tests.
 
 ## Prompt invariants
@@ -24,13 +25,13 @@ specific implementation and tests.
 - Remote checks must run in the background without interactive credential
   prompts.
 - The previous command status and its exit code must be preserved.
-- Integration with `PROMPT_COMMAND`, the `DEBUG` trap, and OSC 133 must not
-  emit visible sequences or run a command twice.
+- Integration with `PROMPT_COMMAND`, the `DEBUG` trap, zsh hooks, and OSC 133
+  must not emit visible sequences or run a command twice.
 - Loading YAFP more than once must not accumulate hooks, jobs, or output.
 - A repository without an upstream, in detached HEAD, or inside a worktree
   must degrade without visible errors.
 - The `default`, `minimal`, and `light` themes must preserve the same semantics
-  in Bash and PowerShell, even when their presentation differs.
+  in Bash, zsh, and PowerShell, even when their presentation differs.
 
 ## Change organization
 
@@ -40,9 +41,9 @@ specific implementation and tests.
 - Do not modularize `yafp-ps1.bash` or `yafp-ps.ps1` without characterization
   tests for the behavior being moved.
 - A behavior change must include tests and documentation in the same delivery.
-- A theme change must review both the Bash and PowerShell implementations.
-- Personal configurations live in `yafp-cfg.bash` and `yafp-cfg.ps1`; only
-  their `.example` files are versioned.
+- A theme change must review the Bash, zsh, and PowerShell implementations.
+- Personal configurations live in `yafp-cfg.bash`, `yafp-cfg.zsh`, and
+  `yafp-cfg.ps1`; only their `.example` files are versioned.
 
 ## Required validation
 
@@ -81,6 +82,6 @@ The scripts run the tests and use `shellcheck`, PSScriptAnalyzer, and
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-09-12 17:03:10 🪟 NDEV-DPC-02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-5.6 Sol Medium & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-10-11 00:52:30 🍎 MBP03 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6.1-Sol Medium & 👨🏻‍💻 Nelbren ©️ 2026
 </div>
