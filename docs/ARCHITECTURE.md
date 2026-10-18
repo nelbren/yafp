@@ -140,9 +140,21 @@ foreground:
 - `YAFP_STATUS_PROGRESS_STYLE` selects a block or fixed-width Braille progress
   bar without changing the compact prompt countdown.
 
-Shared states are checking, refreshing, current, ahead, behind, diverged, and
-error. The error state renders `☒🌐︎` as its compact
-indicator and the `( ☒ REMOTE CHECK FAILED )` expansion in all three shells. This
+Shared states are no-commits, no-upstream, checking, refreshing, current,
+ahead, behind, diverged, and error. The local no-upstream state applies to
+attached branches with a configured remote but no resolvable upstream
+reference. It renders the
+yellow `⇡?` indicator and a tracking-configuration banner in every theme.
+It never starts a worker or uses the remote cache or countdown. Repositories
+with commits but without remotes, detached HEAD, and disabled remote checks
+remain silent. The no-commits state takes precedence for an unborn branch,
+even without a remote, and renders a yellow `○0` with an initial-commit
+banner. Staging preserves it; the first commit clears it. Neither local
+warning starts a worker. Bash and zsh invalidate a cached non-repository
+when a `.git` directory appears in the current directory, using a built-in
+filesystem check.
+The error state renders `☒🌐︎` as its compact indicator and the
+`( ☒ REMOTE CHECK FAILED )` expansion in all three shells. This
 state covers fetch and reference-comparison failures; it does not establish
 that the internet is unavailable. Cache files are shared by shells using the
 same Git directory, including restricted processes. A manual refresh bypasses
@@ -325,6 +337,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-11 00:52:30 🍎 MBP03 |
+📆 2026-10-17 23:48:39 🍎 No expuesto |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

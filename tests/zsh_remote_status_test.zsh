@@ -110,10 +110,63 @@ refresh_context
 assert_eq 0 "$YAFP_REMOTE_OFFLINE_ACKNOWLEDGED" 'recovery clears acknowledgement'
 assert_eq 1 "$yafp_ctx_git_remote_connection_announcement" 'offline recovery announcement'
 
+COLUMNS=200
+# Detect git init in the same directory after caching a non-repository.
+mkdir "$TEST_ROOT/initialized"
+cd "$TEST_ROOT/initialized"
+YAFP_REPOS=1
+YAFP_GIT_LAST_PWD=''
+yafp_git_context 0
+assert_eq 0 "$yafp_ctx_git_has_repo" 'before git init'
+git init --quiet --initial-branch=main
+yafp_git_context 0
+assert_eq 1 "$yafp_ctx_git_has_repo" 'git init detected without changing directory'
+assert_eq no-commits "$yafp_ctx_git_remote_state" 'initial commit warning'
+assert_eq '' "$yafp_ctx_git_remote_refresh_in" 'initial commit has no countdown'
+[ ! -e .git/yafp-remote-status.lock ] || fail 'initial commit started a worker'
+for theme in default minimal light; do
+    YAFP_THEME="$theme"
+    load_theme
+    indicator="$(theme_render_git_remote_status)"
+    case "$indicator" in
+        *'○0'*'⚠ NO COMMITS'*|*'⚠ NO COMMITS'*'○0'*) ;;
+        *) fail "$theme missing initial commit warning" ;;
+    esac
+done
+printf initial > file.txt
+git add file.txt
+yafp_git_context 0
+assert_eq 1 "$yafp_ctx_git_staged" 'initial staged file remains visible'
+assert_eq no-commits "$yafp_ctx_git_remote_state" 'staging retains initial warning'
+git -c user.name=Test -c user.email=test@example.invalid \
+    -c commit.gpgsign=false -c core.hooksPath=/dev/null commit --quiet -m initial
+yafp_git_context 0
+assert_eq '' "$yafp_ctx_git_remote_state" 'first commit clears initial warning'
+cd "$TEST_ROOT/local"
+
 # Upstream, detached HEAD, worktree, and missing Git all degrade silently.
 git branch --unset-upstream
 read_context
-assert_eq '' "$yafp_ctx_git_remote_state" 'no upstream'
+assert_eq no-upstream "$yafp_ctx_git_remote_state" 'no upstream'
+assert_eq '' "$yafp_ctx_git_remote_refresh_in" 'no tracking countdown'
+[[ ! -d "$cache.lock" ]] || fail 'no upstream started a worker'
+COLUMNS=200
+for theme in default minimal light; do
+    YAFP_THEME="$theme"
+    load_theme
+    indicator="$(theme_render_git_remote_status)"
+    [[ "$indicator" == *'⇡?'* && "$indicator" == *'⚠ NO UPSTREAM'* ]] ||
+        fail "$theme tracking warning"
+done
+git remote remove origin
+read_context
+assert_eq '' "$yafp_ctx_git_remote_state" 'local-only repo'
+git remote add publish "$TEST_ROOT/origin.git"
+read_context
+assert_eq no-upstream "$yafp_ctx_git_remote_state" 'remote without tracking refs'
+git remote remove publish
+git remote add origin "$TEST_ROOT/origin.git"
+git fetch --quiet origin
 git branch --set-upstream-to=origin/main main >/dev/null
 git worktree add --quiet --detach "$TEST_ROOT/worktree" HEAD
 cd "$TEST_ROOT/worktree" || exit 1

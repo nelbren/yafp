@@ -895,6 +895,79 @@ set -e
 assert_eq 2 "$yafp_remote_countdown_color_index" \
     'second prompt render persisted the next symbolic countdown color'
 
+set +u
+set +e
+# Detect git init in the same directory after caching a non-repository.
+mkdir "$TEST_ROOT/initialized"
+cd "$TEST_ROOT/initialized"
+YAFP_REPOS=1
+YAFP_GIT_LAST_PWD=''
+yafp_git_context 0
+assert_eq 0 "$yafp_ctx_git_has_repo" 'before git init'
+git init --quiet --initial-branch=main
+yafp_git_context 0
+assert_eq 1 "$yafp_ctx_git_has_repo" 'git init detected without changing directory'
+assert_eq no-commits "$yafp_ctx_git_remote_state" 'initial commit warning'
+assert_eq '' "$yafp_ctx_git_remote_refresh_in" 'initial commit has no countdown'
+[ ! -e .git/yafp-remote-status.lock ] || fail 'initial commit started a worker'
+for theme in default minimal light; do
+    YAFP_THEME="$theme"
+    load_theme
+    indicator="$(theme_render_git_remote_status)"
+    case "$indicator" in
+        *'○0'*'⚠ NO COMMITS'*|*'⚠ NO COMMITS'*'○0'*) ;;
+        *) fail "$theme missing initial commit warning" ;;
+    esac
+done
+printf initial > file.txt
+git add file.txt
+yafp_git_context 0
+assert_eq 1 "$yafp_ctx_git_staged" 'initial staged file remains visible'
+assert_eq no-commits "$yafp_ctx_git_remote_state" 'staging retains initial warning'
+git -c user.name=Test -c user.email=test@example.invalid \
+    -c commit.gpgsign=false -c core.hooksPath=/dev/null commit --quiet -m initial
+yafp_git_context 0
+assert_eq '' "$yafp_ctx_git_remote_state" 'first commit clears initial warning'
+cd "$TEST_ROOT/local"
+
+set -e
+set -u
+
+# A remote without tracking must warn without starting a worker.
+git -C "$TEST_ROOT/local" branch --unset-upstream
+yafp_remote_context "$TEST_ROOT/local" main
+assert_eq no-upstream "$yafp_ctx_git_remote_state" 'no upstream warning'
+assert_eq '' "$yafp_ctx_git_remote_refresh_in" 'no upstream has no countdown'
+[ ! -d "${cache_file}.lock" ] || fail 'no upstream started a worker'
+assert_eq '⇡? No upstream' "$(yafp_remote_state_label no-upstream)" 'tracking status label'
+assert_eq YELLOW "$(yafp_remote_state_tone no-upstream)" 'tracking warning tone'
+for theme in default minimal light; do
+    YAFP_THEME="$theme"
+    set +u
+    load_theme
+    indicator="$(theme_render_git_remote_status)"
+    set -u
+    case "$indicator" in
+        *'⇡?'*) ;;
+        *) fail "$theme missing no-upstream indicator" ;;
+    esac
+    case "$indicator" in
+        *'⚠ NO UPSTREAM'*) ;;
+        *) fail "$theme missing no-upstream banner" ;;
+    esac
+done
+git -C "$TEST_ROOT/local" checkout --quiet --detach
+yafp_remote_context "$TEST_ROOT/local" unnamed
+assert_eq '' "$yafp_ctx_git_remote_state" 'detached has no tracking warning'
+git -C "$TEST_ROOT/local" checkout --quiet main
+git -C "$TEST_ROOT/local" remote remove origin
+yafp_remote_context "$TEST_ROOT/local" main
+assert_eq '' "$yafp_ctx_git_remote_state" 'local-only repo has no tracking warning'
+# Reproduce a first push: a remote exists but no tracking refs exist yet.
+git -C "$TEST_ROOT/local" remote add publish "$TEST_ROOT/origin.git"
+yafp_remote_context "$TEST_ROOT/local" main
+assert_eq no-upstream "$yafp_ctx_git_remote_state" 'unpublished branch warning'
+
 YAFP_REMOTE_COUNTDOWN_STYLE=numeric
 YAFP_REMOTE_CHECK_INTERVAL=0
 yafp_remote_context "$TEST_ROOT/local" main

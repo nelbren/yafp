@@ -5,7 +5,7 @@
 # Main engine of YAFP
 #
 
-YAFP_VERSION=0.3.4
+YAFP_VERSION=0.3.5
 
 # Customize in themes...
 
@@ -441,7 +441,7 @@ theme_remote_expansion_visible() {
     fi
 
     case "${yafp_ctx_git_remote_state:-}" in
-        ahead|behind|diverged) return 0 ;;
+        no-commits|no-upstream|ahead|behind|diverged) return 0 ;;
         error)
             [ "${YAFP_REMOTE_OFFLINE_ACKNOWLEDGED:-0}" -ne 1 ]
             return
@@ -699,6 +699,26 @@ theme_render_remote_expansion() {
         esac
     else
         case "${yafp_ctx_git_remote_state:-}" in
+        no-commits)
+            indicator_width=2
+            theme_select_expansion_message \
+                "⚠ NO COMMITS: create the initial commit" \
+                "⚠ NO COMMITS" \
+                "${yafp_ctx_git_remote_indicator_column:-0}" \
+                "$indicator_width"
+            message="$yafp_expansion_message"
+            color="$cRemotePending"
+            ;;
+        no-upstream)
+            indicator_width=2
+            theme_select_expansion_message \
+                "⚠ NO UPSTREAM: configure tracking before pushing" \
+                "⚠ NO UPSTREAM" \
+                "${yafp_ctx_git_remote_indicator_column:-0}" \
+                "$indicator_width"
+            message="$yafp_expansion_message"
+            color="$cRemotePending"
+            ;;
         ahead)
             unit="commits"
             verb="have"
@@ -804,6 +824,14 @@ theme_render_git_remote_status() {
                 color="$cRemoteOk"
             fi
             indicator="✓🌐︎"
+            ;;
+        no-commits)
+            color="$cRemotePending"
+            indicator="○0"
+            ;;
+        no-upstream)
+            color="$cRemotePending"
+            indicator="⇡?"
             ;;
         ahead)
             color="$cRemotePending"
@@ -1571,7 +1599,8 @@ yaft_general_context() {
 
 
 yafp_git_check() {
-    if [[ "$PWD" != "$YAFP_GIT_LAST_PWD" ]]; then
+    if [[ "$PWD" != "$YAFP_GIT_LAST_PWD" ]] ||
+       [[ "$YAFP_GIT_INSIDE" = 0 && -d .git ]]; then
         if [[ -d .git ]]; then
             YAFP_GIT_INSIDE=1
         else
@@ -1884,13 +1913,24 @@ yafp_remote_context() {
     [[ "$interval" =~ ^[0-9]+$ ]] && [ "$interval" -gt 0 ] || return 0
     [ -n "$branch" ] && [ "$branch" != "unnamed" ] || return 0
 
-    local_ref="$(git -C "$repo_root" symbolic-ref -q HEAD 2>/dev/null)"
+    local_ref="$(git -C "$repo_root" symbolic-ref -q HEAD 2>/dev/null)" || local_ref=""
     upstream="$(git -C "$repo_root" rev-parse --abbrev-ref \
-        --symbolic-full-name '@{upstream}' 2>/dev/null)"
+        --symbolic-full-name '@{upstream}' 2>/dev/null)" || upstream=""
     remote_name="$(git -C "$repo_root" config --get \
-        "branch.${branch}.remote" 2>/dev/null)"
+        "branch.${branch}.remote" 2>/dev/null)" || remote_name=""
 
-    [ -n "$local_ref" ] && [ -n "$upstream" ] || return 0
+    [ -n "$local_ref" ] || return 0
+    if [ -z "$upstream" ]; then
+        if ! git -C "$repo_root" rev-parse --verify -q HEAD >/dev/null 2>&1; then
+            yafp_ctx_git_remote_state="no-commits"
+            return 0
+        fi
+        # Only branches with a remote need a tracking warning; never fetch here.
+        if [ -n "$(git -C "$repo_root" remote 2>/dev/null)" ]; then
+            yafp_ctx_git_remote_state="no-upstream"
+        fi
+        return 0
+    fi
     [ -n "$remote_name" ] && [ "$remote_name" != "." ] || return 0
 
     git_dir="$(git -C "$repo_root" rev-parse --absolute-git-dir 2>/dev/null)"
@@ -1976,6 +2016,8 @@ yafp_remote_state_label() {
     local behind="${3:-0}"
 
     case "$state" in
+        no-commits) printf '%s' '○0 No commits' ;;
+        no-upstream) printf '%s' '⇡? No upstream' ;;
         current) printf '%s' '✓ Up to date' ;;
         ahead) printf '⇡%s Ahead' "$ahead" ;;
         behind) printf '⇣%s Behind' "$behind" ;;
@@ -1995,7 +2037,7 @@ yafp_remote_state_tone() {
 
     case "$1" in
         current) printf '%s' 'GREEN' ;;
-        ahead|checking) printf '%s' 'YELLOW' ;;
+        no-commits|no-upstream|ahead|checking) printf '%s' 'YELLOW' ;;
         behind|diverged|error) printf '%s' 'RED' ;;
         *) printf '%s' '' ;;
     esac
@@ -2454,7 +2496,7 @@ yafp_git_context() {
         force_remote_refresh=1
     fi
 
-    git_repo_url=$(git remote get-url origin 2>/dev/null)
+    git_repo_url=$(git remote get-url origin 2>/dev/null) || git_repo_url=""
 
     if [ -z "$git_repo_url" ]; then
         yafp_ctx_git_repo=$(
@@ -2475,7 +2517,7 @@ yafp_git_context() {
         git log -1 --stat --date=format:'%Y-%m-%d %H:%M:%S' 2>/dev/null \
         | grep "^Date:" \
         | cut -d":" -f2-
-    )
+    ) || yafp_ctx_git_last_ts=""
     yafp_ctx_git_last_ts="${yafp_ctx_git_last_ts#"${yafp_ctx_git_last_ts%%[![:space:]]*}"}"
     yafp_ctx_git_last_ts="${yafp_ctx_git_last_ts%"${yafp_ctx_git_last_ts##*[![:space:]]}"}"
 

@@ -10,7 +10,7 @@
 [badge-zsh]: https://img.shields.io/badge/Made%20with-Zsh-1f425f
 [zsh]: https://zsh.sourceforge.io/
 [badge-powershell]: https://img.shields.io/badge/Made%20with-PowerShell-5391FE.svg?logo=powershell
-[badge-version]: https://img.shields.io/badge/version-0.3.4-green
+[badge-version]: https://img.shields.io/badge/version-0.3.5-green
 [badge-themes]: https://img.shields.io/badge/themes-8A2BE2?logo=educative
 [bash]: https://www.gnu.org/software/bash/
 [powershell]: https://docs.microsoft.com/powershell/
@@ -263,9 +263,35 @@ start another timer or process.
 
 When the cached result expires, YAFP starts a non-interactive `git fetch` in
 the background. A later prompt render reads the result. Repositories without
-an upstream do not produce a false outdated warning. Bash records the worker
-PID in its refresh lock; if the worker exits without cleaning up, the next
-prompt render removes the abandoned lock and retries the refresh.
+an upstream do not produce a false outdated warning. If a branch has a
+configured remote but no upstream reference, all themes show the yellow `⇡?`
+indicator with `( ⚠ NO UPSTREAM: configure tracking before pushing )`.
+On narrower terminals the banner becomes `( ⚠ NO UPSTREAM )`; if neither
+banner fits, the compact indicator remains visible. `yafp-status` reports
+`⇡? No upstream`. This local warning does not fetch, start a worker, show a
+countdown, or claim a count of unpublished commits. Local-only repositories
+with commits and detached HEAD do not show it. Setting
+`YAFP_REMOTE_CHECK_INTERVAL=0` also disables this warning.
+
+After `git init`, a repository without commits shows the yellow `○0`
+indicator and `( ⚠ NO COMMITS: create the initial commit )`, or the compact
+`( ⚠ NO COMMITS )` banner when space is limited. This warning takes precedence
+over missing upstream tracking, works without a remote, and remains visible
+while files are staged. The first commit clears it; a configured remote may
+then trigger the no-upstream warning. Both warnings respect
+`YAFP_REMOTE_CHECK_INTERVAL=0` and never start background jobs.
+Bash and zsh detect `git init` in the current directory even if an earlier
+prompt cached it as a non-repository; changing directories is unnecessary.
+
+To publish a new branch and configure tracking, run `git push -u origin main`
+with your intended remote and branch. If the branch is already published,
+run `git fetch origin` and `git branch --set-upstream-to=origin/main main`
+instead. YAFP only displays the warning; it does not run these commands.
+The warning disappears once a valid upstream reference is available.
+
+Bash records the worker PID in its refresh lock; if the worker exits without
+cleaning up, the next prompt render removes the abandoned lock and retries the
+refresh.
 
 The first prompt rendered inside a repository after YAFP loads always requests
 an immediate background refresh, even when a previous cache is still fresh.
@@ -859,6 +885,6 @@ overwrite a different existing `prepare-commit-msg` hook.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-11 00:52:30 🍎 MBP03 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6.1-Sol Medium & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-10-17 23:56:23 🍎 No expuesto |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

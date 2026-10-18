@@ -1,6 +1,6 @@
 # Yet Another Fancy Prompt for PowerShell
 #
-# v0.3.1 - 2026-09-12 - nelbren@nelbren.com
+# v0.3.5 - 2026-10-17 - nelbren@nelbren.com
 #
 # Provides a themed prompt with Git and Python virtual environment information.
 
@@ -645,8 +645,40 @@ function Get-YafpRemoteContext {
         --symbolic-full-name '@{upstream}' 2>$null
     $remoteName = git -C $RepoRoot config --get `
         "branch.$Branch.remote" 2>$null
-    if (-not $localRef -or -not $upstream -or
-        -not $remoteName -or $remoteName -eq '.') {
+    if (-not $localRef) {
+        return $null
+    }
+    if (-not $upstream) {
+        $null = git -C $RepoRoot rev-parse --verify -q HEAD 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            return [pscustomobject]@{
+                State = 'no-commits'
+                Ahead = 0
+                Behind = 0
+                Upstream = ''
+                CheckedAt = 0L
+                Refreshing = $false
+                RefreshIn = $null
+                ConnectionAnnouncement = $false
+            }
+        }
+        # A local-only repository has no publishing destination to warn about.
+        $remotes = @(git -C $RepoRoot remote 2>$null)
+        if ($remotes.Count -gt 0) {
+            return [pscustomobject]@{
+                State = 'no-upstream'
+                Ahead = 0
+                Behind = 0
+                Upstream = ''
+                CheckedAt = 0L
+                Refreshing = $false
+                RefreshIn = $null
+                ConnectionAnnouncement = $false
+            }
+        }
+        return $null
+    }
+    if (-not $remoteName -or $remoteName -eq '.') {
         return $null
     }
 
@@ -760,6 +792,8 @@ function Format-YafpRemoteStateLabel {
     )
 
     switch ($State) {
+        'no-commits' { '○0 No commits' }
+        'no-upstream' { '⇡? No upstream' }
         'current' { '✓ Up to date' }
         'ahead' { "⇡$Ahead Ahead" }
         'behind' { "⇣$Behind Behind" }
@@ -782,7 +816,7 @@ function Get-YafpRemoteStateColor {
 
     switch ($State) {
         'current' { 'Green' }
-        { $_ -in @('ahead', 'checking') } { 'Yellow' }
+        { $_ -in @('no-commits', 'no-upstream', 'ahead', 'checking') } { 'Yellow' }
         { $_ -in @('behind', 'diverged', 'error') } { 'Red' }
         default { $null }
     }
@@ -1208,6 +1242,8 @@ function Write-YafpGitRemoteStatus {
     ] -and $remote.ConnectionAnnouncement
 
     $text = switch ($remote.State) {
+        'no-commits' { '○0' }
+        'no-upstream' { '⇡?' }
         'current' { '✓🌐︎' }
         'ahead' { "⇡$($remote.Ahead)" }
         'behind' { "⇣$($remote.Behind)" }
@@ -1252,7 +1288,7 @@ function Write-YafpGitRemoteStatus {
                 -BackgroundColor $null -NoNewline
         }
     }
-    elseif ($remote.State -in @('ahead', 'checking')) {
+    elseif ($remote.State -in @('no-commits', 'no-upstream', 'ahead', 'checking')) {
         $style = Get-YafpSeverityStyle -Severity warning
         Write-YafpText -Text $text -ForegroundColor $style.Foreground `
             -BackgroundColor $style.Background -NoNewline
@@ -1327,7 +1363,7 @@ function Test-YafpRemoteExpansion {
         'ConnectionAnnouncement'
     ] -and $Remote.ConnectionAnnouncement
     return $announceConnection -or $Remote.State -in @(
-        'ahead', 'behind', 'diverged'
+        'no-commits', 'no-upstream', 'ahead', 'behind', 'diverged'
     ) -or ($Remote.State -eq 'error' -and
         -not $script:YafpRemoteOfflineAcknowledged)
 }
@@ -1400,6 +1436,20 @@ function Write-YafpRemoteExpansion {
             Foreground = 'White'
             Background = 'DarkGreen'
         }
+    }
+    elseif ($Remote.State -eq 'no-commits') {
+        $message = Get-YafpExpansionMessage `
+            -LongMessage '⚠ NO COMMITS: create the initial commit' `
+            -ShortMessage '⚠ NO COMMITS' `
+            -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
+        $style = Get-YafpSeverityStyle -Severity warning
+    }
+    elseif ($Remote.State -eq 'no-upstream') {
+        $message = Get-YafpExpansionMessage `
+            -LongMessage '⚠ NO UPSTREAM: configure tracking before pushing' `
+            -ShortMessage '⚠ NO UPSTREAM' `
+            -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
+        $style = Get-YafpSeverityStyle -Severity warning
     }
     elseif ($Remote.State -eq 'ahead') {
         $unit = if ($Remote.Ahead -eq 1) { 'commit' } else { 'commits' }
