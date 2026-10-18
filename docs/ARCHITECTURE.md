@@ -327,6 +327,10 @@ it accepts equivalent reset sequences from different terminfo entries.
 CI runs these same entry points. The `YAFP_REQUIRE_LINTERS=1` variable turns a
 missing optional analyzer into an error.
 
+PowerShell RGB render fixtures separate nested arrays with commas so each
+case retains its foreground, background, and expected ANSI sequence. Without
+that separator PowerShell flattens the cases and indexes individual characters.
+
 PowerShell render tests validate the countdown and compact remote indicator
 separately. The captured information stream includes banner text and cursor
 movement between them, even though they appear adjacent on the prompt line.
@@ -337,6 +341,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-17 23:48:39 🍎 No expuesto |
+📆 2026-10-18 00:15:01 🍎 No expuesto |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

@@ -216,7 +216,8 @@ try {
         -Value $originalGetYafpRemoteContext
     $script:YafpRemoteOfflineAcknowledged = $false
     foreach ($rgbCase in @(
-        @('White', 'DarkGreen', '0;48;2;0;128;0;38;2;255;255;255')
+        # Keep each RGB case as an array instead of flattening its strings.
+        @('White', 'DarkGreen', '0;48;2;0;128;0;38;2;255;255;255'),
         @('Black', 'Yellow', '0;48;2;255;255;0;38;2;0;0;0')
     )) {
         $rgbRecords = @(Write-YafpText -Text 'sample' `
