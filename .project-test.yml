@@ -1,0 +1,130 @@
+schema_version: 1
+discovery:
+  mode: declared
+suites:
+- id: unix-prompt-integration
+  kind: integration
+  stage: test
+  runner: repository-script
+  entrypoint: scripts/unix/quality/project-test.sh
+  paths:
+  - tests/zsh_interactive_test.py
+  profiles:
+  - quick
+  - review
+  - ci
+  - full
+  os:
+  - apple
+  - linux
+  side_effects: local
+  requires:
+  - bash
+  - zsh
+  - python3
+  timeout_seconds: 600
+- id: no-upstream-test
+  kind: integration
+  stage: test
+  runner: repository-script
+  entrypoint: tests/no_upstream_test.ps1
+  profiles:
+  - review
+  - ci
+  - full
+  os:
+  - windows
+  side_effects: local
+  requires:
+  - powershell
+  timeout_seconds: 600
+- id: osc133-test
+  kind: integration
+  stage: test
+  runner: repository-script
+  entrypoint: tests/osc133_test.ps1
+  profiles:
+  - review
+  - ci
+  - full
+  os:
+  - windows
+  side_effects: local
+  requires:
+  - powershell
+  timeout_seconds: 600
+- id: powershell-devel-test
+  kind: integration
+  stage: test
+  runner: repository-script
+  entrypoint: tests/powershell_devel_test.ps1
+  profiles:
+  - review
+  - ci
+  - full
+  os:
+  - windows
+  side_effects: local
+  requires:
+  - powershell
+  timeout_seconds: 600
+- id: powershell-status-test
+  kind: integration
+  stage: test
+  runner: repository-script
+  entrypoint: tests/powershell_status_test.ps1
+  profiles:
+  - review
+  - ci
+  - full
+  os:
+  - windows
+  side_effects: local
+  requires:
+  - powershell
+  timeout_seconds: 600
+- id: powershell-theme-loading-test
+  kind: integration
+  stage: test
+  runner: repository-script
+  entrypoint: tests/powershell_theme_loading_test.ps1
+  profiles:
+  - review
+  - ci
+  - full
+  os:
+  - windows
+  side_effects: local
+  requires:
+  - powershell
+  timeout_seconds: 600
+- id: psscriptanalyzer-setup-test
+  kind: integration
+  stage: test
+  runner: repository-script
+  entrypoint: tests/psscriptanalyzer_setup_test.ps1
+  profiles:
+  - review
+  - ci
+  - full
+  os:
+  - windows
+  side_effects: local
+  requires:
+  - powershell
+  timeout_seconds: 600
+- id: remote-status-test
+  kind: integration
+  stage: test
+  runner: repository-script
+  entrypoint: tests/remote_status_test.ps1
+  profiles:
+  - review
+  - ci
+  - full
+  os:
+  - windows
+  side_effects: local
+  requires:
+  - powershell
+  timeout_seconds: 600

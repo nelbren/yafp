@@ -883,8 +883,25 @@ overwrite a different existing `prepare-commit-msg` hook.
 
 ---
 
+## Registro clasificado de pruebas
+
+`.project-test.yml` declara las suites existentes por plataforma. En Unix,
+`scripts/unix/quality/project-test.sh` ejecuta las pruebas de Bash y el recorrido
+zsh sin mezclar el análisis estático con los conteos. Las suites PowerShell
+conservan su selección para Windows.
+
+```sh
+project-test run --path . --profile quick
+software-facts --path .
+```
+
+El runner shell conserva logs y estado agregado; el número de casos internos
+permanece no recolectado cuando no entrega un reporte nativo. No se interpreta
+como cero. La validación de calidad completa sigue usando las entradas de la
+sección de pruebas existente y no instala analizadores durante la ejecución.
+
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-17 23:56:23 🍎 No expuesto |
+📆 2026-10-22 21:47:10 🍎 MBP02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>
