@@ -2824,6 +2824,12 @@ previous_timestamp=""
 YAFP_PROMPT_RENDERING=0
 YAFP_GIT_SYNC_LAST_COMMAND_KEY=""
 
+if [ -r "${SCRIPT_DIR}/scripts/unix/metrics/startup.bash" ]; then
+    # shellcheck source=scripts/unix/metrics/startup.bash
+    . "${SCRIPT_DIR}/scripts/unix/metrics/startup.bash"
+    yafp_record_startup "$YAFP_ROOT" bash
+fi
+
 if [ "${YAFP_NO_INSTALL_HOOKS:-0}" -ne 1 ]; then
     yafp_install_prompt_command
     yafp_install_exit_trap

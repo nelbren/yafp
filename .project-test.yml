@@ -128,3 +128,13 @@ suites:
   requires:
   - powershell
   timeout_seconds: 600
+- id: startup-metrics
+  kind: contract
+  stage: test
+  runner: unittest
+  paths:
+  - tests
+  profiles: [quick, review, ci, full]
+  os: [apple, windows, linux]
+  side_effects: local
+  timeout_seconds: 120

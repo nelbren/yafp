@@ -98,6 +98,24 @@ it emits D for the prior command, A before visible prompt output, and B after
 the prompt mark. It deliberately avoids replacing PSReadLine key handlers to
 synthesize C, preserving existing interactive bindings and reload safety.
 
+## Contador local de activaciones
+
+Los tres cargadores invocan el adaptador de activaciones fuera de las funciones
+de renderizado. Una marca por PID de la shell evita duplicar el evento al
+recargar. Unix desasocia el escritor del control de trabajos; PowerShell inicia
+directamente el proceso Python, sin crear un job de PowerShell. El proceso padre
+no espera la escritura SQLite y el adaptador no realiza consultas de red.
+
+El adaptador reutiliza el escritor silencioso `application-startup` de
+ai-dev-tools y el contrato común `RepositoryMetricsStore`. El evento pertenece
+al checkout de YAFP y al tipo `application`. Su fallo no reemplaza el estado del
+prompt. El seguimiento queda fuera de las funciones de tema, Git, OSC 133 y
+estadísticas de comandos; no agrega procesos externos durante su renderizado.
+
+Las recargas conservan la marca; los procesos nuevos reciben un PID distinto.
+Los scripts no interactivos y los runners de calidad no registran activaciones
+reales. El detalle de configuración y almacenamiento está en el README.
+
 ## Git context and remote status
 
 Local context is collected during rendering. Remote queries never run in the

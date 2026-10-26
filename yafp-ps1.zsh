@@ -2608,6 +2608,12 @@ yafp_zshexit() {
     this_command=${this_command:-}
     previous_timestamp=${previous_timestamp:-}
     YAFP_PROMPT_RENDERING=0
+    if [ -r "${SCRIPT_DIR}/scripts/unix/metrics/startup.bash" ]; then
+        # shellcheck source=scripts/unix/metrics/startup.bash
+        . "${SCRIPT_DIR}/scripts/unix/metrics/startup.bash"
+        yafp_record_startup "$YAFP_ROOT" zsh
+    fi
+
     if [[ "${YAFP_NO_INSTALL_HOOKS:-0}" != 1 && -o interactive ]]; then
         autoload -Uz add-zsh-hook
         add-zsh-hook preexec yafp_preexec

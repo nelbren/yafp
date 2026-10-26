@@ -883,6 +883,44 @@ overwrite a different existing `prepare-commit-msg` hook.
 
 ---
 
+## Registro de activaciones de YAFP
+
+YAFP registra una activación por proceso de shell interactiva, después de cargar
+el prompt correctamente. Recargar el prompt en esa misma sesión no suma otra
+activación. Cada terminal o sesión SSH nueva conserva su propia activación.
+Las llamadas a funciones internas y los redibujados del prompt no se registran.
+
+La escritura se ejecuta una sola vez en segundo plano mediante el Python ya
+preparado de ai-dev-tools. Usa `AI_DEV_TOOLS_ROOT` o `~/ai-dev-tools` y conserva
+un evento `application` con fuente `yafp/startup/bash`, `yafp/startup/zsh` o
+`yafp/startup/powershell`. No inicia servicios ni consulta la red. La base SQLite
+común permanece fuera del checkout, en
+`PROJECT_TEST_HOME/repository-metrics/IDENTIDAD/executions.sqlite3`, o en el
+almacén local predeterminado de ai-dev-tools.
+
+El contador aparece en «▶️ EJECUCIONES DE LA APLICACIÓN» de Software Facts del
+checkout de YAFP. No mide comandos ejecutados, redibujados, duración ni sesiones
+anteriores a esta integración. Los contadores de comandos de `yafp-stats`
+conservan su alcance independiente por sesión.
+
+Si falta ai-dev-tools preparado, el prompt sigue funcionando y la ficha conserva
+la ausencia de medición. Los errores del escritor quedan en
+`PROJECT_TEST_HOME/application-startup-errors.log`. Para desactivar el contador,
+define `YAFP_METRICS_DISABLED=1` antes de cargar YAFP; en PowerShell usa
+`$env:YAFP_METRICS_DISABLED = '1'`. Los runners de calidad desactivan el registro
+real; sus contratos usan entornos y escritores temporales.
+
+Las funciones del prompt no deben instrumentarse como alias de otro proyecto
+por compartir un prefijo. Después de actualizar ai-dev-tools y YAFP, una sesión
+que ya tuviera esa instrumentación puede limpiarla y recargar el prompt con:
+
+```bash
+AIDT_alias-reload; yafp-reload
+```
+
+Una shell nueva aplica la integración al cargar YAFP. No se necesita cambiar
+las configuraciones personales ignoradas por Git.
+
 ## Registro clasificado de pruebas
 
 `.project-test.yml` declara las suites existentes por plataforma. En Unix,
@@ -902,6 +940,6 @@ sección de pruebas existente y no instala analizadores durante la ejecución.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-22 21:47:10 🍎 MBP02 |
+📆 2026-10-24 18:12:47 🍎 MBP02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

@@ -1,3 +1,4 @@
+$env:YAFP_METRICS_DISABLED = '1'
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 

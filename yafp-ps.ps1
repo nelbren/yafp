@@ -1839,3 +1839,19 @@ function prompt {
     $global:LASTEXITCODE = $nativeExitCode
     return $promptResult
 }
+
+# La detección ocurre una sola vez durante la carga, fuera de prompt.
+$startupHelper = Join-Path $script:YafpRoot 'scripts/windows/metrics/startup.ps1'
+if (Test-Path -LiteralPath $startupHelper -PathType Leaf) {
+    . $startupHelper
+    $startupArguments = [Environment]::GetCommandLineArgs()
+    $explicitScript = @($startupArguments | Where-Object {
+        $_ -match '^-(?:NonInteractive|File|f|Command|c|EncodedCommand|ec)$'
+    }).Count -gt 0
+    $stayInteractive = $startupArguments -contains '-NoExit'
+    Register-YafpStartup -Root $script:YafpRoot -Interactive (
+        [Environment]::UserInteractive -and
+        ($startupArguments -notcontains '-NonInteractive') -and
+        (-not $explicitScript -or $stayInteractive)
+    )
+}

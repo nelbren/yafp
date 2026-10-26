@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export YAFP_METRICS_DISABLED=1
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." >/dev/null && pwd)"
 REQUIRE_LINTERS="${YAFP_REQUIRE_LINTERS:-0}"
@@ -92,6 +93,8 @@ run_optional() {
 
 require_command bash
 require_command git
+
+python3 tests/test_startup_metrics.py
 
 bash scripts/unix/setup/quality.bash --dry-run >/dev/null
 print_quality_line 'ok - Unix quality setup plan'
