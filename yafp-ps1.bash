@@ -397,6 +397,18 @@ theme_render_git_counts() {
     local cGitStagedPS1
     local cNormalPS1
 
+    # Frame every populated counter block before measuring staged indicators.
+    if [ "${yafp_ctx_git_delete:-0}" -le 0 ] &&
+       [ "${yafp_ctx_git_change:-0}" -le 0 ] &&
+       [ "${yafp_ctx_git_new:-0}" -le 0 ] &&
+       [ "${yafp_ctx_git_staged:-0}" -le 0 ]; then
+        return 0
+    fi
+    local frame="$cSeparator" frame_ps1
+    [ "${YAFP_THEME_NAME:-}" != default ] || frame=$cGit
+    frame_ps1="\[$frame\]"
+    printf '%s↦[' "$frame_ps1"
+
     cGitDeletePS1="$(ps1_wrap "$cGitDelete")"
     cGitChangePS1="$(ps1_wrap "$cGitChange")"
     cGitNewPS1="$(ps1_wrap "$cGitNew")"
@@ -425,13 +437,15 @@ theme_render_git_counts() {
     fi
 
     if [ "${yafp_ctx_git_staged:-0}" -gt 0 ]; then
+        printf '%s' "$out"
+        out=""
         theme_render_staged_expansion
         out+="$cGitStagedPS1"
         out+="$YAFP_SYMBOL_GIT_STAGED_EMOJI"
         out+="${yafp_ctx_git_staged}${cNormalPS1}"
     fi
 
-    printf '%s' "$out"
+    printf '%s%s]%s' "$out" "$frame_ps1" "$cNormalPS1"
 }
 
 
@@ -795,6 +809,11 @@ theme_render_git_remote_status() {
     local out=""
     local reset
 
+    local frame="$cSeparator" frame_ps1
+    [ "${YAFP_THEME_NAME:-}" != default ] || frame=$cGit
+    frame_ps1="\[$frame\]"
+    reset="$(theme_ps1_reset)"
+
     if [[ "${yafp_ctx_git_remote_refresh_in:-}" =~ ^[0-9]+$ ]]; then
         yafp_remote_countdown_indicator "$yafp_ctx_git_remote_refresh_in"
         countdown="$yafp_remote_countdown_text"
@@ -805,7 +824,7 @@ theme_render_git_remote_status() {
                 *) countdown_color="$cRemoteNeutral" ;;
             esac
             out+="$(ps1_wrap "$countdown_color")"
-            out+="$countdown "
+            out+="$countdown"
             out+="$(theme_ps1_reset)"
         fi
     fi
@@ -858,14 +877,15 @@ theme_render_git_remote_status() {
             indicator="☒🌐︎"
             ;;
         *)
-            printf '%s' "$out"
+            if [ -n "$out" ]; then
+                printf '%s↦[%s%s]%s' "$frame_ps1" "$out" "$frame_ps1" "$reset"
+            fi
             return 0
             ;;
     esac
 
-    reset="$(theme_ps1_reset)"
-    printf '%s%s%s%s' "$out" "$(ps1_wrap "$color")" \
-        "$indicator" "$reset"
+    printf '%s↦[%s%s%s%s]%s' "$frame_ps1" "$out" "$(ps1_wrap "$color")" \
+        "$indicator" "$frame_ps1" "$reset"
 }
 
 
@@ -2314,7 +2334,8 @@ yafp-reload|Reload YAFP in the current shell.
 yafp-stats|Show command execution statistics.
 yafp-msgs|Show all prompt banners in severity order.
 yafp-help|Show available YAFP commands.
-yafp-resources|Mostrar la última muestra de RAM, swap, CPU y disco.
+yafp-codex|Show cached Codex quota and authentication status.
+yafp-resources|Show the latest RAM, swap, CPU, and disk sample.
 EOF
 }
 
@@ -2364,6 +2385,10 @@ yafp_exit_trap() {
 
     if declare -F yafp_resources_cleanup >/dev/null; then
         yafp_resources_cleanup
+    fi
+
+    if declare -F yafp_codex_cleanup >/dev/null; then
+        yafp_codex_cleanup
     fi
 
     if [ "${YAFP_STATS_ON_EXIT:-1}" = 1 ]; then
@@ -2708,6 +2733,9 @@ yafp_prompt_preview() {
     if declare -F yafp_resources_context >/dev/null; then
         yafp_resources_context
     fi
+    if declare -F yafp_codex_context >/dev/null; then
+        yafp_codex_context
+    fi
     yafp_git_context "$last_exit"
     yafp_venv_context
     yafp_err_context "$last_exit"
@@ -2749,6 +2777,9 @@ yafp_prompt_command() {
     yaft_general_context "$last_exit"
     if declare -F yafp_resources_context >/dev/null; then
         yafp_resources_context
+    fi
+    if declare -F yafp_codex_context >/dev/null; then
+        yafp_codex_context
     fi
     yafp_git_context "$last_exit"
     yafp_venv_context
@@ -2830,6 +2861,10 @@ load_vars
 if [ -r "$YAFP_ROOT/scripts/unix/resources/context.bash" ]; then
     # shellcheck source=scripts/unix/resources/context.bash
     . "$YAFP_ROOT/scripts/unix/resources/context.bash"
+fi
+if [ -r "$YAFP_ROOT/scripts/unix/codex/context.bash" ]; then
+    # shellcheck source=scripts/unix/codex/context.bash
+    . "$YAFP_ROOT/scripts/unix/codex/context.bash"
 fi
 load_theme || return 1
 theme_build

@@ -109,6 +109,11 @@ function Get-ConfigurationValues {
         'YAFP_CLOCK',
         'YAFP_OSC133',
         'YAFP_REMOTE_CHECK_INTERVAL',
+        'YAFP_CODEX_CHECK_INTERVAL',
+        'YAFP_CODEX_VALUE_STYLE',
+        'YAFP_RESOURCE_CHECK_INTERVAL',
+        'YAFP_RESOURCE_LABEL_STYLE',
+        'YAFP_RESOURCE_VALUE_STYLE',
         'YAFP_REMOTE_COUNTDOWN_STYLE',
         'YAFP_STATUS_PROGRESS_STYLE',
         'YAFP_DEVEL',
@@ -221,7 +226,20 @@ function Test-Configuration {
         Write-DoctorError 'YAFP_RESOURCE_CHECK_INTERVAL must be an integer from 0 to 86400'
     }
 
+    $codexInterval = $values['YAFP_CODEX_CHECK_INTERVAL']
+    if ($null -eq $codexInterval) { $codexInterval = 0 }
+    if ($codexInterval -is [int] -and $codexInterval -ge 0 -and $codexInterval -le 86400) {
+        Write-DoctorPass "YAFP_CODEX_CHECK_INTERVAL is valid: $codexInterval"
+        if ($codexInterval -gt 0 -and -not (Get-Command codex -CommandType Application -ErrorAction Ignore)) {
+            Write-DoctorWarning 'Codex quota unavailable without the Codex CLI'
+        }
+    }
+    else {
+        Write-DoctorError 'YAFP_CODEX_CHECK_INTERVAL must be an integer from 0 to 86400'
+    }
+
     foreach ($option in @(
+        @{ Name = 'YAFP_CODEX_VALUE_STYLE'; Allowed = @('percent', 'symbols'); Default = 'percent' }
         @{ Name = 'YAFP_RESOURCE_LABEL_STYLE'; Allowed = @('letters', 'unicode'); Default = 'letters' }
         @{ Name = 'YAFP_RESOURCE_VALUE_STYLE'; Allowed = @('percent', 'symbols'); Default = 'percent' }
     )) {

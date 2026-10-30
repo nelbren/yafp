@@ -85,6 +85,7 @@ check_configuration() {
     local clock=''
     local osc133=''
     local remote_interval=''
+    local codex_interval='' codex_values=''
     local resource_interval=''
     local resource_labels='' resource_values=''
     local remote_countdown_style=''
@@ -135,6 +136,8 @@ check_configuration() {
         printf "__YAFP_OSC133=%s\n" "${YAFP_OSC133-}"
         printf "__YAFP_REMOTE_CHECK_INTERVAL=%s\n" \
             "${YAFP_REMOTE_CHECK_INTERVAL-}"
+        printf "__YAFP_CODEX_CHECK_INTERVAL=%s\n" "${YAFP_CODEX_CHECK_INTERVAL-0}"
+        printf "__YAFP_CODEX_VALUE_STYLE=%s\n" "${YAFP_CODEX_VALUE_STYLE-percent}"
         printf "__YAFP_RESOURCE_CHECK_INTERVAL=%s\n" \
             "${YAFP_RESOURCE_CHECK_INTERVAL-0}"
         printf "__YAFP_RESOURCE_LABEL_STYLE=%s\n" "${YAFP_RESOURCE_LABEL_STYLE-letters}"
@@ -165,6 +168,8 @@ check_configuration() {
             __YAFP_CLOCK) clock="$value" ;;
             __YAFP_OSC133) osc133="$value" ;;
             __YAFP_REMOTE_CHECK_INTERVAL) remote_interval="$value" ;;
+            __YAFP_CODEX_CHECK_INTERVAL) codex_interval="$value" ;;
+            __YAFP_CODEX_VALUE_STYLE) codex_values="$value" ;;
             __YAFP_RESOURCE_CHECK_INTERVAL) resource_interval="$value" ;;
             __YAFP_RESOURCE_LABEL_STYLE) resource_labels="$value" ;;
             __YAFP_RESOURCE_VALUE_STYLE) resource_values="$value" ;;
@@ -212,6 +217,26 @@ check_configuration() {
     else
         doctor_error 'YAFP_RESOURCE_CHECK_INTERVAL must be an integer from 0 to 86400'
     fi
+
+    if [[ "$codex_interval" =~ ^(0|[1-9][0-9]{0,4})$ ]] &&
+       [ "$codex_interval" -le 86400 ]; then
+        doctor_pass "YAFP_CODEX_CHECK_INTERVAL is valid: $codex_interval"
+        if [ "$codex_interval" -gt 0 ]; then
+            for key in codex python3; do
+                if command -v "$key" >/dev/null 2>&1; then
+                    doctor_pass "Codex quota dependency found: $key"
+                else
+                    doctor_warning "Codex quota unavailable without: $key"
+                fi
+            done
+        fi
+    else
+        doctor_error 'YAFP_CODEX_CHECK_INTERVAL must be an integer from 0 to 86400'
+    fi
+    case "$codex_values" in
+        percent|symbols) doctor_pass "YAFP_CODEX_VALUE_STYLE is valid: $codex_values" ;;
+        *) doctor_error 'YAFP_CODEX_VALUE_STYLE must be percent or symbols' ;;
+    esac
 
     case "$resource_labels" in
         letters|unicode) doctor_pass "YAFP_RESOURCE_LABEL_STYLE is valid: $resource_labels" ;;

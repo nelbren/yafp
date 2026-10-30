@@ -135,7 +135,7 @@ theme_render_resources() {
     [ -n "${yafp_ctx_resources:-}" ] || return 0
     if [ -n "${ZSH_VERSION:-}" ]; then open='%{'; close='%}'; fi
     [ "${YAFP_THEME_NAME:-}" != default ] || frame=$cGit
-    printf '%s%s%s⇢[' "$open" "$frame" "$close"
+    printf '%s%s%s↦[' "$open" "$frame" "$close"
     if [ "${#yafp_ctx_resource_tokens[@]}" -gt 0 ]; then
         for token in "${yafp_ctx_resource_tokens[@]}"; do
             printf -v color '\033[0;%sm' "${yafp_ctx_resource_colors[$index]}"

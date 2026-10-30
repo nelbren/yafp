@@ -11,6 +11,8 @@ sysctl() {
         '-n vm.swapusage') printf 'total = 4.00G  used = 512.00M  free = 3584.00M (encrypted)\n' ;;
     esac
 }
+# Called indirectly by the collector sourced above, then replaced for failure coverage.
+# shellcheck disable=SC2329
 vm_stat() {
     printf '%s\n' 'Mach Virtual Memory Statistics: (page size of 16384 bytes)' \
         'Pages free: 131072.' 'Pages inactive: 131072.' 'Pages speculative: 0.'

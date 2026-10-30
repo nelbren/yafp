@@ -134,7 +134,7 @@ try {
             $global:YAFP_RESOURCE_VALUE_STYLE = $case.Values
             $global:LASTEXITCODE = 7
             $output = (@(prompt 6>&1) | ForEach-Object { "$_" }) -join ''
-            $block = "⇢[$($case.Text)]"
+            $block = "↦[$($case.Text)]"
             if (-not $output.Contains("$env:COMPUTERNAME$block")) {
                 throw "Falta muestra en tema $theme/$($case.Labels)/$($case.Values)"
             }
@@ -171,7 +171,7 @@ try {
                         $script:resourceWrites.Clear()
                         Write-YafpResources -Context ([pscustomobject]@{ Resources = $resource })
                         $tokens = $resource.Segments.Text -join $resource.Separator
-                        if (($script:resourceWrites.Text -join '') -ne "⇢[$tokens]") {
+                        if (($script:resourceWrites.Text -join '') -ne "↦[$tokens]") {
                             throw "Marco o edad incorrectos: $theme/$labels/$values"
                         }
                         if (($script:resourceWrites[1..4].Color -join ',') -ne 'Green,Green,Red,Green') {

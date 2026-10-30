@@ -34,6 +34,9 @@ function script:Write-YafpTheme {
     $userColor = if ($Context.IsAdmin) { 'Red' } else { 'Cyan' }
     Write-YafpText -Text $Context.User -ForegroundColor $userColor `
         -BackgroundColor $null -NoNewline
+    if ($Context.PSObject.Properties['Codex'] -and $null -ne $Context.Codex) {
+        Write-YafpCodex -Context $Context
+    }
     Write-Host ' @ ' -ForegroundColor White -NoNewline
     $hostColor = if ($Context.IsDevelopment) { 'Green' } else { 'Magenta' }
     Write-YafpText -Text $Context.Computer -ForegroundColor $hostColor `
@@ -57,9 +60,7 @@ function script:Write-YafpTheme {
             $Context.Git.StagedCount -gt 0
         )
         if ($hasChanges) {
-            Write-Host '⇢[' -ForegroundColor White -NoNewline
             Write-YafpGitCounts -Git $Context.Git -Plain
-            Write-Host ']' -ForegroundColor White -NoNewline
         }
         else {
             Write-YafpText -Text '✓' -ForegroundColor Green `

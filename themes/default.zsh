@@ -15,7 +15,7 @@ theme_render_git_block() {
 
     counts="$(theme_render_git_counts)"
     remote_status="$(theme_render_git_remote_status)"
-    [ -z "$remote_status" ] || remote_status=" ${remote_status} "
+    [ -z "$remote_status" ] || remote_status="${remote_status} "
 
     if [ "$yafp_ctx_git_remote" = "remote" ]; then
         remote_symbol="$YAFP_SYMBOL_REMOTE"
@@ -99,6 +99,12 @@ theme_render_general_block() {
 
     local parts=(
         "[$cUserPS1%n"
+    )
+    printf '%s' "${parts[@]}"
+    if [ -n "${yafp_ctx_codex:-}" ]; then
+        theme_render_codex
+    fi
+    parts=(
         "${cSeparator}@"
         "$cHostPS1%m"
     )

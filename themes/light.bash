@@ -132,6 +132,12 @@ theme_render_general_block() {
     local parts=(
         "$SERVER_OS_EMOJI "
         "$cUserPS1\\u"
+    )
+    printf '%s' "${parts[@]}"
+    if [ -n "${yafp_ctx_codex:-}" ]; then
+        theme_render_codex
+    fi
+    parts=(
         "$cSeparator @ "
         "$cHostPS1\\h"
     )
@@ -161,7 +167,7 @@ theme_render_git_block() {
 
     counts="$(theme_render_git_counts)"
     remote_status="$(theme_render_git_remote_status)"
-    [ -z "$remote_status" ] || remote_status=" ${remote_status} "
+    [ -z "$remote_status" ] || remote_status="${remote_status} "
     cGitBranchPS1="$(ps1_wrap "$cGitBranch")"
     cNormalPS1="$(theme_ps1_reset)"
 
@@ -174,7 +180,7 @@ theme_render_git_block() {
     if [ -z "$counts" ]; then
         text="${cStatusOk}✓${cSeparator}"
     else
-        text="⇢[${counts}${cSeparator}]"
+        text="$counts"
     fi
 
     local parts=(

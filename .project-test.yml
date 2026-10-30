@@ -10,6 +10,10 @@ suites:
   paths:
   - tests/zsh_interactive_test.py
   - tests/resources_test.bash
+  - tests/codex_test.bash
+  - tests/block_frames_test.bash
+  - tests/codex_display_cases.txt
+  - tests/codex_reset_cases.txt
   - tests/resource_collectors_test.bash
   - tests/resource_display_cases.txt
   profiles:
@@ -136,6 +140,26 @@ suites:
   stage: test
   runner: repository-script
   entrypoint: tests/resources_test.ps1
+  profiles: [review, ci, full]
+  os: [windows]
+  side_effects: local
+  requires: [powershell]
+  timeout_seconds: 60
+- id: codex-quota-windows
+  kind: integration
+  stage: test
+  runner: repository-script
+  entrypoint: tests/codex_test.ps1
+  profiles: [review, ci, full]
+  os: [windows]
+  side_effects: local
+  requires: [powershell]
+  timeout_seconds: 60
+- id: block-frames-windows
+  kind: integration
+  stage: test
+  runner: repository-script
+  entrypoint: tests/block_frames_test.ps1
   profiles: [review, ci, full]
   os: [windows]
   side_effects: local

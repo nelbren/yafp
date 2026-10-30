@@ -106,7 +106,7 @@ for theme in default minimal light; do
             plain_prompt
             host_marker='\h'
             if [ -n "${ZSH_VERSION:-}" ]; then host_marker="$(print -P -- '%m')"; fi
-            block="⇢[$expected]"
+            block="↦[$expected]"
             assert_contains "$out" "$host_marker$block" "host y recursos en $theme/$labels/$values"
             rest=${out#*"$block"}
             case "$rest" in *"$block"*) fail 'recursos duplicados' ;; esac
@@ -115,7 +115,7 @@ for theme in default minimal light; do
             assert_contains "$out" $'\033[0;91m' 'swap roja sin fondo'
             frame=$cSeparator
             [ "$theme" != default ] || frame=$cGit
-            assert_contains "$out" "$(ps1_wrap "$frame")⇢[" 'marco inicial con colores Git'
+            assert_contains "$out" "$(ps1_wrap "$frame")↦[" 'marco inicial con colores Git'
             assert_contains "$out" "$(ps1_wrap "$frame")]" 'marco final con colores Git'
             plain_prompt
             [ "$out" = "$block" ] || fail "marco o edad en $theme/$labels/$values: $out"

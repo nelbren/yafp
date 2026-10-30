@@ -38,6 +38,14 @@ YAFP_REMOTE_COUNTDOWN_STYLE="numeric"
 # yafp-status progress bar: blocks or symbols (Braille).
 YAFP_STATUS_PROGRESS_STYLE="blocks"
 
+# --- Codex account quota ---
+# Read remaining Codex quota through the installed, signed-in Codex CLI.
+# 0 disables checks; 300 enables a background refresh every five minutes.
+YAFP_CODEX_CHECK_INTERVAL=0
+
+# Values: percent (֍74%5d9h) or symbols (֍⣶5d9h).
+YAFP_CODEX_VALUE_STYLE="percent"
+
 # --- Machine resources ---
 # Sample CPU, RAM, swap, and disk capacity in the background (seconds).
 # 0 disables monitoring; 30 is a suggested interval when enabled.

@@ -9,6 +9,8 @@ for file in yafp-ps1.zsh yafp-cfg.zsh.example themes/*.zsh tests/*.zsh; do
 done
 printf 'ok - zsh syntax\n'
 zsh -df tests/zsh_prompt_test.zsh
+zsh -df tests/block_frames_test.bash
 zsh -df tests/zsh_remote_status_test.zsh
 zsh -df tests/resources_test.bash
+zsh -df tests/codex_test.bash
 python3 tests/zsh_interactive_test.py

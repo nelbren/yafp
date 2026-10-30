@@ -257,7 +257,7 @@ and the job is removed. Reloads preserve the job and last sample. Rendering
 neither waits nor invokes CIM. All three themes receive `Context.Resources`;
 Bash/zsh use `yafp_ctx_resources` in their general host renderer.
 
-Presentation attaches `⇢[resources]` directly to the hostname in every theme,
+Presentation attaches `↦[resources]` directly to the hostname in every theme,
 before the path or other host metadata. The old standalone resource position
 is removed. `YAFP_RESOURCE_LABEL_STYLE` selects `letters`
 (`C/R/S/D`, default) or `unicode` (`⚙/▦/⇄/◉`). The display order is CPU, RAM,
@@ -277,7 +277,7 @@ Context retains presentation tokens and colors for each resource, plus the
 plain `yafp-resources` summary. The Unix renderer uses only builtins and marks
 styles as invisible to Readline/zsh; PowerShell writes each token with
 `NoNewline`. Foreground colors are green, yellow, and red, always on a
-transparent background. The `⇢[]` frame reuses Git's structural style: the
+transparent background. The `↦[]` frame reuses Git's structural style: the
 Git block colors in `default`, and neutral separator colors in the other
 themes. The closing bracket restores that style after the last resource.
 An optional refresh marker stays inside the frame. Disabled monitoring emits
@@ -296,6 +296,103 @@ for the last sample without waiting. README describes platform definitions
 and diagnostic limitations. Probe and lifecycle tests use fixtures and
 controlled workers to cover intervals, reload, failures, rendering without
 external tools, and preservation of the previous command status.
+
+## Codex quota context
+
+`YAFP_CODEX_CHECK_INTERVAL=0` disables this independent optional context.
+Positive intervals up to 86400 seconds enable one background worker per shell
+session. The existing prompt and preview hooks collect context; no additional
+hooks, credential prompts, or foreground network requests are introduced.
+
+Unix loads `scripts/unix/codex/context.bash`, which validates a private cache
+using builtins, throttles requests with `SECONDS`, and preserves worker/cache
+state across reloads. Its Bash launcher delegates to `collect.py` when Python
+3 is available and publishes `missing-python` otherwise. The native zsh
+launcher uses `&!`, matching the silent Git/resource lifecycle. The Python
+collector starts a private stdio `codex app-server`, initializes JSON-RPC,
+reads `account/read` with `refreshToken=false`, and requests
+`account/rateLimits/read` only for a ChatGPT account. It ignores unrelated
+notifications and never invokes login, conversations, credits, or reset APIs.
+The worker has a ten-second deadline and terminates its private process group
+on completion, timeout, or normal shell cleanup. Native Python in Git Bash
+uses Windows process-tree termination instead.
+
+Windows loads `scripts/windows/codex/context.ps1` and runs the native
+`collect.ps1` client in a `Start-ThreadJob`. Redirected process streams,
+asynchronous reads, a shared deadline, and process-tree cleanup isolate the
+CLI from the prompt. Both native binaries and npm `.cmd` launchers are
+supported. Completed jobs are received and removed without waiting; reloads
+preserve the job and sample. No Python dependency is added on Windows.
+
+Both collectors prefer `rateLimitsByLimitId.codex`, falling back to the legacy
+`rateLimits` view without accepting an unrelated bucket. They validate numeric
+`usedPercent` values and compute `floor(100 - usedPercent)` for each available
+window. The minimum remaining value determines the single indicator. Missing
+windows are not interpreted as zero. Caches contain only the sample time,
+fixed state, remaining percentages, and reset timing; no account identity or
+credentials.
+Errors overwrite the old value with an unavailable sample at the next prompt.
+
+The selected window also supplies `resetsAt`; primary wins percentage ties.
+Only positive integer timestamps up to 9999999999 are accepted. On Unix, the
+collector converts that epoch time into a deadline on the session `SECONDS`
+clock. The optional sixth cache field holds that deadline; existing five-field
+samples remain valid and omit the countdown. PowerShell retains the epoch
+value in `Sample.ResetsAt` and uses the existing context clock. Neither
+renderer needs a date process or another network call. Missing or malformed
+reset timestamps omit the timer without discarding valid availability.
+
+All themes append a compact reset countdown directly after the quota value,
+without a separator inside the frame, for example `↦[֍75%5d9h]` or
+`↦[֍⣷5d9h]`. Formatting keeps two units (days/hours, hours/minutes, or
+minutes/seconds), or just seconds below
+one minute. Subordinate units are rounded down; expired deadlines clamp to
+`0s` while waiting for the next sample. The timer shares the quota foreground
+color and participates in the existing prefix-width measurement.
+
+All themes insert `↦[֍value]` immediately after the username, before `@`.
+`YAFP_CODEX_VALUE_STYLE` chooses `percent` or `symbols` independently of the
+machine resource options. Braille uses `min(7, floor(value * 8 / 100))` with
+fuller cells meaning greater availability. Foreground is green at 50% or
+above, yellow at 25% or above, and red below 25%. Gray `֍N/D` covers missing
+dependencies, authentication, quota, errors, and pending samples. The frame
+shares Git delimiter colors and the existing prompt-prefix width measurement.
+Disabled context renders no frame. `yafp-codex` reports sample age and per-window
+availability without blocking.
+
+Offline protocol peers and shared boundary fixtures test authentication gates,
+bucket selection, unavailable values, timeouts, atomic publication, worker
+uniqueness/reload, all themes, invisible ANSI markers, and previous exit status.
+The interactive zsh test also covers job notifications and OSC 133 while quota
+and machine resource monitoring coexist.
+
+## Uniform indicator frames
+
+Codex, resources, Git remote status, and populated Git counter groups use
+`↦[…]` in Bash, zsh, and PowerShell. The frame uses `cGit` in the Unix default
+theme and `cSeparator` in the other themes; PowerShell uses the equivalent
+Git delimiter foreground/background pair. Each inner indicator retains its
+existing color, including warnings, errors, staged counts, and the connection
+announcement. The closing bracket restores the frame style.
+
+The remote renderer groups countdown, refresh marker, and status without inner
+spaces: `↦[⣦✓🌐︎]` or `↦[(175)✓🌐︎]`. All remote states share that wrapper;
+an empty context emits nothing. The frame is attached directly to the preceding
+Git marker, without a leading space; one trailing space separates the branch.
+Unix themes own this trailing separator, and PowerShell emits it in the remote
+renderer.
+The counter renderer owns its single wrapper in all themes; light no longer
+adds a second frame. Empty counter groups remain silent. Labels, counter
+emoji, and clean-worktree presentation remain theme-specific.
+
+Unix includes each frame in the existing expansion-prefix measurement. Before
+emitting a staged expansion, the counter renderer flushes earlier counters so
+the marker anchors the staged token at its actual column inside the frame.
+PowerShell writes the frame and preceding counters before capturing the banner
+cursor position. Shared Bash/zsh tests and portable PowerShell tests cover all
+themes, dark/bright frame colors, compact states, empty groups, a single frame
+per group, and preservation of severity colors. Existing banner and interactive
+tests cover positioning, narrow terminals, and OSC 133 behavior.
 
 ## Silent prompt degradation
 
@@ -429,6 +526,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-29 20:37:42 🍎 MBP02 |
+📆 2026-10-29 21:47:38 🍎 MBP02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

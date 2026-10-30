@@ -48,6 +48,16 @@ function script:Write-YafpGitCounts {
         [switch]$Plain
     )
 
+    if ($Git.DeleteCount -le 0 -and $Git.ChangeCount -le 0 -and
+        $Git.NewCount -le 0 -and $Git.StagedCount -le 0) { return }
+    $frameForeground = 'White'
+    $frameBackground = $null
+    if ($script:YafpThemeName -eq 'default') {
+        $frameForeground = $script:grayColorForeground
+        $frameBackground = $script:grayColorBackground
+    }
+    Write-YafpText -Text '↦[' -ForegroundColor $frameForeground `
+        -BackgroundColor $frameBackground -NoNewline
     if ($Git.DeleteCount -gt 0) {
         $prefix = if ($Plain) { '' } else { '🗑️' }
         Write-YafpText -Text "$prefix-$($Git.DeleteCount)" `
@@ -70,6 +80,8 @@ function script:Write-YafpGitCounts {
             -ForegroundColor $style.Foreground `
             -BackgroundColor $style.Background -NoNewline
     }
+    Write-YafpText -Text ']' -ForegroundColor $frameForeground `
+        -BackgroundColor $frameBackground -NoNewline
 }
 
 function script:Write-YafpTheme {
@@ -133,6 +145,9 @@ function script:Write-YafpTheme {
     $userBackground = if ($Context.IsAdmin) { $redColorBackground } else { $cyanColorBackground }
     Write-YafpText -Text $Context.User -ForegroundColor $userForeground `
         -BackgroundColor $userBackground -NoNewline
+    if ($Context.PSObject.Properties['Codex'] -and $null -ne $Context.Codex) {
+        Write-YafpCodex -Context $Context
+    }
     Write-Host '@' -ForegroundColor White -NoNewline
     $hostForeground = if ($Context.IsDevelopment) { $greenColorForeground } else { $magentaColorForeground }
     $hostBackground = if ($Context.IsDevelopment) { $greenColorBackground } else { $magentaColorBackground }

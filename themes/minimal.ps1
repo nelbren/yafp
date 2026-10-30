@@ -20,6 +20,9 @@ function script:Write-YafpTheme {
     $userBackground = if ($Context.IsAdmin) { $redColorBackground } else { $cyanColorBackground }
     Write-YafpText -Text $Context.User -ForegroundColor $userColor `
         -BackgroundColor $userBackground -NoNewline
+    if ($Context.PSObject.Properties['Codex'] -and $null -ne $Context.Codex) {
+        Write-YafpCodex -Context $Context
+    }
     Write-Host ' @ ' -ForegroundColor White -NoNewline
     $hostColor = if ($Context.IsDevelopment) { $greenColorForeground } else { $magentaColorForeground }
     $hostBackground = if ($Context.IsDevelopment) { $greenColorBackground } else { $magentaColorBackground }

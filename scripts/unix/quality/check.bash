@@ -95,6 +95,7 @@ require_command bash
 require_command git
 
 python3 tests/test_startup_metrics.py
+python3 tests/test_codex_collector.py
 
 bash scripts/unix/setup/quality.bash --dry-run >/dev/null
 print_quality_line 'ok - Unix quality setup plan'
@@ -110,9 +111,11 @@ print_quality_line 'ok - Bash syntax'
 
 bash tests/osc133_test.bash 2>&1 | colorize_quality_output
 bash tests/theme_loading_test.bash 2>&1 | colorize_quality_output
+bash tests/block_frames_test.bash 2>&1 | colorize_quality_output
 bash tests/remote_status_test.bash 2>&1 | colorize_quality_output
 bash tests/resource_collectors_test.bash 2>&1 | colorize_quality_output
 bash tests/resources_test.bash 2>&1 | colorize_quality_output
+bash tests/codex_test.bash 2>&1 | colorize_quality_output
 bash tests/origin_device_hook_test.bash 2>&1 | colorize_quality_output
 bash tests/psscriptanalyzer_setup_test.bash 2>&1 | colorize_quality_output
 

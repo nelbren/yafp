@@ -72,6 +72,9 @@ if (-not (Get-Variable YafpRemoteConnectivityState -Scope Script `
 }
 
 . (Join-Path $script:YafpRoot 'scripts/windows/resources/context.ps1')
+if (Test-Path (Join-Path $script:YafpRoot 'scripts/windows/codex/context.ps1')) {
+    . (Join-Path $script:YafpRoot 'scripts/windows/codex/context.ps1')
+}
 if (-not (Get-Variable YafpRemoteOfflineAcknowledged -Scope Script `
         -ErrorAction Ignore)) {
     $script:YafpRemoteOfflineAcknowledged = $false
@@ -1102,7 +1105,8 @@ function Show-YafpHelp {
         @{ Name = 'yafp-stats'; Description = 'Show command execution statistics.' }
         @{ Name = 'yafp-msgs'; Description = 'Show all prompt banners in severity order.' }
         @{ Name = 'yafp-help'; Description = 'Show available YAFP commands.' }
-        @{ Name = 'yafp-resources'; Description = 'Mostrar la última muestra de RAM, swap, CPU y disco.' }
+        @{ Name = 'yafp-codex'; Description = 'Show cached Codex quota and authentication state.' }
+        @{ Name = 'yafp-resources'; Description = 'Show the latest RAM, swap, CPU, and disk sample.' }
     )) {
         Write-YafpText -Text $entry.Name -ForegroundColor Yellow `
             -BackgroundColor $null -NoNewline
@@ -1174,6 +1178,9 @@ function Install-YafpExitEvent {
     }
 
     $null = Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
+        if (Get-Command Stop-YafpCodexWorker -ErrorAction Ignore) {
+            Stop-YafpCodexWorker
+        }
         if ($global:YAFP_STATS_ON_EXIT -eq 1) {
             Show-YafpStats -DirectConsole
         }
@@ -1256,16 +1263,24 @@ function Write-YafpGitRemoteStatus {
         default { '' }
     }
 
-    Write-Host ' ' -NoNewline
-
+    $countdown = ''
     if ($null -ne $remote.RefreshIn) {
         $countdown = Get-YafpRemoteCountdownIndicator `
             -Remaining $remote.RefreshIn
-        if ($countdown) {
-            Write-YafpText -Text "$countdown " `
-                -ForegroundColor $script:YafpRemoteCountdownColor `
-                -BackgroundColor $null -NoNewline
-        }
+    }
+    if (-not $text -and -not $countdown -and -not $remote.Refreshing) { return }
+    $frameForeground = 'White'
+    $frameBackground = $null
+    if ($script:YafpThemeName -eq 'default') {
+        $frameForeground = $script:grayColorForeground
+        $frameBackground = $script:grayColorBackground
+    }
+    Write-YafpText -Text '↦[' -ForegroundColor $frameForeground `
+        -BackgroundColor $frameBackground -NoNewline
+    if ($countdown) {
+        Write-YafpText -Text $countdown `
+            -ForegroundColor $script:YafpRemoteCountdownColor `
+            -BackgroundColor $null -NoNewline
     }
 
     if ($remote.Refreshing) {
@@ -1276,6 +1291,9 @@ function Write-YafpGitRemoteStatus {
     }
 
     if (-not $text) {
+        Write-YafpText -Text ']' -ForegroundColor $frameForeground `
+            -BackgroundColor $frameBackground -NoNewline
+        Write-Host ' ' -NoNewline
         return
     }
 
@@ -1306,6 +1324,8 @@ function Write-YafpGitRemoteStatus {
         Write-YafpText -Text $text -ForegroundColor $style.Foreground `
             -BackgroundColor $style.Background -NoNewline
     }
+    Write-YafpText -Text ']' -ForegroundColor $frameForeground `
+        -BackgroundColor $frameBackground -NoNewline
     Write-Host ' ' -NoNewline
 }
 
@@ -1712,6 +1732,7 @@ Set-Alias -Name yafp-reload -Value Invoke-YafpReload -Scope Global -Force
 Set-Alias -Name yafp-help -Value Show-YafpHelp -Scope Global -Force
 Set-Alias -Name yafp-stats -Value Show-YafpStats -Scope Global -Force
 Set-Alias -Name yafp-msgs -Value Show-YafpMessages -Scope Global -Force
+Set-Alias -Name yafp-codex -Value Show-YafpCodex -Scope Global -Force
 Set-Alias -Name yafp-resources -Value Show-YafpResources -Scope Global -Force
 
 Import-YafpTheme
@@ -1777,6 +1798,7 @@ function prompt {
     }
     $venvContext = Get-YafpVenvContext
     $resourceContext = Get-YafpResourceContext
+    $codexContext = if (Get-Command Get-YafpCodexContext -ErrorAction Ignore) { Get-YafpCodexContext } else { $null }
     if ($developmentEnabled) {
         $venvTimer.Stop()
         $totalTimer.Stop()
@@ -1820,6 +1842,7 @@ function prompt {
         Git = $gitContext
         Venv = $venvContext
         Resources = $resourceContext
+        Codex = $codexContext
         Development = $development
     }
 

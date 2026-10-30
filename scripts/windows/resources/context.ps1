@@ -164,7 +164,7 @@ function global:Write-YafpResources {
             $frameForeground = $script:grayColorForeground
             $frameBackground = $script:grayColorBackground
         }
-        Write-YafpText -Text '⇢[' -ForegroundColor $frameForeground `
+        Write-YafpText -Text '↦[' -ForegroundColor $frameForeground `
             -BackgroundColor $frameBackground -NoNewline
         if ($resource.Segments.Count -gt 0) {
             $separator = ''

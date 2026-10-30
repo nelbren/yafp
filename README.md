@@ -163,6 +163,32 @@ The `light` and `minimal` themes render the branch name in blue in both Bash
 and PowerShell, including when a remote countdown or status precedes it. In
 `light`, the adjacent repository-origin symbol keeps the neutral color.
 
+### Indicator blocks
+
+Codex quota, machine resources, Git remote status, and Git change counters
+share the `↦[…]` frame in every shell and theme:
+
+```text
+USER↦[֍⣷5d9h]
+HOST↦[⚙⣀▦⣶⇄⣦◉⣿]
+↦[⣦✓🌐︎] main↯↦[-1±2+3]
+```
+
+`↦` associates each label with its data. The arrow and brackets use the theme's
+Git delimiter colors; each inner indicator retains its own severity color.
+Codex keeps the reset countdown attached to its value, and resources keep
+their configured separators. The Git remote countdown and status are adjacent
+inside one frame: symbolic `↦[⣦✓🌐︎]` or numeric `↦[(175)✓🌐︎]`. Refresh,
+tracking, warning, and error states use the same frame. Empty remote and
+counter blocks produce no frame. The `light` theme retains its clean-worktree
+check mark, while the other themes retain their existing clean-state behavior.
+Counter labels and emoji remain theme-specific inside the common frame.
+The remote frame touches the preceding Git marker, as in `↦[⣦✓🌐︎]`,
+with a space after the frame before the branch name.
+
+Remote and staged banners remain aligned with their corresponding indicators,
+including when other counters appear before the staged count.
+
 ### Clock display
 
 Set `YAFP_CLOCK` to `1` to display prompt timestamps or to `0` to hide them.
@@ -239,10 +265,10 @@ printing prompt errors. Existing personal configurations are not modified.
 All three themes attach the resource block directly to the hostname:
 
 ```text
-HOST⇢[C24% R74% S50% D93%]
+HOST↦[C24% R74% S50% D93%]
 ```
 
-The `⇢[]` frame uses the same colors as the theme's Git change delimiters.
+The `↦[]` frame uses the same colors as the theme's Git change delimiters.
 Each resource keeps its own usage color. Labels and values can be selected
 independently in Bash/zsh:
 
@@ -261,17 +287,17 @@ $global:YAFP_RESOURCE_VALUE_STYLE = 'symbols'
 The four combinations produce the following output for the same sample:
 
 ```text
-letters + percent: HOST⇢[C24% R74% S50% D93%]
-unicode + percent: HOST⇢[⚙24% ▦74% ⇄50% ◉93%]
-letters + symbols: HOST⇢[C⣀ R⣶ S⣦ D⣿]
-unicode + symbols: HOST⇢[⚙⣀▦⣶⇄⣦◉⣿]
+letters + percent: HOST↦[C24% R74% S50% D93%]
+unicode + percent: HOST↦[⚙24% ▦74% ⇄50% ◉93%]
+letters + symbols: HOST↦[C⣀ R⣶ S⣦ D⣿]
+unicode + symbols: HOST↦[⚙⣀▦⣶⇄⣦◉⣿]
 ```
 
 `C`/`⚙`, `R`/`▦`, `S`/`⇄`, and `D`/`◉` represent CPU, RAM, swap, and disk,
 respectively. CPU appears first, and swap sits between RAM and disk to
 highlight their relationship. All four modes and all three themes use this
 order. Only Unicode + Braille (`unicode` + `symbols`) removes spaces between
-resources. No space separates the hostname from `⇢[`, and there is no inner
+resources. No space separates the hostname from `↦[`, and there is no inner
 padding next to the brackets. The other three combinations separate resources
 with spaces. Disabled monitoring renders no frame. Invalid styles fall back
 to `letters` and `percent`.
@@ -329,6 +355,89 @@ On macOS, swap usage alone does not establish the cause of a slowdown. To
 investigate memory pressure, Activity Monitor also considers the swap rate,
 wired memory, and file cache:
 [Apple memory guide](https://support.apple.com/guide/activity-monitor/view-memory-usage-actmntr1004/mac).
+
+### Background Codex quota
+
+YAFP can display the remaining Codex quota for the ChatGPT account signed in
+to the local Codex CLI (`codex`). This measures account quota, rather than
+service uptime or the message allowance in the ChatGPT website. It uses the
+official [Codex app-server account interface](https://learn.chatgpt.com/docs/app-server).
+The feature is disabled by default and works independently of Git and machine
+resource monitoring.
+
+Add a configuration block to your personal Bash/zsh configuration:
+
+```bash
+# --- Codex account quota ---
+YAFP_CODEX_CHECK_INTERVAL=300
+YAFP_CODEX_VALUE_STYLE="symbols"  # percent (default) or symbols
+```
+
+For PowerShell 7 on Windows:
+
+```powershell
+# --- Codex account quota ---
+$global:YAFP_CODEX_CHECK_INTERVAL = 300
+$global:YAFP_CODEX_VALUE_STYLE = 'symbols'
+```
+
+Run `yafp-reload`. The interval accepts `1` through `86400` seconds; `0` or
+an invalid interval disables checks and removes the indicator. Five minutes
+is suggested to avoid frequent CLI startup. All three themes attach the block
+directly to the username, preserving the host resource block:
+
+```text
+percent: USER↦[֍75%5d9h] @ HOST↦[⚙24% ▦74% ⇄50% ◉93%]
+symbols: USER↦[֍⣷5d9h] @ HOST↦[⚙⣀▦⣶⇄⣦◉⣿]
+```
+
+The `↦[]` frame matches the Git change delimiters. The quota token uses a
+transparent background and inclusive availability thresholds:
+
+| Green | Yellow   | Red  |
+| ----- | -------- | ---- |
+| ≥50%  | 25–49%   | <25% |
+
+Braille uses the same eight levels as resources, with fuller cells meaning
+more quota available. Colors use the remaining integer percentage, even in
+symbolic mode. `YAFP_CODEX_VALUE_STYLE` accepts `percent` or `symbols`;
+invalid styles fall back to `percent`.
+
+On its first check, the background worker locates `codex` and reads its account
+state. Only ChatGPT authentication enables the quota request. Each refresh
+checks authentication again, allowing a later login to recover automatically.
+YAFP never opens a login flow or starts a conversation. To sign in yourself,
+run `codex login`, then wait for the next check. Unix requires Python 3 only
+when this optional integration is enabled; Windows uses native PowerShell.
+
+The value is `100 - usedPercent`, rounded down, for the `codex` bucket. When
+both primary and secondary windows are available, the smaller remaining
+percentage wins. Other model buckets are ignored. The legacy single-bucket
+response is supported. Missing windows are ignored; if neither is available,
+the token is `֍N/D` in gray. A missing CLI, missing Python, logged-out or API-key
+session, request error, or timeout also produces `֍N/D`, never a false 0%.
+
+The value is immediately followed by the time until that same window resets,
+without a separator: `֍75%5d9h` or `֍⣷5d9h`. Ties in remaining percentage select
+the primary window. The compact countdown uses days/hours (`5d9h`),
+hours/minutes (`9h30m`), minutes/seconds (`12m15s`), or seconds (`40s`), with
+whole units rounded down. It uses the window's `resetsAt` timestamp and is
+updated from cached data at every prompt, without an extra process or request.
+An elapsed deadline displays `0s` until another quota sample arrives. A missing
+or invalid reset timestamp omits the countdown while preserving the quota.
+
+Requests have a ten-second deadline in the worker. Rendering reads the cached
+result without waiting or accessing the network. The initial prompt can show
+`֍N/D` until the result is collected at a later prompt. Each session keeps at
+most one quota worker, and reloads reuse it. In zsh, the worker is disowned
+at launch to suppress job notifications. There is no persistent polling timer
+or redraw while typing. The last sample remains visible during a refresh;
+a failed refresh replaces it with `֍N/D`.
+
+Run `yafp-codex` for the cached state, remaining percentages per window, and
+sample age in seconds. It does not wait for the pending request. Only numeric
+quota values, reset timing, and a fixed status are cached. Account identifiers
+and credentials are never stored in the sample or printed by YAFP.
 
 ### Remote repository checks
 
@@ -614,6 +723,8 @@ yafp-reload • Reload YAFP in the current shell.
 yafp-stats • Show command execution statistics.
 yafp-msgs • Show all prompt banners in severity order.
 yafp-help • Show available YAFP commands.
+yafp-codex • Show cached Codex quota and authentication status.
+yafp-resources • Show the latest RAM, swap, CPU, and disk sample.
 ```
 
 Use `yafp-msgs` in Bash, zsh, or PowerShell to preview all prompt banners, including
@@ -1054,6 +1165,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-29 20:37:42 🍎 MBP02 |
+📆 2026-10-29 21:47:38 🍎 MBP02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

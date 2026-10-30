@@ -116,7 +116,7 @@ yafp_ctx_git_remote_state=current
 set +u
 git_block="$(theme_render_git_block)"
 set -u
-timer_start="${YAFP_SYMBOL_GIT_EMOJI} $(ps1_wrap "$cRemoteNeutral")(42) "
+timer_start="${YAFP_SYMBOL_GIT_EMOJI}$(ps1_wrap "$cSeparator")↦[$(ps1_wrap "$cRemoteNeutral")(42)"
 [[ "$git_block" == *"$timer_start"* ]] ||
     fail 'light theme remote timer spacing or color differs from PowerShell'
 branch_start="$(ps1_wrap "$cGitBranch")$yafp_ctx_git_branch"

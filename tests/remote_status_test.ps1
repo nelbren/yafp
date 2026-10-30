@@ -271,9 +271,12 @@ try {
         [pscustomobject]@{ Text = 'yafp-help'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Show available YAFP commands.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'yafp-codex'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'Show cached Codex quota and authentication state.'; Color = 'White'; NoNewline = $false }
         [pscustomobject]@{ Text = 'yafp-resources'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
-        [pscustomobject]@{ Text = 'Mostrar la última muestra de RAM, swap, CPU y disco.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'Show the latest RAM, swap, CPU, and disk sample.'; Color = 'White'; NoNewline = $false }
     )
     Assert-Equal $expectedHelpWrites.Count $script:helpWrites.Count `
         'yafp-help colored write count'
@@ -499,10 +502,10 @@ try {
         # Banner text and cursor movement are emitted between these fields.
         # Their visual adjacency is not adjacency in the information stream.
         $countdownPattern = [regex]::Escape("($($remote.RefreshIn))")
-        if ($indicator -notmatch "^\s*$countdownPattern\s") {
+        if ($indicator -notmatch "^\s*↦\[\s*$countdownPattern\s") {
             throw 'behind countdown was not rendered'
         }
-        if ($indicator -notmatch '⇣1\s*$') {
+        if ($indicator -notmatch '⇣1\s*\]\s*$') {
             throw 'behind indicator was not rendered'
         }
     }

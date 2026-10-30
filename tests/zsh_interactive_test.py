@@ -148,13 +148,34 @@ def main():
             )
             assert b"collect.bash" not in output, output
             output = run("sleep 0.6")
-            assert host + "⇢[C25% R50% S50% D75%]".encode() in ANSI.sub(b"", output), output
+            assert host + "↦[C25% R50% S50% D75%]".encode() in ANSI.sub(b"", output), output
             output = run("YAFP_RESOURCE_LABEL_STYLE=unicode; YAFP_RESOURCE_VALUE_STYLE=symbols")
             plain = ANSI.sub(b"", output)
-            assert host + "⇢[⚙⣄▦⣦⇄⣦◉⣷]".encode() in plain, output
+            assert host + "↦[⚙⣄▦⣦⇄⣦◉⣷]".encode() in plain, output
             output = run("YAFP_RESOURCE_VALUE_STYLE=percent")
             plain = ANSI.sub(b"", output)
-            assert host + "⇢[⚙25% ▦50% ⇄50% ◉75%]".encode() in plain, output
+            assert host + "↦[⚙25% ▦50% ⇄50% ◉75%]".encode() in plain, output
+            # The quota worker uses the same silent, disowned lifecycle.
+            quota_collector = workspace / "scripts/unix/codex/collect.bash"
+            quota_collector.parent.mkdir(parents=True)
+            quota_collector.write_text(
+                '#!/usr/bin/env bash\nsleep 0.4\n'
+                'printf "%s ok 75 90 75 %s\\n" "$2" "$(( $2 + 464460 ))" > "$1.tmp"\n'
+                'mv "$1.tmp" "$1"\n'
+            )
+            output = run(
+                f"saved_root=$YAFP_ROOT; YAFP_ROOT='{workspace}'; "
+                "YAFP_CODEX_CHECK_INTERVAL=300; yafp_codex_context; "
+                "YAFP_ROOT=$saved_root; jobs -l"
+            )
+            assert b"collect.bash" not in output, output
+            output = run("sleep 0.6")
+            assert "↦[֍75%5d9h]".encode() in ANSI.sub(b"", output), output
+            output = run("YAFP_CODEX_VALUE_STYLE=symbols")
+            assert "↦[֍⣷5d9h]".encode() in ANSI.sub(b"", output), output
+            output = run("false")
+            assert b"D;1" in OSC.findall(output), output
+            print("ok - zsh quota worker is disowned and preserves OSC 133 status")
             run("true")
             print("ok - zsh interactive hooks, OSC 133, pipelines, reload, and interruption")
             print("ok - zsh worker de recursos desasociado sin avisos de trabajos")
