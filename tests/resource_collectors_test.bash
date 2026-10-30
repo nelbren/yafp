@@ -11,14 +11,15 @@ sysctl() {
         '-n vm.swapusage') printf 'total = 4.00G  used = 512.00M  free = 3584.00M (encrypted)\n' ;;
     esac
 }
-# Called indirectly by the collector sourced above, then replaced for failure coverage.
-# shellcheck disable=SC2329
+# One stub covers success and failure without redefining the same function.
+vm_stat_fails=0
 vm_stat() {
+    [ "$vm_stat_fails" -eq 0 ] || return 1
     printf '%s\n' 'Mach Virtual Memory Statistics: (page size of 16384 bytes)' \
         'Pages free: 131072.' 'Pages inactive: 131072.' 'Pages speculative: 0.'
 }
 [ "$(yafp_collect_memory_macos)" = $'12288 16384\n512 4096' ] || fail 'RAM/swap macOS'
-vm_stat() { return 1; }
+vm_stat_fails=1
 [ -z "$(yafp_collect_memory_macos)" ] || fail 'failed probe invented a RAM value'
 
 # Replace /proc input so the fixtures can also run on macOS.

@@ -1087,6 +1087,11 @@ error, as continuous integration does. Successful lines use a green `✅`,
 warnings use a yellow `⚠️`, and failures use a red `❌`; all retain their
 textual meaning when color is unavailable.
 
+Resource collector tests use one `vm_stat` stub with success and failure modes.
+This avoids redefining the function, which can trigger an unreachable-code
+diagnostic in ShellCheck even though the collector invokes both test cases.
+The unreachable-code checks remain enabled.
+
 On Windows, run the Bash checks from a complete Git Bash session. When invoking
 Bash through a PowerShell shim, use login mode so Unix tools are on `PATH`:
 
@@ -1172,6 +1177,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-29 22:07:10 🍎 MBP02 |
+📆 2026-10-29 22:30:53 🍎 MBP02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
 </div>
