@@ -96,7 +96,7 @@ def main():
             host_match = re.search(rb"(?:^|\r\n)HOST_MARK:([^\r\n]+)\r\n", output)
             assert host_match, output
             host = host_match[1]
-            assert re.search(rb"R(?:\d+%|N/D) S|esperando muestra", ANSI.sub(b"", output)), output
+            assert re.search(rb"R(?:\d+%|N/A) S|waiting for sample", ANSI.sub(b"", output)), output
             output = run("false")
             assert b"D;1" in OSC.findall(output), output
             assert b"EXISTING:1" in output, output
@@ -178,7 +178,7 @@ def main():
             print("ok - zsh quota worker is disowned and preserves OSC 133 status")
             run("true")
             print("ok - zsh interactive hooks, OSC 133, pipelines, reload, and interruption")
-            print("ok - zsh worker de recursos desasociado sin avisos de trabajos")
+            print("ok - zsh resource worker is disowned without job notifications")
         finally:
             os.close(master)
             try:

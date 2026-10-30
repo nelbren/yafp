@@ -43,7 +43,7 @@ yafp_now_ms end
 [ "$((end - begin))" -lt 500 ] || fail 'Quota worker blocked context'
 # shellcheck disable=SC2153
 pid=$YAFP_CODEX_PID
-[ "$yafp_ctx_codex" = '֍N/D' ] || fail 'Pending quota invented a value'
+[ "$yafp_ctx_codex" = '֍N/A' ] || fail 'Pending quota invented a value'
 for iteration in 1 2 3; do yafp_codex_context; done
 [ "$YAFP_CODEX_PID" = "$pid" ] || fail 'Duplicate workers'
 yafp-reload
@@ -158,12 +158,12 @@ YAFP_CODEX_CHECK_INTERVAL=300
 for row in '0 ok $(touch bad) 75 60' '0 ok 101 75 60' '0 ok 75 75' '0 ok 075 75 60' '0 ok 75 75 60 extra' '0 ok 75 75 60 01' '0 ok 75 75 60 -1' '0 ok 75 75 60 99999999999'; do
     printf '%s\n' "$row" > "$YAFP_CODEX_DIR/sample"
     yafp_codex_context
-    [ "$yafp_ctx_codex" = '֍N/D' ] || fail 'Invalid quota accepted'
+    [ "$yafp_ctx_codex" = '֍N/A' ] || fail 'Invalid quota accepted'
 done
 for state in missing-cli missing-python logged-out unsupported-auth timeout unavailable; do
     printf '0 %s - - -\n' "$state" > "$YAFP_CODEX_DIR/sample"
     yafp_codex_context
-    [ "$yafp_ctx_codex" = '֍N/D' ] || fail 'Unavailable quota invented a percentage'
+    [ "$yafp_ctx_codex" = '֍N/A' ] || fail 'Unavailable quota invented a percentage'
     [ "$yafp_ctx_codex_color" = 90 ] || fail 'Unavailable quota needs gray'
 done
 [ ! -f bad ] || fail 'Cache executed as code'

@@ -15,4 +15,4 @@
 88|Green|⣿
 95|Green|⣿
 100|Green|⣿
--|DarkGray|N/D
+-|DarkGray|N/A

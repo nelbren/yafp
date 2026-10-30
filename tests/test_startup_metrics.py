@@ -65,7 +65,7 @@ class StartupMetricsTests(unittest.TestCase):
                 self.assertEqual(completed.returncode, 0, completed.stderr)
                 self.assertEqual(self.events(1), [['--path', str(checkout), '--shell', shell]])
 
-    @unittest.skipUnless(shutil.which('pwsh'), 'Requiere PowerShell 7')
+    @unittest.skipUnless(shutil.which('pwsh'), 'Requires PowerShell 7')
     def test_powershell_entrypoint_activates_once_with_noexit(self):
         checkout = self.checkout()
         engine = str(checkout / 'yafp-ps.ps1').replace("'", "''")
@@ -82,7 +82,7 @@ class StartupMetricsTests(unittest.TestCase):
             if len(rows) >= expected:
                 return [json.loads(row) for row in rows]
             time.sleep(.03)
-        self.fail(f'Esperados {expected} eventos, observados {len(rows)}')
+        self.fail(f'Expected {expected} events, observed {len(rows)}')
 
     def unix(self, shell, body, interactive=True, disabled=False):
         helper = ROOT / 'scripts/unix/metrics/startup.bash'
@@ -118,7 +118,7 @@ class StartupMetricsTests(unittest.TestCase):
         time.sleep(.1)
         self.assertFalse(self.log.exists())
 
-    @unittest.skipUnless(shutil.which('pwsh'), 'Requiere PowerShell 7')
+    @unittest.skipUnless(shutil.which('pwsh'), 'Requires PowerShell 7')
     def test_powershell_counts_once_across_reload(self):
         helper = ROOT / 'scripts/windows/metrics/startup.ps1'
         def quote(value):

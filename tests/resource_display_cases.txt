@@ -31,7 +31,7 @@ D|85|Green|⣷
 D|86|Yellow|⣷
 D|95|Yellow|⣿
 D|96|Red|⣿
-R|-|DarkGray|N/D
-S|-|DarkGray|N/D
-C|-|DarkGray|N/D
-D|-|DarkGray|N/D
+R|-|DarkGray|N/A
+S|-|DarkGray|N/A
+C|-|DarkGray|N/A
+D|-|DarkGray|N/A

@@ -41,7 +41,7 @@ for interval in 0 -1 bad 0008 999999999999999999999; do
     [ -z "$yafp_ctx_resources" ] || fail 'disabled/invalid interval produced context'
     [ -z "${YAFP_RESOURCE_DIR:-}" ] || fail 'disabled sampling created a cache'
 done
-printf 'ok - recursos desactivados o inválidos no crean workers\n'
+printf 'ok - disabled or invalid resource monitoring starts no workers\n'
 
 cat > "$TEST_ROOT/scripts/unix/resources/collect.bash" <<'EOF'
 #!/usr/bin/env bash
@@ -54,23 +54,24 @@ YAFP_DEVEL=1
 yafp_now_ms begin
 yafp_resources_context
 yafp_now_ms end
-[ "$((end - begin))" -lt 500 ] || fail 'worker bloqueó el contexto'
+[ "$((end - begin))" -lt 500 ] || fail 'worker blocked context collection'
 pid=$YAFP_RESOURCE_PID
-assert_contains "$yafp_ctx_resources" 'esperando muestra' 'primera muestra pendiente'
+assert_contains "$yafp_ctx_resources" 'waiting for sample' 'first sample is pending'
+[ "$yafp_ctx_resources" = 'Resources: waiting for sample~' ] || fail 'Pending message must be English and compact'
 for iteration in 1 2 3; do yafp_resources_context; done
-[ "$YAFP_RESOURCE_PID" = "$pid" ] || fail 'workers duplicados'
+[ "$YAFP_RESOURCE_PID" = "$pid" ] || fail 'duplicate workers'
 yafp-reload
 YAFP_RESOURCE_CHECK_INTERVAL=30
 yafp_resources_context
-[ "$YAFP_RESOURCE_PID" = "$pid" ] || fail 'reload duplicó el worker'
+[ "$YAFP_RESOURCE_PID" = "$pid" ] || fail 'reload duplicated the worker'
 for iteration in {1..60}; do
     [ ! -f "$YAFP_RESOURCE_DIR/sample" ] || break
     sleep 0.05
 done
 yafp_resources_context
-assert_contains "$yafp_ctx_resources" 'C25% R50% S50% D75% ' 'CPU al inicio y swap entre RAM y disco'
-case "$yafp_ctx_resources" in *'|'*) fail 'separador en resumen compacto' ;; esac
-assert_contains "$(yafp-resources)" '2048/4096 MiB' 'detalle de swap'
+assert_contains "$yafp_ctx_resources" 'C25% R50% S50% D75% ' 'CPU first and swap between RAM and disk'
+case "$yafp_ctx_resources" in *'|'*) fail 'unexpected separator in compact summary' ;; esac
+assert_contains "$(yafp-resources)" '2048/4096 MiB' 'swap details'
 
 # The hot path must work even without any external tools.
 saved_path=$PATH
@@ -78,7 +79,7 @@ saved_path=$PATH
 PATH=/nonexistent
 yafp_resources_context
 PATH=$saved_path
-printf 'ok - worker no bloqueante, único, conserva caché al recargar y renderiza sin procesos\n'
+printf 'ok - single nonblocking worker, cache preserved on reload, and rendering without external processes\n'
 
 git init --quiet "$TEST_ROOT/repo"
 printf 'staged\n' > "$TEST_ROOT/repo/file.txt"
@@ -107,24 +108,33 @@ for theme in default minimal light; do
             host_marker='\h'
             if [ -n "${ZSH_VERSION:-}" ]; then host_marker="$(print -P -- '%m')"; fi
             block="↦[$expected]"
-            assert_contains "$out" "$host_marker$block" "host y recursos en $theme/$labels/$values"
+            assert_contains "$out" "$host_marker$block" "host and resources in $theme/$labels/$values"
             rest=${out#*"$block"}
-            case "$rest" in *"$block"*) fail 'recursos duplicados' ;; esac
+            case "$rest" in *"$block"*) fail 'duplicate resources' ;; esac
             out="$(theme_render_resources)"
-            assert_contains "$out" $'\033[0;92m' 'verde sin fondo'
-            assert_contains "$out" $'\033[0;91m' 'swap roja sin fondo'
+            assert_contains "$out" $'\033[0;92m' 'green foreground without a background'
+            assert_contains "$out" $'\033[0;91m' 'red swap foreground without a background'
             frame=$cSeparator
             [ "$theme" != default ] || frame=$cGit
-            assert_contains "$out" "$(ps1_wrap "$frame")↦[" 'marco inicial con colores Git'
-            assert_contains "$out" "$(ps1_wrap "$frame")]" 'marco final con colores Git'
+            assert_contains "$out" "$(ps1_wrap "$frame")↦[" 'opening frame uses Git colors'
+            assert_contains "$out" "$(ps1_wrap "$frame")]" 'closing frame uses Git colors'
             plain_prompt
-            [ "$out" = "$block" ] || fail "marco o edad en $theme/$labels/$values: $out"
-            assert_contains "$yafp_ctx_resources" "$expected " 'resumen y espacio antes de la edad'
+            [ "$out" = "$block" ] || fail "frame or sample age in $theme/$labels/$values: $out"
+            assert_contains "$yafp_ctx_resources" "$expected " 'summary and space before sample age'
+            saved_summary=$yafp_ctx_resources
+            yafp_ctx_resources+="~"
+            case "$yafp_ctx_resources" in *' ~'*) fail 'Space before refresh marker in timed summary' ;; esac
+            case "$yafp_ctx_resources" in *s~) ;; *) fail 'Refresh marker must touch sample age' ;; esac
+            out="$(theme_render_resources)"
+            plain_prompt
+            [ "$out" = "↦[${expected}~]" ] || fail "Refresh marker spacing: $theme/$labels/$values/$out"
+            yafp_ctx_resources=$saved_summary
         done
     done
     YAFP_RESOURCE_CHECK_INTERVAL=0
     yafp_resources_context
-    [ -z "$(theme_render_resources)" ] || fail 'marco vacío cuando está desactivado'
+    [ -z "$(theme_render_resources)" ] || fail 'empty frame while disabled'
+    [ "$(yafp-resources)" = 'Resources disabled. Set YAFP_RESOURCE_CHECK_INTERVAL=30.' ] || fail 'Disabled message must be English'
     YAFP_RESOURCE_CHECK_INTERVAL=30
     yafp_resources_context
 
@@ -133,7 +143,7 @@ for theme in default minimal light; do
     cd "$TEST_ROOT/repo"
     yaft_general_context 0
     yafp_git_context 0
-    [ "$yafp_ctx_git_staged" -eq 1 ] || fail 'fixture de cambios staged'
+    [ "$yafp_ctx_git_staged" -eq 1 ] || fail 'staged changes fixture'
     saved_resources=$yafp_ctx_resources
     yafp_ctx_resources=''
     theme_prepare_expansion_columns
@@ -146,14 +156,23 @@ for theme in default minimal light; do
     yafp_text_display_width "$out"
     expected_delta=$yafp_display_width
     [ "$theme" != default ] || expected_delta=0
-    [ "$delta" -eq "$expected_delta" ] || fail "columna staged en $theme: $delta/$expected_delta"
+    [ "$delta" -eq "$expected_delta" ] || fail "staged indicator column in $theme: $delta/$expected_delta"
     cd "$original_pwd"
     YAFP_REPOS=0
     yafp_ctx_git_has_repo=0 yafp_ctx_git_staged=0
     # Failed input remains represented in the command context.
     yafp_err_context 7
-    [ "$yafp_ctx_exit" = 7 ] || fail 'estado del comando alterado'
+    [ "$yafp_ctx_exit" = 7 ] || fail 'previous command status changed'
 done
+YAFP_RESOURCE_ATTEMPT=$((SECONDS - 31))
+yafp_resources_context
+case "$yafp_ctx_resources" in *' ~'*) fail 'Refresh context inserted a space before the marker' ;; esac
+case "$yafp_ctx_resources" in *s~) ;; *) fail 'Cached refresh must show age followed by tilde' ;; esac
+for iteration in {1..60}; do
+    kill -0 "$YAFP_RESOURCE_PID" 2>/dev/null || break
+    sleep 0.05
+done
+yafp_resources_context
 YAFP_RESOURCE_LABEL_STYLE=letters YAFP_RESOURCE_VALUE_STYLE=percent
 
 while IFS='|' read -r kind value color cell; do
@@ -173,35 +192,35 @@ while IFS='|' read -r kind value color cell; do
             if [ "$values" = percent ] && [ "$value" != - ]; then expected="$label$value%"; fi
             yafp_resource_segment "$index" "$value"
             [ "$yafp_resource_token" = "$expected" ] || fail "token $kind/$value/$labels/$values"
-            [ "$yafp_resource_color" = "$code" ] || fail "umbral $kind/$value"
+            [ "$yafp_resource_color" = "$code" ] || fail "threshold $kind/$value"
         done
     done
 done < "$ROOT_DIR/tests/resource_display_cases.txt"
 YAFP_RESOURCE_LABEL_STYLE=bad YAFP_RESOURCE_VALUE_STYLE=bad
 yafp_resource_segment 1 74
-[ "$yafp_resource_token" = 'R74%' ] || fail 'fallback de estilos inválidos'
+[ "$yafp_resource_token" = 'R74%' ] || fail 'invalid style fallback'
 YAFP_RESOURCE_LABEL_STYLE=letters YAFP_RESOURCE_VALUE_STYLE=percent
-printf 'ok - etiquetas, cuatro combinaciones, Braille y límites de color compartidos\n'
+printf 'ok - labels, four display modes, Braille, and shared color boundaries\n'
 
 # Unallocated swap, unknown capacity, and a fractional percentage.
 YAFP_RESOURCE_SWAP_USED=0 YAFP_RESOURCE_SWAP_TOTAL=0
 yafp_resources_summary
-assert_contains "$yafp_ctx_resources" ' S0% ' 'swap no asignada'
+assert_contains "$yafp_ctx_resources" ' S0% ' 'unallocated swap'
 YAFP_RESOURCE_SWAP_USED=1552 YAFP_RESOURCE_SWAP_TOTAL=3072
 yafp_resources_summary
-assert_contains "$yafp_ctx_resources" ' S50% ' 'porcentaje entero de swap'
+assert_contains "$yafp_ctx_resources" ' S50% ' 'integer swap percentage'
 YAFP_RESOURCE_SWAP_TOTAL=-
 yafp_resources_summary
-assert_contains "$yafp_ctx_resources" ' SN/D ' 'capacidad de swap desconocida'
+assert_contains "$yafp_ctx_resources" ' SN/A ' 'unknown swap capacity'
 
 # Truncated or code-shaped cache data never executes or reaches the prompt.
 # shellcheck disable=SC2016
 printf '%s\n' '$(touch forbidden) 1 2 3' > "$YAFP_RESOURCE_DIR/sample"
 yafp_resources_context
-case "$yafp_ctx_resources" in *'R50%'*) fail 'caché inválida aceptada' ;; esac
-[ ! -e forbidden ] || fail 'la caché ejecutó código'
+case "$yafp_ctx_resources" in *'R50%'*) fail 'invalid cache accepted' ;; esac
+[ ! -e forbidden ] || fail 'cache executed code'
 YAFP_RESOURCE_PID=99999999
 YAFP_RESOURCE_ATTEMPT=$((SECONDS - 31))
 yafp_resources_context
-[ "$YAFP_RESOURCE_PID" != 99999999 ] || fail 'worker muerto no se recuperó'
-printf 'ok - tres temas, estado previo, caché inválida y recuperación de worker\n'
+[ "$YAFP_RESOURCE_PID" != 99999999 ] || fail 'dead worker did not recover'
+printf 'ok - three themes, previous status, invalid cache, and worker recovery\n'

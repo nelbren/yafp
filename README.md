@@ -320,14 +320,18 @@ Red takes precedence over yellow. Thresholds use the actual integer percentage
 even in Braille mode; unavailable values appear in gray. The prompt omits
 sample age to keep the host block compact. `yafp-resources` still reports age:
 `17s` means seconds elapsed since sampling, rather than a countdown to the
-next update. `~` inside the frame indicates a new sample in progress. The
-first sample shows a pending-resource message followed by `~`. Unavailable
-metrics appear as `N/D`, never as an invented zero. A swap total of zero means
+next update. `~` inside the frame indicates a new sample in progress and
+attaches directly to the last value, for example `↦[⚙⣷▦⣦⇄⡀◉⣿~]`.
+The first sample displays `Resources: waiting for sample~`; an unavailable
+sample reports `Resources: no valid sample`. Unavailable
+metrics appear as `N/A`, never as an invented zero. A swap total of zero means
 no swap/pagefile is allocated: this appears as `S0%` or `⇄0%`, or the
 minimum cell in symbolic mode.
 
 `yafp-resources` shows a plain summary with sample age, used/total RAM and swap
-in MiB, and disk usage in KiB. It does not wait for a pending sample to finish.
+in MiB, and disk usage in KiB. During refresh, its age and marker are adjacent,
+for example `⚙⣷▦⣦⇄⡀◉⣿ 17s~`. The space before sample age remains.
+It does not wait for a pending sample to finish.
 A worker starts during prompt rendering when the interval expires; a later
 prompt reads its result. There is no persistent timer, and the line is not
 redrawn while you type. The sample age identifies older data when a probe is
@@ -342,7 +346,7 @@ and speculative pages; it can differ from Activity Monitor. Linux/WSL2 uses
 `MemTotal - MemAvailable`, swap from `/proc/meminfo`, and two `/proc/stat`
 samples 200 ms apart. Windows uses CIM/WMI and allocated pagefiles from a
 PowerShell 7 thread job. In Git Bash, metrics without a native probe appear
-as `N/D`; disk usage still uses `df`. Disk reports capacity, without measuring
+as `N/A`; disk usage still uses `df`. Disk reports capacity, without measuring
 I/O latency or saturation.
 
 All probes run in the background with isolated input and output. Rendering
@@ -355,6 +359,9 @@ On macOS, swap usage alone does not establish the cause of a slowdown. To
 investigate memory pressure, Activity Monitor also considers the swap rate,
 wired memory, and file cache:
 [Apple memory guide](https://support.apple.com/guide/activity-monitor/view-memory-usage-actmntr1004/mac).
+
+All prompt, diagnostic, and test messages are in English. Unavailable values
+use `N/A` consistently in resource and Codex indicators.
 
 ### Background Codex quota
 
@@ -414,8 +421,8 @@ The value is `100 - usedPercent`, rounded down, for the `codex` bucket. When
 both primary and secondary windows are available, the smaller remaining
 percentage wins. Other model buckets are ignored. The legacy single-bucket
 response is supported. Missing windows are ignored; if neither is available,
-the token is `֍N/D` in gray. A missing CLI, missing Python, logged-out or API-key
-session, request error, or timeout also produces `֍N/D`, never a false 0%.
+the token is `֍N/A` in gray. A missing CLI, missing Python, logged-out or API-key
+session, request error, or timeout also produces `֍N/A`, never a false 0%.
 
 The value is immediately followed by the time until that same window resets,
 without a separator: `֍75%5d9h` or `֍⣷5d9h`. Ties in remaining percentage select
@@ -428,11 +435,11 @@ or invalid reset timestamp omits the countdown while preserving the quota.
 
 Requests have a ten-second deadline in the worker. Rendering reads the cached
 result without waiting or accessing the network. The initial prompt can show
-`֍N/D` until the result is collected at a later prompt. Each session keeps at
+`֍N/A` until the result is collected at a later prompt. Each session keeps at
 most one quota worker, and reloads reuse it. In zsh, the worker is disowned
 at launch to suppress job notifications. There is no persistent polling timer
 or redraw while typing. The last sample remains visible during a refresh;
-a failed refresh replaces it with `֍N/D`.
+a failed refresh replaces it with `֍N/A`.
 
 Run `yafp-codex` for the cached state, remaining percentages per window, and
 sample age in seconds. It does not wait for the pending request. Only numeric
@@ -1165,6 +1172,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-29 21:47:38 🍎 MBP02 |
+📆 2026-10-29 22:07:10 🍎 MBP02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

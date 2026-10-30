@@ -19,12 +19,12 @@ vm_stat() {
 }
 [ "$(yafp_collect_memory_macos)" = $'12288 16384\n512 4096' ] || fail 'RAM/swap macOS'
 vm_stat() { return 1; }
-[ -z "$(yafp_collect_memory_macos)" ] || fail 'sonda fallida produjo RAM inventada'
+[ -z "$(yafp_collect_memory_macos)" ] || fail 'failed probe invented a RAM value'
 
 # Replace /proc input so the fixtures can also run on macOS.
 awk() { command awk "$1" <<< "$fixture"; }
 fixture=$'MemTotal: 16384000 kB\nMemAvailable: 4096000 kB\nSwapTotal: 0 kB\nSwapFree: 0 kB'
-[ "$(yafp_collect_memory_linux)" = $'12000 16000\n0 0' ] || fail 'RAM Linux/sin swap'
+[ "$(yafp_collect_memory_linux)" = $'12000 16000\n0 0' ] || fail 'Linux RAM without swap'
 fixture=$'MemTotal: 16384000 kB\nSwapTotal: 4096000 kB\nSwapFree: 2048000 kB'
-[ "$(yafp_collect_memory_linux)" = $'- -\n2000 4000' ] || fail 'MemAvailable ausente'
-printf 'ok - sondas macOS (páginas de 16 KiB), Linux y dependencias ausentes\n'
+[ "$(yafp_collect_memory_linux)" = $'- -\n2000 4000' ] || fail 'missing MemAvailable'
+printf 'ok - macOS probes (16 KiB pages), Linux, and missing dependencies\n'

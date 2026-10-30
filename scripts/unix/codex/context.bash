@@ -20,7 +20,7 @@ yafp_codex_segment() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
     local value="$1" level
     local cells=('⡀' '⣀' '⣄' '⣤' '⣦' '⣶' '⣷' '⣿')
-    yafp_ctx_codex_token='֍N/D' yafp_ctx_codex_color=90
+    yafp_ctx_codex_token='֍N/A' yafp_ctx_codex_color=90
     case "$value" in ''|*[!0-9]*|0?*|????*) return 0 ;; esac
     [ "$value" -le 100 ] || return 0
     yafp_ctx_codex_color=91
@@ -118,7 +118,7 @@ yafp-codex() {
     printf '%s\n' "$yafp_ctx_codex"
     printf 'State: %s\n' "${YAFP_CODEX_STATE:-pending}"
     if [ -n "${YAFP_CODEX_SAMPLE_AT:-}" ]; then
-        local primary='N/D' secondary='N/D'
+        local primary='N/A' secondary='N/A'
         [ "$YAFP_CODEX_PRIMARY" = - ] || primary="${YAFP_CODEX_PRIMARY}%"
         [ "$YAFP_CODEX_SECONDARY" = - ] || secondary="${YAFP_CODEX_SECONDARY}%"
         printf 'Remaining: primary %s; secondary %s; sample age %ss\n' \

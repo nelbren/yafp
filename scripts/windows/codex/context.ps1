@@ -47,7 +47,7 @@ function global:Format-YafpCodexReset {
 
 function global:Format-YafpCodexSegment {
     param([AllowNull()][Nullable[int]]$Value)
-    $text = '֍N/D'; $color = 'DarkGray'
+    $text = '֍N/A'; $color = 'DarkGray'
     if ($null -ne $Value -and $Value -ge 0 -and $Value -le 100) {
         $color = if ($Value -ge 50) { 'Green' } elseif ($Value -ge 25) { 'Yellow' } else { 'Red' }
         $text = "֍$Value%"
@@ -131,7 +131,7 @@ function global:Show-YafpCodex {
     $sample = $quota.Sample
     Write-Output "State: $($sample.State)"
     $age = [Math]::Max(0, [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - $sample.CheckedAt)
-    $primary = if ($null -eq $sample.Primary) { 'N/D' } else { "$($sample.Primary)%" }
-    $secondary = if ($null -eq $sample.Secondary) { 'N/D' } else { "$($sample.Secondary)%" }
+    $primary = if ($null -eq $sample.Primary) { 'N/A' } else { "$($sample.Primary)%" }
+    $secondary = if ($null -eq $sample.Secondary) { 'N/A' } else { "$($sample.Secondary)%" }
     Write-Output "Remaining: primary $primary; secondary $secondary; sample age $($age)s"
 }

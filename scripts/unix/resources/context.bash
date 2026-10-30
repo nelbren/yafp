@@ -35,7 +35,7 @@ yafp_resources_context() {
     fi
 
     if [ -n "${YAFP_RESOURCE_PID:-}" ] && kill -0 "$YAFP_RESOURCE_PID" 2>/dev/null; then
-        yafp_ctx_resources="${yafp_ctx_resources:-Recursos: esperando muestra} ~"
+        yafp_ctx_resources="${yafp_ctx_resources:-Resources: waiting for sample}~"
         return 0
     fi
     YAFP_RESOURCE_PID=''
@@ -56,9 +56,9 @@ yafp_resources_context() {
                 disown "$YAFP_RESOURCE_PID" 2>/dev/null || true
             fi
         } >/dev/null 2>&1
-        yafp_ctx_resources="${yafp_ctx_resources:-Recursos: esperando muestra} ~"
+        yafp_ctx_resources="${yafp_ctx_resources:-Resources: waiting for sample}~"
     fi
-    yafp_ctx_resources=${yafp_ctx_resources:-Recursos: sin muestra válida}
+    yafp_ctx_resources=${yafp_ctx_resources:-Resources: no valid sample}
     return 0
 }
 
@@ -71,7 +71,7 @@ yafp_resource_segment() {
     if [ "${YAFP_RESOURCE_LABEL_STYLE:-letters}" = unicode ]; then
         label="${unicode_labels[$index]}"
     fi
-    yafp_resource_token="${label}N/D" yafp_resource_color=90
+    yafp_resource_token="${label}N/A" yafp_resource_color=90
     case "$value" in ''|*[!0-9]*) return 0 ;; esac
     [ "$value" -le 100 ] || return 0
     [ "$index" -ne 2 ] || { warning=10; critical=30; }
@@ -90,7 +90,7 @@ yafp_resource_segment() {
 
 yafp_resources_summary() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
-    local ram='N/D' cpu='N/D' disk='N/D' swap='N/D' age index=0 value
+    local ram='N/A' cpu='N/A' disk='N/A' swap='N/A' age index=0 value
     if [ "$YAFP_RESOURCE_RAM_USED" != - ] && [ "$YAFP_RESOURCE_RAM_TOTAL" != - ] &&
        [ "$YAFP_RESOURCE_RAM_TOTAL" -gt 0 ]; then
         ram="$((100 * YAFP_RESOURCE_RAM_USED / YAFP_RESOURCE_RAM_TOTAL))%"
@@ -145,7 +145,7 @@ theme_render_resources() {
             index=$((index + 1))
         done
         case "$yafp_ctx_resources" in
-            *' ~') printf '%s%s%s ~' "$open" $'\033[0;90m' "$close" ;;
+            *'~') printf '%s%s%s~' "$open" $'\033[0;90m' "$close" ;;
         esac
     else
         printf '%s%s%s%s' "$open" $'\033[0;90m' "$close" "$text"
@@ -158,7 +158,7 @@ yafp-resources() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
     yafp_resources_context
     if [ -z "$yafp_ctx_resources" ]; then
-        printf '%s\n' 'Recursos desactivados. Configure YAFP_RESOURCE_CHECK_INTERVAL=30.'
+        printf '%s\n' 'Resources disabled. Set YAFP_RESOURCE_CHECK_INTERVAL=30.'
         return 0
     fi
     printf '%s\n' "$yafp_ctx_resources"
@@ -166,7 +166,7 @@ yafp-resources() {
         printf 'RAM: %s/%s MiB  SWAP: %s/%s MiB\n' \
             "$YAFP_RESOURCE_RAM_USED" "$YAFP_RESOURCE_RAM_TOTAL" \
             "$YAFP_RESOURCE_SWAP_USED" "$YAFP_RESOURCE_SWAP_TOTAL"
-        printf 'Disco (volumen de HOME): %s/%s KiB\n' \
+        printf 'Disk (HOME volume): %s/%s KiB\n' \
             "$YAFP_RESOURCE_DISK_USED" "$YAFP_RESOURCE_DISK_TOTAL"
     fi
 }

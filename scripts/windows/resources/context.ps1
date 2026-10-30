@@ -66,7 +66,7 @@ function global:Format-YafpResourceSegment {
     if ($global:YAFP_RESOURCE_LABEL_STYLE -eq 'unicode') {
         $label = @{ R = '▦'; S = '⇄'; C = '⚙'; D = '◉' }[$Kind]
     }
-    $text = "${label}N/D"
+    $text = "${label}N/A"
     $color = 'DarkGray'
     if ($null -ne $Value -and $Value -ge 0 -and $Value -le 100) {
         $warning = if ($Kind -eq 'S') { 10 } else { 85 }
@@ -114,7 +114,7 @@ function global:Get-YafpResourceContext {
         }
         catch { }
     }
-    $text = 'Recursos: esperando muestra'
+    $text = 'Resources: waiting for sample'
     $segments = @()
     $suffix = ''
     $separator = ' '
@@ -146,8 +146,8 @@ function global:Get-YafpResourceContext {
         $suffix = "$($age)s"
         $text = ($segments.Text -join $separator) + " $suffix"
     }
-    if ($null -ne $script:YafpResourceJob) { $text += ' ~'; $suffix += ' ~' }
-    elseif ($null -eq $sample) { $text = 'Recursos: sin muestra válida' }
+    if ($null -ne $script:YafpResourceJob) { $text += '~'; $suffix += '~' }
+    elseif ($null -eq $sample) { $text = 'Resources: no valid sample' }
     return [pscustomobject]@{
         Text = $text; Sample = $sample; Segments = $segments; Suffix = $suffix; Separator = $separator
     }
@@ -173,8 +173,8 @@ function global:Write-YafpResources {
                     -BackgroundColor $null -NoNewline
                 $separator = $resource.Separator
             }
-            if ($resource.Suffix.EndsWith(' ~')) {
-                Write-YafpText -Text ' ~' -ForegroundColor DarkGray `
+            if ($resource.Suffix.EndsWith('~')) {
+                Write-YafpText -Text '~' -ForegroundColor DarkGray `
                     -BackgroundColor $null -NoNewline
             }
         }
@@ -190,13 +190,13 @@ function global:Write-YafpResources {
 function global:Show-YafpResources {
     $resource = Get-YafpResourceContext
     if ($null -eq $resource) {
-        Write-Output 'Recursos desactivados. Configure $global:YAFP_RESOURCE_CHECK_INTERVAL=30.'
+        Write-Output 'Resources disabled. Set $global:YAFP_RESOURCE_CHECK_INTERVAL=30.'
         return
     }
     Write-Output $resource.Text
     $sample = $resource.Sample
     if ($null -ne $sample) {
         Write-Output "RAM: $($sample.RamUsed)/$($sample.RamTotal) MiB  SWAP: $($sample.SwapUsed)/$($sample.SwapTotal) MiB"
-        Write-Output "Disco (volumen de HOME): $($sample.DiskUsed)/$($sample.DiskTotal) KiB"
+        Write-Output "Disk (HOME volume): $($sample.DiskUsed)/$($sample.DiskTotal) KiB"
     }
 }
