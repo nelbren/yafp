@@ -10,4 +10,5 @@ done
 printf 'ok - zsh syntax\n'
 zsh -df tests/zsh_prompt_test.zsh
 zsh -df tests/zsh_remote_status_test.zsh
+zsh -df tests/resources_test.bash
 python3 tests/zsh_interactive_test.py

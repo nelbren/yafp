@@ -38,6 +38,7 @@ function script:Write-YafpTheme {
     $hostColor = if ($Context.IsDevelopment) { 'Green' } else { 'Magenta' }
     Write-YafpText -Text $Context.Computer -ForegroundColor $hostColor `
         -BackgroundColor $null -NoNewline
+    Write-YafpResources -Context $Context
     Write-Host ' ⌂ ' -ForegroundColor White -NoNewline
     Write-YafpText -Text $Context.Path -ForegroundColor Yellow `
         -BackgroundColor $null -NoNewline

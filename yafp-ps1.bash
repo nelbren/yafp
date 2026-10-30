@@ -1604,7 +1604,7 @@ yafp_git_check() {
         if [[ -d .git ]]; then
             YAFP_GIT_INSIDE=1
         else
-            # fallback real
+            # Resolve repository status through Git.
             git rev-parse --is-inside-work-tree \
                 >/dev/null 2>&1 && YAFP_GIT_INSIDE=1 || YAFP_GIT_INSIDE=0
         fi
@@ -2314,6 +2314,7 @@ yafp-reload|Reload YAFP in the current shell.
 yafp-stats|Show command execution statistics.
 yafp-msgs|Show all prompt banners in severity order.
 yafp-help|Show available YAFP commands.
+yafp-resources|Mostrar la última muestra de RAM, swap, CPU y disco.
 EOF
 }
 
@@ -2360,6 +2361,10 @@ yafp-stats() {
 
 yafp_exit_trap() {
     local exit_code=$?
+
+    if declare -F yafp_resources_cleanup >/dev/null; then
+        yafp_resources_cleanup
+    fi
 
     if [ "${YAFP_STATS_ON_EXIT:-1}" = 1 ]; then
         yafp-stats
@@ -2700,6 +2705,9 @@ yafp_prompt_preview() {
     yafp_now_ms t_all_begin
 
     yaft_general_context "$last_exit"
+    if declare -F yafp_resources_context >/dev/null; then
+        yafp_resources_context
+    fi
     yafp_git_context "$last_exit"
     yafp_venv_context
     yafp_err_context "$last_exit"
@@ -2739,6 +2747,9 @@ yafp_prompt_command() {
     yafp_now_ms t_all_begin
 
     yaft_general_context "$last_exit"
+    if declare -F yafp_resources_context >/dev/null; then
+        yafp_resources_context
+    fi
     yafp_git_context "$last_exit"
     yafp_venv_context
     yafp_err_context "$last_exit"
@@ -2798,6 +2809,7 @@ fi
 . "$cfg"
 
 YAFP_REMOTE_CHECK_INTERVAL=${YAFP_REMOTE_CHECK_INTERVAL:-300}
+YAFP_RESOURCE_CHECK_INTERVAL=${YAFP_RESOURCE_CHECK_INTERVAL:-0}
 YAFP_REMOTE_COUNTDOWN_STYLE=${YAFP_REMOTE_COUNTDOWN_STYLE:-numeric}
 YAFP_STATUS_PROGRESS_STYLE=${YAFP_STATUS_PROGRESS_STYLE:-blocks}
 YAFP_DARKC=${YAFP_DARKC:-1}
@@ -2815,6 +2827,10 @@ yafp_remote_countdown_color_index=${yafp_remote_countdown_color_index:-0}
 YAFP_LOADED_COMMIT="$(yafp_current_commit)" || YAFP_LOADED_COMMIT=""
 
 load_vars
+if [ -r "$YAFP_ROOT/scripts/unix/resources/context.bash" ]; then
+    # shellcheck source=scripts/unix/resources/context.bash
+    . "$YAFP_ROOT/scripts/unix/resources/context.bash"
+fi
 load_theme || return 1
 theme_build
 

@@ -212,6 +212,29 @@ function Test-Configuration {
         )
     }
 
+    $resourceInterval = $values['YAFP_RESOURCE_CHECK_INTERVAL']
+    if ($null -eq $resourceInterval) { $resourceInterval = 0 }
+    if ($resourceInterval -is [int] -and $resourceInterval -ge 0 -and $resourceInterval -le 86400) {
+        Write-DoctorPass "YAFP_RESOURCE_CHECK_INTERVAL is valid: $resourceInterval"
+    }
+    else {
+        Write-DoctorError 'YAFP_RESOURCE_CHECK_INTERVAL must be an integer from 0 to 86400'
+    }
+
+    foreach ($option in @(
+        @{ Name = 'YAFP_RESOURCE_LABEL_STYLE'; Allowed = @('letters', 'unicode'); Default = 'letters' }
+        @{ Name = 'YAFP_RESOURCE_VALUE_STYLE'; Allowed = @('percent', 'symbols'); Default = 'percent' }
+    )) {
+        $value = $values[$option.Name]
+        if ($null -eq $value) { $value = $option.Default }
+        if ($value -in $option.Allowed) {
+            Write-DoctorPass "$($option.Name) is valid: $value"
+        }
+        else {
+            Write-DoctorError "$($option.Name) must be $($option.Allowed -join ' or ')"
+        }
+    }
+
     $countdownStyle = $values['YAFP_REMOTE_COUNTDOWN_STYLE']
     if (-not $countdownStyle) {
         $countdownStyle = 'numeric'

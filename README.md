@@ -216,6 +216,120 @@ Totals below 50 ms use `🚀` in green, totals from 50 through 199 ms use
 more use
 `🐢` with intense white text on a red background.
 
+### Background resource monitoring
+
+YAFP can show CPU, RAM, swap, and used capacity on the volume containing
+`HOME`, inside or outside a repository. Monitoring is disabled by default.
+To enable it in Bash or zsh, add this to your personal configuration:
+
+```bash
+YAFP_RESOURCE_CHECK_INTERVAL=30
+```
+
+For PowerShell 7 on Windows, use:
+
+```powershell
+$global:YAFP_RESOURCE_CHECK_INTERVAL = 30
+```
+
+Then run `yafp-reload`. The interval accepts integers from `1` through `86400`
+seconds; `0` disables monitoring. Invalid values also disable it without
+printing prompt errors. Existing personal configurations are not modified.
+
+All three themes attach the resource block directly to the hostname:
+
+```text
+HOST⇢[C24% R74% S50% D93%]
+```
+
+The `⇢[]` frame uses the same colors as the theme's Git change delimiters.
+Each resource keeps its own usage color. Labels and values can be selected
+independently in Bash/zsh:
+
+```bash
+YAFP_RESOURCE_LABEL_STYLE="unicode"  # letters (default) or unicode
+YAFP_RESOURCE_VALUE_STYLE="symbols"  # percent (default) or symbols
+```
+
+In PowerShell, write the same options as follows:
+
+```powershell
+$global:YAFP_RESOURCE_LABEL_STYLE = 'unicode'
+$global:YAFP_RESOURCE_VALUE_STYLE = 'symbols'
+```
+
+The four combinations produce the following output for the same sample:
+
+```text
+letters + percent: HOST⇢[C24% R74% S50% D93%]
+unicode + percent: HOST⇢[⚙24% ▦74% ⇄50% ◉93%]
+letters + symbols: HOST⇢[C⣀ R⣶ S⣦ D⣿]
+unicode + symbols: HOST⇢[⚙⣀▦⣶⇄⣦◉⣿]
+```
+
+`C`/`⚙`, `R`/`▦`, `S`/`⇄`, and `D`/`◉` represent CPU, RAM, swap, and disk,
+respectively. CPU appears first, and swap sits between RAM and disk to
+highlight their relationship. All four modes and all three themes use this
+order. Only Unicode + Braille (`unicode` + `symbols`) removes spaces between
+resources. No space separates the hostname from `⇢[`, and there is no inner
+padding next to the brackets. The other three combinations separate resources
+with spaces. Disabled monitoring renders no frame. Invalid styles fall back
+to `letters` and `percent`.
+
+Swap usage is relative to its total allocated capacity. Percentages are shown
+as integers without decimal places. The `symbols` mode divides usage into
+eight levels: 0–12% `⡀`, 13–24% `⣀`, 25–37% `⣄`, 38–49% `⣤`, 50–62% `⣦`,
+63–74% `⣶`, 75–87% `⣷`, and 88–100% `⣿`. At 0%, the minimum cell `⡀` is used;
+`yafp-resources` retains the used/total details for inspecting exact values.
+
+Each resource uses a foreground color on a transparent background in every
+theme:
+
+| Resource       | Green | Yellow | Red  |
+| -------------- | ----- | ------ | ---- |
+| RAM, CPU, disk | ≤85%  | >85%   | >95% |
+| Swap           | ≤10%  | >10%   | >30% |
+
+Red takes precedence over yellow. Thresholds use the actual integer percentage
+even in Braille mode; unavailable values appear in gray. The prompt omits
+sample age to keep the host block compact. `yafp-resources` still reports age:
+`17s` means seconds elapsed since sampling, rather than a countdown to the
+next update. `~` inside the frame indicates a new sample in progress. The
+first sample shows a pending-resource message followed by `~`. Unavailable
+metrics appear as `N/D`, never as an invented zero. A swap total of zero means
+no swap/pagefile is allocated: this appears as `S0%` or `⇄0%`, or the
+minimum cell in symbolic mode.
+
+`yafp-resources` shows a plain summary with sample age, used/total RAM and swap
+in MiB, and disk usage in KiB. It does not wait for a pending sample to finish.
+A worker starts during prompt rendering when the interval expires; a later
+prompt reads its result. There is no persistent timer, and the line is not
+redrawn while you type. The sample age identifies older data when a probe is
+slow or fails. Each session has at most one resource worker; two terminals
+keep independent samples. Reloading does not duplicate workers. In zsh, the
+worker launches disowned with `&!`, so starting or finishing it does not emit
+job notifications such as `[3] + done`.
+
+macOS uses `sysctl`, `vm_stat`, two `top` samples one second apart, and `df`.
+RAM is an estimate of occupied physical memory that excludes free, inactive,
+and speculative pages; it can differ from Activity Monitor. Linux/WSL2 uses
+`MemTotal - MemAvailable`, swap from `/proc/meminfo`, and two `/proc/stat`
+samples 200 ms apart. Windows uses CIM/WMI and allocated pagefiles from a
+PowerShell 7 thread job. In Git Bash, metrics without a native probe appear
+as `N/D`; disk usage still uses `df`. Disk reports capacity, without measuring
+I/O latency or saturation.
+
+All probes run in the background with isolated input and output. Rendering
+reads numeric data using shell builtins without running probes or querying
+the network. Unix publishes samples atomically in a private session temporary
+directory and removes it on normal exit. PowerShell keeps results in memory
+and removes completed jobs. No repository files or metric histories are created.
+
+On macOS, swap usage alone does not establish the cause of a slowdown. To
+investigate memory pressure, Activity Monitor also considers the swap rate,
+wired memory, and file cache:
+[Apple memory guide](https://support.apple.com/guide/activity-monitor/view-memory-usage-actmntr1004/mac).
+
 ### Remote repository checks
 
 YAFP can periodically refresh the configured upstream without blocking the
@@ -883,63 +997,63 @@ overwrite a different existing `prepare-commit-msg` hook.
 
 ---
 
-## Registro de activaciones de YAFP
+## YAFP startup tracking
 
-YAFP registra una activación por proceso de shell interactiva, después de cargar
-el prompt correctamente. Recargar el prompt en esa misma sesión no suma otra
-activación. Cada terminal o sesión SSH nueva conserva su propia activación.
-Las llamadas a funciones internas y los redibujados del prompt no se registran.
+YAFP records one activation per interactive shell process after the prompt
+loads successfully. Reloading in the same session does not record another
+activation. Each new terminal or SSH session has its own activation. Internal
+function calls and prompt redraws are not recorded.
 
-La escritura se ejecuta una sola vez en segundo plano mediante el Python ya
-preparado de ai-dev-tools. Usa `AI_DEV_TOOLS_ROOT` o `~/ai-dev-tools` y conserva
-un evento `application` con fuente `yafp/startup/bash`, `yafp/startup/zsh` o
-`yafp/startup/powershell`. No inicia servicios ni consulta la red. La base SQLite
-común permanece fuera del checkout, en
-`PROJECT_TEST_HOME/repository-metrics/IDENTIDAD/executions.sqlite3`, o en el
-almacén local predeterminado de ai-dev-tools.
+A background writer runs once using the existing ai-dev-tools Python runtime.
+It uses `AI_DEV_TOOLS_ROOT` or `~/ai-dev-tools` and stores an `application`
+event with source `yafp/startup/bash`, `yafp/startup/zsh`, or
+`yafp/startup/powershell`. It starts no services and makes no network requests.
+The shared SQLite database stays outside the checkout at
+`PROJECT_TEST_HOME/repository-metrics/IDENTITY/executions.sqlite3`, or in the
+default local ai-dev-tools store.
 
-El contador aparece en «▶️ EJECUCIONES DE LA APLICACIÓN» de Software Facts del
-checkout de YAFP. No mide comandos ejecutados, redibujados, duración ni sesiones
-anteriores a esta integración. Los contadores de comandos de `yafp-stats`
-conservan su alcance independiente por sesión.
+The counter appears in the application executions section of Software Facts
+for the YAFP checkout. It does not measure commands, redraws, duration, or
+sessions from before this integration. The `yafp-stats` command counters retain
+their separate per-session scope.
 
-Si falta ai-dev-tools preparado, el prompt sigue funcionando y la ficha conserva
-la ausencia de medición. Los errores del escritor quedan en
-`PROJECT_TEST_HOME/application-startup-errors.log`. Para desactivar el contador,
-define `YAFP_METRICS_DISABLED=1` antes de cargar YAFP; en PowerShell usa
-`$env:YAFP_METRICS_DISABLED = '1'`. Los runners de calidad desactivan el registro
-real; sus contratos usan entornos y escritores temporales.
+If a prepared ai-dev-tools runtime is unavailable, the prompt keeps working and
+Software Facts retains the missing measurement. Writer errors are recorded in
+`PROJECT_TEST_HOME/application-startup-errors.log`. To disable the counter, set
+`YAFP_METRICS_DISABLED=1` before loading YAFP; in PowerShell, use
+`$env:YAFP_METRICS_DISABLED = '1'`. Quality runners disable real tracking; their
+contract tests use temporary environments and writers.
 
-Las funciones del prompt no deben instrumentarse como alias de otro proyecto
-por compartir un prefijo. Después de actualizar ai-dev-tools y YAFP, una sesión
-que ya tuviera esa instrumentación puede limpiarla y recargar el prompt con:
+Prompt functions must not be instrumented as another project's aliases merely
+because they share a prefix. After updating ai-dev-tools and YAFP, a session
+with earlier instrumentation can clear it and reload the prompt with:
 
 ```bash
 AIDT_alias-reload; yafp-reload
 ```
 
-Una shell nueva aplica la integración al cargar YAFP. No se necesita cambiar
-las configuraciones personales ignoradas por Git.
+New shells apply the integration when YAFP loads. Git-ignored personal
+configurations do not need changes.
 
-## Registro clasificado de pruebas
+## Classified test records
 
-`.project-test.yml` declara las suites existentes por plataforma. En Unix,
-`scripts/unix/quality/project-test.sh` ejecuta las pruebas de Bash y el recorrido
-zsh sin mezclar el análisis estático con los conteos. Las suites PowerShell
-conservan su selección para Windows.
+`.project-test.yml` declares the existing suites by platform. On Unix,
+`scripts/unix/quality/project-test.sh` runs the Bash tests and zsh checks
+without mixing static analysis with test counts. PowerShell suites retain
+their Windows selection.
 
 ```sh
 project-test run --path . --profile quick
 software-facts --path .
 ```
 
-El runner shell conserva logs y estado agregado; el número de casos internos
-permanece no recolectado cuando no entrega un reporte nativo. No se interpreta
-como cero. La validación de calidad completa sigue usando las entradas de la
-sección de pruebas existente y no instala analizadores durante la ejecución.
+The shell runner preserves logs and aggregate status. Internal case counts
+remain uncollected when no native report is provided; this does not mean zero.
+Full quality validation still uses the entry points in the existing testing
+section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-24 18:12:47 🍎 MBP02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-10-29 20:37:42 🍎 MBP02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

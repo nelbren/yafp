@@ -70,6 +70,8 @@ if (-not (Get-Variable YafpRemoteConnectivityState -Scope Script `
         -ErrorAction Ignore)) {
     $script:YafpRemoteConnectivityState = 'unknown'
 }
+
+. (Join-Path $script:YafpRoot 'scripts/windows/resources/context.ps1')
 if (-not (Get-Variable YafpRemoteOfflineAcknowledged -Scope Script `
         -ErrorAction Ignore)) {
     $script:YafpRemoteOfflineAcknowledged = $false
@@ -1100,6 +1102,7 @@ function Show-YafpHelp {
         @{ Name = 'yafp-stats'; Description = 'Show command execution statistics.' }
         @{ Name = 'yafp-msgs'; Description = 'Show all prompt banners in severity order.' }
         @{ Name = 'yafp-help'; Description = 'Show available YAFP commands.' }
+        @{ Name = 'yafp-resources'; Description = 'Mostrar la última muestra de RAM, swap, CPU y disco.' }
     )) {
         Write-YafpText -Text $entry.Name -ForegroundColor Yellow `
             -BackgroundColor $null -NoNewline
@@ -1709,6 +1712,7 @@ Set-Alias -Name yafp-reload -Value Invoke-YafpReload -Scope Global -Force
 Set-Alias -Name yafp-help -Value Show-YafpHelp -Scope Global -Force
 Set-Alias -Name yafp-stats -Value Show-YafpStats -Scope Global -Force
 Set-Alias -Name yafp-msgs -Value Show-YafpMessages -Scope Global -Force
+Set-Alias -Name yafp-resources -Value Show-YafpResources -Scope Global -Force
 
 Import-YafpTheme
 $script:YafpLoadedCommit = Get-YafpCurrentCommit
@@ -1772,6 +1776,7 @@ function prompt {
         $venvTimer = [Diagnostics.Stopwatch]::StartNew()
     }
     $venvContext = Get-YafpVenvContext
+    $resourceContext = Get-YafpResourceContext
     if ($developmentEnabled) {
         $venvTimer.Stop()
         $totalTimer.Stop()
@@ -1814,6 +1819,7 @@ function prompt {
         DaySymbol = $daySymbol
         Git = $gitContext
         Venv = $venvContext
+        Resources = $resourceContext
         Development = $development
     }
 
@@ -1840,7 +1846,7 @@ function prompt {
     return $promptResult
 }
 
-# La detección ocurre una sola vez durante la carga, fuera de prompt.
+# Detection runs once during loading, outside prompt.
 $startupHelper = Join-Path $script:YafpRoot 'scripts/windows/metrics/startup.ps1'
 if (Test-Path -LiteralPath $startupHelper -PathType Leaf) {
     . $startupHelper

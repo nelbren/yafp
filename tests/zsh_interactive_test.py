@@ -13,6 +13,7 @@ import time
 
 ROOT = Path(__file__).resolve().parent.parent
 OSC = re.compile(rb"\x1b\]133;([^\x07]+)\x07")
+ANSI = re.compile(rb"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
 def main():
@@ -23,6 +24,7 @@ def main():
             "YAFP_THEME=light\nYAFP_REPOS=0\nYAFP_CLOCK=0\n"
             "YAFP_TITLE=0\nYAFP_ERROR=1\nYAFP_PVENV=0\n"
             "YAFP_OSC133=1\nYAFP_STATS_ON_EXIT=0\n"
+            "YAFP_RESOURCE_CHECK_INTERVAL=30\n"
         )
         master, slave = pty.openpty()
         environment = dict(
@@ -31,6 +33,7 @@ def main():
             HISTFILE="/dev/null",
             TERM="xterm-256color",
             YAFP_CONFIG_FILE=str(config),
+            YAFP_METRICS_DISABLED="1",
         )
         environment.pop("YAFP_NO_INSTALL_HOOKS", None)
         def attach_terminal():
@@ -69,6 +72,8 @@ def main():
                 assert events[-2:] == [b"A", b"B"], output
             assert b"not found" not in output, output
             assert b"bad option" not in output, output
+            assert b"bad output format" not in output, output
+            assert not re.search(rb"\[\d+\][^\r\n]*(?:done|exit|terminated)", output), output
             return output
 
         try:
@@ -83,10 +88,15 @@ def main():
                 f"source '{ROOT / 'yafp-ps1.zsh'}'\n"
                 "print -r -- HOOKS:${#precmd_functions}:${#preexec_functions}:${#zshexit_functions}\n"
                 "print -r -- KSH_ARRAYS:$options[ksharrays]\n"
+                "print -P -- HOST_MARK:%m\n"
             )
             output = run(f"source '{setup}'", completion=False)
             assert b"HOOKS:2:1:1" in output, output
             assert b"KSH_ARRAYS:off" in output, output
+            host_match = re.search(rb"(?:^|\r\n)HOST_MARK:([^\r\n]+)\r\n", output)
+            assert host_match, output
+            host = host_match[1]
+            assert re.search(rb"R(?:\d+%|N/D) S|esperando muestra", ANSI.sub(b"", output)), output
             output = run("false")
             assert b"D;1" in OSC.findall(output), output
             assert b"EXISTING:1" in output, output
@@ -121,7 +131,33 @@ def main():
             output = initial + read_output()
             assert b"D;130" in OSC.findall(output), output
             assert OSC.findall(output).count(b"C") == 1, output
+
+            # A controlled worker must be absent from jobs immediately after launch.
+            run("YAFP_RESOURCE_CHECK_INTERVAL=0; yafp_resources_cleanup; sleep 0.3")
+            collector = workspace / "scripts/unix/resources/collect.bash"
+            collector.parent.mkdir(parents=True)
+            collector.write_text(
+                '#!/usr/bin/env bash\nsleep 0.4\n'
+                'printf "%s 8192 16384 2048 4096 25 750 1000\\n" "$2" > "$1.tmp"\n'
+                'mv "$1.tmp" "$1"\n'
+            )
+            output = run(
+                f"saved_root=$YAFP_ROOT; YAFP_ROOT='{workspace}'; "
+                "YAFP_RESOURCE_CHECK_INTERVAL=30; yafp_resources_context; "
+                "YAFP_ROOT=$saved_root; jobs -l"
+            )
+            assert b"collect.bash" not in output, output
+            output = run("sleep 0.6")
+            assert host + "⇢[C25% R50% S50% D75%]".encode() in ANSI.sub(b"", output), output
+            output = run("YAFP_RESOURCE_LABEL_STYLE=unicode; YAFP_RESOURCE_VALUE_STYLE=symbols")
+            plain = ANSI.sub(b"", output)
+            assert host + "⇢[⚙⣄▦⣦⇄⣦◉⣷]".encode() in plain, output
+            output = run("YAFP_RESOURCE_VALUE_STYLE=percent")
+            plain = ANSI.sub(b"", output)
+            assert host + "⇢[⚙25% ▦50% ⇄50% ◉75%]".encode() in plain, output
+            run("true")
             print("ok - zsh interactive hooks, OSC 133, pipelines, reload, and interruption")
+            print("ok - zsh worker de recursos desasociado sin avisos de trabajos")
         finally:
             os.close(master)
             try:

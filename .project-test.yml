@@ -9,6 +9,9 @@ suites:
   entrypoint: scripts/unix/quality/project-test.sh
   paths:
   - tests/zsh_interactive_test.py
+  - tests/resources_test.bash
+  - tests/resource_collectors_test.bash
+  - tests/resource_display_cases.txt
   profiles:
   - quick
   - review
@@ -128,6 +131,16 @@ suites:
   requires:
   - powershell
   timeout_seconds: 600
+- id: resources-windows
+  kind: integration
+  stage: test
+  runner: repository-script
+  entrypoint: tests/resources_test.ps1
+  profiles: [review, ci, full]
+  os: [windows]
+  side_effects: local
+  requires: [powershell]
+  timeout_seconds: 60
 - id: startup-metrics
   kind: contract
   stage: test

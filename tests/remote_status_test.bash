@@ -288,7 +288,8 @@ expected_help="$(printf '%s\n' \
     'yafp-reload • Reload YAFP in the current shell.' \
     'yafp-stats • Show command execution statistics.' \
     'yafp-msgs • Show all prompt banners in severity order.' \
-    'yafp-help • Show available YAFP commands.')"
+    'yafp-help • Show available YAFP commands.' \
+    'yafp-resources • Mostrar la última muestra de RAM, swap, CPU y disco.')"
 assert_eq "$expected_help" "$(yafp-help)" 'yafp-help output'
 
 expected_messages=''

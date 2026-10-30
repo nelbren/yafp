@@ -1471,7 +1471,7 @@ yafp_git_check() {
         if [[ -d .git ]]; then
             YAFP_GIT_INSIDE=1
         else
-            # fallback real
+            # Resolve repository status through Git.
             git rev-parse --is-inside-work-tree \
                 >/dev/null 2>&1 && YAFP_GIT_INSIDE=1 || YAFP_GIT_INSIDE=0
         fi
@@ -1628,6 +1628,17 @@ yafp_remote_check_start() {
     if [ -d "$lock_dir" ]; then
         printf '%s\n' "$worker_pid" 2>/dev/null > "$lock_pid_file" || true
     fi
+}
+
+
+yafp_zsh_resources_start_worker() {
+    emulate -L zsh -o KSH_ARRAYS
+    unsetopt BG_NICE
+    # &! disowns at job creation, avoiding notifications and a disown race.
+    bash "$YAFP_ROOT/scripts/unix/resources/collect.bash" \
+        "$YAFP_RESOURCE_DIR/sample" "$SECONDS" "$HOME" \
+        </dev/null >/dev/null 2>&1 &!
+    YAFP_RESOURCE_PID=$!
 }
 
 
@@ -2203,6 +2214,7 @@ yafp-reload|Reload YAFP in the current shell.
 yafp-stats|Show command execution statistics.
 yafp-msgs|Show all prompt banners in severity order.
 yafp-help|Show available YAFP commands.
+yafp-resources|Mostrar la última muestra de RAM, swap, CPU y disco.
 EOF
 }
 
@@ -2470,6 +2482,7 @@ yafp_prompt_preview() {
     local YAFP_PROMPT_RENDERING=1
     yafp_now_ms t_all_begin
     yaft_general_context "$last_exit"
+    (( ${+functions[yafp_resources_context]} )) && yafp_resources_context
     yafp_git_context "$last_exit"
     yafp_venv_context
     yafp_err_context "$last_exit"
@@ -2494,6 +2507,7 @@ yafp_prompt_command() {
     fi
     yafp_now_ms t_all_begin
     yaft_general_context "$last_exit"
+    (( ${+functions[yafp_resources_context]} )) && yafp_resources_context
     yafp_git_context "$last_exit"
     yafp_venv_context
     yafp_err_context "$last_exit"
@@ -2564,6 +2578,7 @@ yafp_preexec() {
 
 yafp_zshexit() {
     emulate -L zsh -o KSH_ARRAYS
+    (( ${+functions[yafp_resources_cleanup]} )) && yafp_resources_cleanup
     [[ "${YAFP_STATS_ON_EXIT:-1}" = 1 ]] && yafp-stats
     return 0
 }
@@ -2587,6 +2602,7 @@ yafp_zshexit() {
     . "$cfg" || return 1
     zmodload zsh/datetime || return 1
     YAFP_REMOTE_CHECK_INTERVAL=${YAFP_REMOTE_CHECK_INTERVAL:-300}
+    YAFP_RESOURCE_CHECK_INTERVAL=${YAFP_RESOURCE_CHECK_INTERVAL:-0}
     YAFP_REMOTE_COUNTDOWN_STYLE=${YAFP_REMOTE_COUNTDOWN_STYLE:-numeric}
     YAFP_STATUS_PROGRESS_STYLE=${YAFP_STATUS_PROGRESS_STYLE:-blocks}
     YAFP_DARKC=${YAFP_DARKC:-1}
@@ -2602,6 +2618,9 @@ yafp_zshexit() {
     yafp_remote_countdown_color_index=${yafp_remote_countdown_color_index:-0}
     YAFP_LOADED_COMMIT="$(yafp_current_commit)" || YAFP_LOADED_COMMIT=''
     load_vars
+    if [[ -r "$YAFP_ROOT/scripts/unix/resources/context.bash" ]]; then
+        . "$YAFP_ROOT/scripts/unix/resources/context.bash"
+    fi
     load_theme || return 1
     theme_build
     previous_command=${previous_command:-}

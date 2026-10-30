@@ -134,6 +134,12 @@ theme_render_general_block() {
         "$cUserPS1\\u"
         "$cSeparator @ "
         "$cHostPS1\\h"
+    )
+    printf '%s' "${parts[@]}"
+    if [ -n "${yafp_ctx_resources:-}" ]; then
+        theme_render_resources
+    fi
+    parts=(
         "$cSeparator ⌂ "
         "$cDirPS1\\w"
         "$cSeparator"

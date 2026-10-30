@@ -198,6 +198,10 @@ try {
     $originalGetYafpRemoteContext = `
         (Get-Command Get-YafpRemoteContext).ScriptBlock
     function Get-YafpRemoteContext {
+        [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+            'PSReviewUnusedParameter', '',
+            Justification = 'The error fixture keeps the collector signature without querying Git.'
+        )]
         param(
             [string]$RepoRoot,
             [string]$Branch,
@@ -267,6 +271,9 @@ try {
         [pscustomobject]@{ Text = 'yafp-help'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Show available YAFP commands.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'yafp-resources'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'Mostrar la última muestra de RAM, swap, CPU y disco.'; Color = 'White'; NoNewline = $false }
     )
     Assert-Equal $expectedHelpWrites.Count $script:helpWrites.Count `
         'yafp-help colored write count'
@@ -339,6 +346,8 @@ try {
         $script:statsWrites.Add([pscustomobject]@{
             Text = $Text
             Color = $ForegroundColor
+            Background = $BackgroundColor
+            NoNewline = [bool]$NoNewline
         })
     }
     yafp-stats
@@ -677,6 +686,7 @@ try {
             Text = $Text
             Foreground = $ForegroundColor
             Background = $BackgroundColor
+            NoNewline = [bool]$NoNewline
         })
     }
     $connectedStatus.RefreshIn = $null
@@ -779,6 +789,7 @@ try {
             Text = $Text
             Foreground = $ForegroundColor
             Background = $BackgroundColor
+            NoNewline = [bool]$NoNewline
         })
     }
     $offlineStatus.RefreshIn = $null

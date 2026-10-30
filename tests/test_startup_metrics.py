@@ -1,4 +1,4 @@
-"""Contratos de activación: un contador fuera del camino de renderizado."""
+"""Startup contracts: a counter outside the rendering path."""
 from pathlib import Path
 import json
 import os

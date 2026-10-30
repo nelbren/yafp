@@ -25,6 +25,7 @@ function script:Write-YafpTheme {
     $hostBackground = if ($Context.IsDevelopment) { $greenColorBackground } else { $magentaColorBackground }
     Write-YafpText -Text $Context.Computer -ForegroundColor $hostColor `
         -BackgroundColor $hostBackground -NoNewline
+    Write-YafpResources -Context $Context
     Write-Host ' ← 🖥️ LOCAL ◎ 🏠 ⌂ ' -ForegroundColor White -NoNewline
     Write-YafpText -Text $Context.Path -ForegroundColor $yellowColorForeground `
         -BackgroundColor $yellowColorBackground -NoNewline

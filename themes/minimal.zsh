@@ -43,6 +43,12 @@ theme_render_general_block() {
         "$cUserPS1%n"
         "$cSeparator @ "
         "$cHostPS1%m"
+    )
+    printf '%s' "${parts[@]}"
+    if [ -n "${yafp_ctx_resources:-}" ]; then
+        theme_render_resources
+    fi
+    parts=(
         "$cSeparator ← $emojiClient"
         "$cSeparator ◎ "
         "$cCountryPS1${country_text//\%/%%}"

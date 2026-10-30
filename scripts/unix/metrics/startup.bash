@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Solo se invoca después de cargar el prompt, nunca durante su renderizado.
+# Invoked only after prompt loading, never during rendering.
 yafp_record_startup() {
     case "$-" in *i*) ;; *) return 0 ;; esac
     [ "${YAFP_METRICS_DISABLED:-0}" != 1 ] || return 0
@@ -11,7 +11,7 @@ yafp_record_startup() {
     recorder="${tools}/bin/application-startup"
     [ -x "$python" ] && [ -f "$recorder" ] || return 0
     YAFP_STARTUP_METRICS_PID=$$
-    # Una sola tarea local; no retiene la terminal ni contacta la red.
+    # One local task; it neither holds the terminal nor contacts the network.
     {
         "$python" "$recorder" --path "$root" --shell "$shell" </dev/null &
         disown 2>/dev/null || :

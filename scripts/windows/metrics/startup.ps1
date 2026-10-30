@@ -1,4 +1,4 @@
-# Registro único y asíncrono de la activación; no participa en prompt.
+# Record startup once and asynchronously; this does not run inside prompt.
 function Register-YafpStartup {
     [CmdletBinding()]
     param(
@@ -27,7 +27,7 @@ function Register-YafpStartup {
         $process.Dispose()
     }
     catch {
-        # El prompt conserva su funcionamiento; Software Facts mantiene NR.
+        # The prompt keeps working; Software Facts retains the missing measurement.
         Write-Verbose "No se pudo iniciar el registro local de YAFP: $_"
     }
 }

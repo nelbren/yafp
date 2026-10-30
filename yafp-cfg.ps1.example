@@ -1,42 +1,60 @@
+# --- Host classification ---
+# Development and production hostname prefixes.
 $global:DEV = 'ndev-'
 $global:PRO = 'npro-'
 
+# --- Prompt sections ---
+# Enable Git, terminal title, previous-command status, and Python virtual environments.
 $global:YAFP_REPOS = 1
 $global:YAFP_TITLE = 1
 $global:YAFP_ERROR = 1
 $global:YAFP_PVENV = 1
 
-# Use darker background variants in the default and minimal themes.
-# The light theme has no colored backgrounds, so this setting does not apply.
+# --- Appearance ---
+# Available themes: default, minimal, and light.
+$global:YAFP_THEME = 'light'
+
+# Use darker backgrounds in default/minimal; light has no colored backgrounds.
 $global:YAFP_DARKC = 1
 
-# Display prompt timestamps; set to 0 to hide them in every theme.
+# Display prompt timestamps; set to 0 to hide them.
 $global:YAFP_CLOCK = 1
 
-# Emit OSC 133 shell-integration markers for compatible terminals.
+# --- Shell integration ---
+# Emit OSC 133 markers so compatible terminals can group command blocks.
+# Set to 0 if your terminal misbehaves.
 $global:YAFP_OSC133 = 1
 
-# Check the configured upstream in the background. The value is the cache
-# lifetime in seconds; set it to 0 to disable remote checks completely.
+# --- Remote repository checks ---
+# Refresh the configured upstream in the background. The interval is the cache
+# lifetime in seconds; set to 0 to disable remote checks.
 $global:YAFP_REMOTE_CHECK_INTERVAL = 300
 
-# Display the remote refresh countdown as seconds (numeric) or as one
-# progressively emptying Braille cell (symbols).
+# Countdown style: numeric (seconds) or symbols (one emptying Braille cell).
 $global:YAFP_REMOTE_COUNTDOWN_STYLE = 'numeric'
 
-# Display the yafp-status progress bar with blocks or Braille symbols.
+# yafp-status progress bar: blocks or symbols (Braille).
 $global:YAFP_STATUS_PROGRESS_STYLE = 'blocks'
 
-# Display prompt construction timing; set it to 0 to disable the metrics.
-$global:YAFP_DEVEL = 0
+# --- Machine resources ---
+# Sample CPU, RAM, swap, and disk capacity in the background (seconds).
+# 0 disables monitoring; 30 is a suggested interval when enabled.
+$global:YAFP_RESOURCE_CHECK_INTERVAL = 0
 
-# Reload YAFP automatically when a successful git pull changes its commit.
-# The yafp-reload command remains available when this option is disabled.
+# Labels: letters (C/R/S/D) or unicode (⚙/▦/⇄/◉).
+$global:YAFP_RESOURCE_LABEL_STYLE = 'letters'
+
+# Values: percent (74%) or symbols (one Braille cell based on usage).
+$global:YAFP_RESOURCE_VALUE_STYLE = 'percent'
+
+# --- Session lifecycle ---
+# Reload automatically when a successful git pull changes the YAFP commit.
+# yafp-reload remains available when this option is disabled.
 $global:YAFP_AUTO_RELOAD = 1
 
-# Print per-session command statistics during a normal shell exit.
+# Print per-session command statistics on normal shell exit.
 $global:YAFP_STATS_ON_EXIT = 1
 
-# $global:YAFP_THEME = 'default'
-# $global:YAFP_THEME = 'minimal'
-$global:YAFP_THEME = 'light'
+# --- Development diagnostics ---
+# Display prompt construction timing; set to 0 to disable these metrics.
+$global:YAFP_DEVEL = 0

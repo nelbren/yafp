@@ -98,23 +98,23 @@ it emits D for the prior command, A before visible prompt output, and B after
 the prompt mark. It deliberately avoids replacing PSReadLine key handlers to
 synthesize C, preserving existing interactive bindings and reload safety.
 
-## Contador local de activaciones
+## Local startup counter
 
-Los tres cargadores invocan el adaptador de activaciones fuera de las funciones
-de renderizado. Una marca por PID de la shell evita duplicar el evento al
-recargar. Unix desasocia el escritor del control de trabajos; PowerShell inicia
-directamente el proceso Python, sin crear un job de PowerShell. El proceso padre
-no espera la escritura SQLite y el adaptador no realiza consultas de red.
+All three loaders invoke the startup adapter outside rendering functions. A
+shell PID marker prevents duplicate events on reload. Unix disowns the writer;
+PowerShell starts Python directly without creating a PowerShell job. The parent
+process does not wait for the SQLite write, and the adapter makes no network
+requests.
 
-El adaptador reutiliza el escritor silencioso `application-startup` de
-ai-dev-tools y el contrato común `RepositoryMetricsStore`. El evento pertenece
-al checkout de YAFP y al tipo `application`. Su fallo no reemplaza el estado del
-prompt. El seguimiento queda fuera de las funciones de tema, Git, OSC 133 y
-estadísticas de comandos; no agrega procesos externos durante su renderizado.
+The adapter reuses the silent ai-dev-tools `application-startup` writer and
+the shared `RepositoryMetricsStore` contract. The event belongs to the YAFP
+checkout and the `application` type. Failures do not replace prompt status.
+Tracking stays outside theme, Git, OSC 133, and command-statistics functions;
+it adds no external processes during rendering.
 
-Las recargas conservan la marca; los procesos nuevos reciben un PID distinto.
-Los scripts no interactivos y los runners de calidad no registran activaciones
-reales. El detalle de configuración y almacenamiento está en el README.
+Reloads preserve the marker; new processes receive distinct PIDs.
+Noninteractive scripts and quality runners do not record real activations.
+Configuration and storage details are in README.
 
 ## Git context and remote status
 
@@ -226,6 +226,76 @@ use black text on an intense yellow background, while errors use intense white
 text on a red background. The warning background remains intense for contrast,
 while `YAFP_DARKC` selects the dark or bright red error background. The
 detailed `yafp-status` report retains foreground-only severity colors.
+
+## Machine resource context
+
+Optional monitoring defaults to `YAFP_RESOURCE_CHECK_INTERVAL=0`. An interval
+from 1 through 86400 seconds enables one worker per session, independent of
+the repository and Git workers. Existing hooks collect context before calling
+themes; no hooks or timers are added. The initial query is asynchronous. A
+later prompt consumes the result, retains its age, and requests another sample
+only when the interval expires.
+
+The new Unix capability lives in `scripts/unix/resources/context.bash` and
+`collect.bash`; no existing engine behavior was moved. The shared context uses
+Bash/zsh builtins to validate and read the cache and check the PID. Only the
+initial private-directory creation and worker launch add processes when the
+interval expires. Samples are published with an atomic rename inside the
+session temporary directory, outside the checkout. Values read from the cache
+are never evaluated as code. The worker is disowned, with stdin, stdout, and
+stderr disconnected. A dead PID permits retrying after the interval expires;
+a running worker prevents duplicates. The native zsh launcher uses `&!` to
+disown at creation, just like the Git worker: redirecting output does not
+suppress job-control notifications. The pseudo-terminal test checks that the
+worker is absent from `jobs`, finishes without notifications, and leaves a
+readable sample. Existing exit hooks remove the worker and session files.
+
+PowerShell loads `scripts/windows/resources/context.ps1`. Its `Start-ThreadJob`
+queries CIM/WMI without starting another PowerShell process. Individual probes
+allow partial failures; in-memory results are collected only after completion,
+and the job is removed. Reloads preserve the job and last sample. Rendering
+neither waits nor invokes CIM. All three themes receive `Context.Resources`;
+Bash/zsh use `yafp_ctx_resources` in their general host renderer.
+
+Presentation attaches `⇢[resources]` directly to the hostname in every theme,
+before the path or other host metadata. The old standalone resource position
+is removed. `YAFP_RESOURCE_LABEL_STYLE` selects `letters`
+(`C/R/S/D`, default) or `unicode` (`⚙/▦/⇄/◉`). The display order is CPU, RAM,
+swap, and disk: swap sits between RAM and disk in every mode and theme. The
+collection and cache order is unchanged. `YAFP_RESOURCE_VALUE_STYLE` selects
+`percent` (default) or `symbols`. These options are independent, and invalid
+values fall back to their defaults. Context defines an empty resource
+separator only for `unicode` + `symbols`; all other modes use one space.
+There is no padding between the host and frame or inside its brackets.
+The prompt hides sample age, which remains in the plain `yafp-resources`
+summary with a separating space. The summary uses the same resource separator
+as the colored tokens. Symbolic mode
+uses eight cells, from `⡀` through `⣿` as usage increases: the index is
+`min(7, floor(percentage * 8 / 100))`, so 0% uses `⡀` and 100% uses `⣿`.
+
+Context retains presentation tokens and colors for each resource, plus the
+plain `yafp-resources` summary. The Unix renderer uses only builtins and marks
+styles as invisible to Readline/zsh; PowerShell writes each token with
+`NoNewline`. Foreground colors are green, yellow, and red, always on a
+transparent background. The `⇢[]` frame reuses Git's structural style: the
+Git block colors in `default`, and neutral separator colors in the other
+themes. The closing bracket restores that style after the last resource.
+An optional refresh marker stays inside the frame. Disabled monitoring emits
+no empty frame. Host resources participate in the existing prompt-prefix
+measurement, preserving staged and remote banner alignment when Git follows
+the host. RAM, CPU, and disk become yellow above 85% and red
+above 95%; swap uses thresholds above 10% and 30%. Comparison uses the integer
+percentage before conversion to Braille, with red taking precedence. `N/D`
+appears in gray. Shared fixtures check color boundaries,
+Braille transitions, and all four combinations across shells and themes.
+
+Swap usage is relative to allocated capacity; no allocated swap means 0%.
+Age in seconds measures time since sampling, and `~` appears while a probe
+runs. `N/D` indicates unavailable data. `yafp-resources` shows used/total values
+for the last sample without waiting. README describes platform definitions
+and diagnostic limitations. Probe and lifecycle tests use fixtures and
+controlled workers to cover intervals, reload, failures, rendering without
+external tools, and preservation of the previous command status.
 
 ## Silent prompt degradation
 
@@ -359,6 +429,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-18 00:15:01 🍎 No expuesto |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-10-29 20:37:42 🍎 MBP02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
 </div>
