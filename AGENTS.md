@@ -82,6 +82,6 @@ The scripts run the tests and use `shellcheck`, PSScriptAnalyzer, and
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-11 00:52:30 🍎 MBP03 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6.1-Sol Medium & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-10-30 20:14:52  MBP02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

@@ -114,7 +114,7 @@ function global:Write-YafpCodex {
         $foreground = $script:grayColorForeground
         $background = $script:grayColorBackground
     }
-    Write-YafpText -Text '↦[' -ForegroundColor $foreground -BackgroundColor $background -NoNewline
+    Write-YafpText -Text '↤[' -ForegroundColor $foreground -BackgroundColor $background -NoNewline
     Write-YafpText -Text $Context.Codex.Text -ForegroundColor $Context.Codex.Foreground `
         -BackgroundColor $null -NoNewline
     Write-YafpText -Text ']' -ForegroundColor $foreground -BackgroundColor $background -NoNewline

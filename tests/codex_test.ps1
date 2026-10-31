@@ -147,8 +147,8 @@ try {
             $global:LASTEXITCODE = 7
             $output = (@(prompt 6>&1) | ForEach-Object { "$_" }) -join ''
             $expected = if ($style -eq 'percent') { '֍59%5d9h' } else { '֍⣦5d9h' }
-            if (-not $output.Contains("quota-user↦[$expected]")) { throw "User quota missing: $theme/$style" }
-            if ([regex]::Matches($output, '↦\[').Count -ne 1) { throw 'Quota duplicated' }
+            if (-not $output.Contains("quota-user↤[$expected]")) { throw "User quota missing: $theme/$style" }
+            if ([regex]::Matches($output, '↤\[').Count -ne 1) { throw 'Quota duplicated' }
             if ($global:LASTEXITCODE -ne 7) { throw 'Previous exit code changed' }
         }
         function Write-YafpText {

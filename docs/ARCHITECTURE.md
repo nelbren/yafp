@@ -349,14 +349,14 @@ renderer needs a date process or another network call. Missing or malformed
 reset timestamps omit the timer without discarding valid availability.
 
 All themes append a compact reset countdown directly after the quota value,
-without a separator inside the frame, for example `↦[֍75%5d9h]` or
-`↦[֍⣷5d9h]`. Formatting keeps two units (days/hours, hours/minutes, or
+without a separator inside the frame, for example `↤[֍75%5d9h]` or
+`↤[֍⣷5d9h]`. Formatting keeps two units (days/hours, hours/minutes, or
 minutes/seconds), or just seconds below
 one minute. Subordinate units are rounded down; expired deadlines clamp to
 `0s` while waiting for the next sample. The timer shares the quota foreground
 color and participates in the existing prefix-width measurement.
 
-All themes insert `↦[֍value]` immediately after the username, before `@`.
+All themes insert `↤[֍value]` immediately after the username, before `@`.
 `YAFP_CODEX_VALUE_STYLE` chooses `percent` or `symbols` independently of the
 machine resource options. Braille uses `min(7, floor(value * 8 / 100))` with
 fuller cells meaning greater availability. Foreground is green at 50% or
@@ -374,8 +374,9 @@ and machine resource monitoring coexist.
 
 ## Uniform indicator frames
 
-Codex, resources, Git remote status, and populated Git counter groups use
-`↦[…]` in Bash, zsh, and PowerShell. The frame uses `cGit` in the Unix default
+Codex uses `↤[…]` after the username; resources, Git remote status, and
+populated Git counter groups use `↦[…]` in Bash, zsh, and PowerShell.
+The frame uses `cGit` in the Unix default
 theme and `cSeparator` in the other themes; PowerShell uses the equivalent
 Git delimiter foreground/background pair. Each inner indicator retains its
 existing color, including warnings, errors, staged counts, and the connection
@@ -532,6 +533,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-29 22:07:10 🍎 MBP02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-10-30 20:19:47  MBP02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

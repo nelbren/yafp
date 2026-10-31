@@ -1454,7 +1454,7 @@ set_SERVER_OS_EMOJI() {
 
     case "$platform" in
         Darwin)
-            emoji="🍎"
+            emoji=""
             ;;
         Linux)
             if [ -r /etc/os-release ]; then
@@ -1496,7 +1496,7 @@ set_CLIENT_OS_EMOJI() {
 
     case "$CLIENT_OS" in
         WINDOWS) emoji="🪟" ;;
-        MACOS)   emoji="🍎" ;;
+        MACOS)   emoji="" ;;
         LINUX)   emoji="🐧" ;;
         WSL2)    emoji="🐧▶🪟" ;;
         CYGWIN)  emoji="⬘▶🪟" ;;

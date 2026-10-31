@@ -104,7 +104,7 @@ theme_render_codex() {
     if [ -n "${ZSH_VERSION:-}" ]; then open='%{'; close='%}'; token=${token//\%/%%}; fi
     [ "${YAFP_THEME_NAME:-}" != default ] || frame=$cGit
     printf -v color '\033[0;%sm' "$yafp_ctx_codex_color"
-    printf '%s%s%s↦[%s%s%s%s%s%s%s]%s%s%s' \
+    printf '%s%s%s↤[%s%s%s%s%s%s%s]%s%s%s' \
         "$open" "$frame" "$close" "$open" "$color" "$close" "$token" \
         "$open" "$frame" "$close" "$open" $'\033[0m' "$close"
 }

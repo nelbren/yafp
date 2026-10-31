@@ -105,17 +105,17 @@ for theme in default minimal light; do
         plain_prompt
         user_marker='\u'
         if [ -n "${ZSH_VERSION:-}" ]; then user_marker="$(print -P -- '%n')"; fi
-        contains "$out" "$user_marker↦[$expected]" "User adjacency in $theme/$style"
-        rest=${out#*"↦[$expected]"}
-        case "$rest" in *"↦[$expected]"*) fail 'Quota rendered twice' ;; esac
+        contains "$out" "$user_marker↤[$expected]" "User adjacency in $theme/$style"
+        rest=${out#*"↤[$expected]"}
+        case "$rest" in *"↤[$expected]"*) fail 'Quota rendered twice' ;; esac
         out="$(theme_render_codex)"
         frame=$cSeparator
         [ "$theme" != default ] || frame=$cGit
-        contains "$out" "$(ps1_wrap "$frame")↦[" 'Git opening frame style'
+        contains "$out" "$(ps1_wrap "$frame")↤[" 'Git opening frame style'
         contains "$out" "$(ps1_wrap "$frame")]" 'Git closing frame style'
         contains "$out" $'\033[0;92m' 'Transparent green token'
         plain_prompt
-        [ "$out" = "↦[$expected]" ] || fail 'Unexpected age or padding in prompt'
+        [ "$out" = "↤[$expected]" ] || fail 'Unexpected age or padding in prompt'
     done
     # User quota contributes to banner width only when Git follows the user.
     YAFP_REPOS=1 YAFP_REMOTE_CHECK_INTERVAL=0 COLUMNS=1000

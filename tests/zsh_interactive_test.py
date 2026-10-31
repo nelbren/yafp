@@ -170,9 +170,9 @@ def main():
             )
             assert b"collect.bash" not in output, output
             output = run("sleep 0.6")
-            assert "↦[֍75%5d9h]".encode() in ANSI.sub(b"", output), output
+            assert "↤[֍75%5d9h]".encode() in ANSI.sub(b"", output), output
             output = run("YAFP_CODEX_VALUE_STYLE=symbols")
-            assert "↦[֍⣷5d9h]".encode() in ANSI.sub(b"", output), output
+            assert "↤[֍⣷5d9h]".encode() in ANSI.sub(b"", output), output
             output = run("false")
             assert b"D;1" in OSC.findall(output), output
             print("ok - zsh quota worker is disowned and preserves OSC 133 status")

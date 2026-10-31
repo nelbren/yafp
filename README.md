@@ -32,7 +32,7 @@
 
 ![Linux](docs/images/linux.png)
 
-#### :apple: [macOS](https://www.apple.com/la/os/macos/)
+####  [macOS](https://www.apple.com/la/os/macos/)
 
 ![macOS](docs/images/apple_bash.png)
 
@@ -101,6 +101,9 @@ The existing Unix doctor continues to diagnose Bash configuration and profiles.
 
 ## :art: Styles
 
+Bash and zsh use `` for macOS in both server and client OS indicators
+across the `default`, `minimal`, and `light` themes.
+
 ### :bulb: Colors change according to
 
 #### :computer: Server type
@@ -166,15 +169,17 @@ and PowerShell, including when a remote countdown or status precedes it. In
 ### Indicator blocks
 
 Codex quota, machine resources, Git remote status, and Git change counters
-share the `↦[…]` frame in every shell and theme:
+use bracketed frames in every shell and theme: `↤[…]` for Codex and
+`↦[…]` for the other indicators:
 
 ```text
-USER↦[֍⣷5d9h]
+USER↤[֍⣷5d9h]
 HOST↦[⚙⣀▦⣶⇄⣦◉⣿]
 ↦[⣦✓🌐︎] main↯↦[-1±2+3]
 ```
 
-`↦` associates each label with its data. The arrow and brackets use the theme's
+`↤` associates the username with its Codex quota; `↦` associates the other
+labels with their data. The arrows and brackets use the theme's
 Git delimiter colors; each inner indicator retains its own severity color.
 Codex keeps the reset countdown attached to its value, and resources keep
 their configured separators. The Git remote countdown and status are adjacent
@@ -394,11 +399,11 @@ is suggested to avoid frequent CLI startup. All three themes attach the block
 directly to the username, preserving the host resource block:
 
 ```text
-percent: USER↦[֍75%5d9h] @ HOST↦[⚙24% ▦74% ⇄50% ◉93%]
-symbols: USER↦[֍⣷5d9h] @ HOST↦[⚙⣀▦⣶⇄⣦◉⣿]
+percent: USER↤[֍75%5d9h] @ HOST↦[⚙24% ▦74% ⇄50% ◉93%]
+symbols: USER↤[֍⣷5d9h] @ HOST↦[⚙⣀▦⣶⇄⣦◉⣿]
 ```
 
-The `↦[]` frame matches the Git change delimiters. The quota token uses a
+The `↤[]` frame uses the Git change delimiter colors. The quota token uses a
 transparent background and inclusive availability thresholds:
 
 | Green | Yellow   | Red  |
@@ -1177,6 +1182,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-29 22:30:53 🍎 MBP02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-10-30 20:19:47  MBP02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>
