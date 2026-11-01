@@ -30,9 +30,10 @@ for interval in 0 -1 bad 0008 999999999999999999; do
     [ -z "$yafp_ctx_codex" ] || fail 'Invalid or disabled interval produced context'
     [ -z "${YAFP_CODEX_DIR:-}" ] || fail 'Disabled quota created a cache'
 done
+export YAFP_TEST_CODEX_READY="$TEST_ROOT/codex-ready"
 cat > "$TEST_ROOT/scripts/unix/codex/collect.bash" <<'EOF'
 #!/usr/bin/env bash
-sleep 1
+while [ ! -f "$YAFP_TEST_CODEX_READY" ]; do sleep 0.05; done
 printf '%s ok 60 75 60 %s\n' "$2" "$(( $2 + 464460 ))" > "$1.tmp"
 mv "$1.tmp" "$1"
 EOF
@@ -43,13 +44,14 @@ yafp_now_ms end
 [ "$((end - begin))" -lt 500 ] || fail 'Quota worker blocked context'
 # shellcheck disable=SC2153
 pid=$YAFP_CODEX_PID
-[ "$yafp_ctx_codex" = '֍N/A' ] || fail 'Pending quota invented a value'
+[ "$yafp_ctx_codex" = '֍⟳' ] || fail 'Pending quota must show the loading symbol'
 for iteration in 1 2 3; do yafp_codex_context; done
 [ "$YAFP_CODEX_PID" = "$pid" ] || fail 'Duplicate workers'
 yafp-reload
 YAFP_CODEX_CHECK_INTERVAL=300
 yafp_codex_context
 [ "$YAFP_CODEX_PID" = "$pid" ] || fail 'Reload duplicated worker'
+touch "$YAFP_TEST_CODEX_READY"
 for iteration in {1..60}; do
     [ ! -f "$YAFP_CODEX_DIR/sample" ] || break
     sleep 0.05

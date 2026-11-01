@@ -97,6 +97,9 @@ function global:Get-YafpCodexContext {
         $value = $script:YafpCodexSample.Remaining
     }
     $segment = Format-YafpCodexSegment -Value $value
+    if ($null -eq $script:YafpCodexSample -and $null -ne $script:YafpCodexJob) {
+        $segment.Text = '֍⟳'
+    }
     if ($null -ne $value -and $script:YafpCodexSample.PSObject.Properties['ResetsAt'] -and
         $null -ne $script:YafpCodexSample.ResetsAt) {
         $segment.Text += (Format-YafpCodexReset -Seconds ($script:YafpCodexSample.ResetsAt - $now))

@@ -43,9 +43,10 @@ for interval in 0 -1 bad 0008 999999999999999999999; do
 done
 printf 'ok - disabled or invalid resource monitoring starts no workers\n'
 
+export YAFP_TEST_RESOURCE_READY="$TEST_ROOT/resource-ready"
 cat > "$TEST_ROOT/scripts/unix/resources/collect.bash" <<'EOF'
 #!/usr/bin/env bash
-sleep 1
+while [ ! -f "$YAFP_TEST_RESOURCE_READY" ]; do sleep 0.05; done
 printf '%s 8192 16384 2048 4096 25 750 1000\n' "$2" > "$1.tmp"
 mv "$1.tmp" "$1"
 EOF
@@ -64,6 +65,7 @@ yafp-reload
 YAFP_RESOURCE_CHECK_INTERVAL=30
 yafp_resources_context
 [ "$YAFP_RESOURCE_PID" = "$pid" ] || fail 'reload duplicated the worker'
+touch "$YAFP_TEST_RESOURCE_READY"
 for iteration in {1..60}; do
     [ ! -f "$YAFP_RESOURCE_DIR/sample" ] || break
     sleep 0.05
@@ -72,6 +74,26 @@ yafp_resources_context
 assert_contains "$yafp_ctx_resources" 'C25% R50% S50% D75% ' 'CPU first and swap between RAM and disk'
 case "$yafp_ctx_resources" in *'|'*) fail 'unexpected separator in compact summary' ;; esac
 assert_contains "$(yafp-resources)" '2048/4096 MiB' 'swap details'
+
+# Exercise pending rendering without delaying the live worker/reload checks.
+yafp_ctx_resources='Resources: waiting for sample~'
+for labels in letters unicode; do
+    for values in percent symbols; do
+        YAFP_RESOURCE_LABEL_STYLE=$labels YAFP_RESOURCE_VALUE_STYLE=$values
+        yafp_ctx_resource_tokens=() yafp_ctx_resource_colors=()
+        yafp_resources_pending
+        expected='C⟳ R⟳ S⟳ D⟳'
+        if [ "$labels" = unicode ]; then
+            expected='⚙⟳ ▦⟳ ⇄⟳ ◉⟳'
+            [ "$values" != symbols ] || expected='⚙⟳▦⟳⇄⟳◉⟳'
+        fi
+        out="$(theme_render_resources)"
+        plain_prompt
+        [ "$out" = "↦[$expected]" ] || fail "Pending resource frame: $labels/$values/$out"
+    done
+done
+YAFP_RESOURCE_LABEL_STYLE=letters YAFP_RESOURCE_VALUE_STYLE=percent
+yafp_resources_context
 
 # The hot path must work even without any external tools.
 saved_path=$PATH

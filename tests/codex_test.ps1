@@ -124,7 +124,10 @@ try {
     }
     $global:YAFP_CODEX_CHECK_INTERVAL = 300
     $timer.Restart()
-    $null = Get-YafpCodexContext
+    $context = Get-YafpCodexContext
+    if ($context.Text -ne '֍⟳' -or $context.Foreground -ne 'DarkGray') {
+        throw 'Pending quota must show the loading symbol in gray'
+    }
     if ($timer.ElapsedMilliseconds -gt 500) { throw 'Context blocked on quota request' }
     $job = $script:YafpCodexJob
     $null = Get-YafpCodexContext

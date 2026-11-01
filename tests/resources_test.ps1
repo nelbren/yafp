@@ -97,10 +97,29 @@ try {
     $job = $script:YafpResourceJob
     if ($context.Text -notmatch 'waiting for sample') { throw 'Missing pending state' }
     if ($context.Text -ne 'Resources: waiting for sample~') { throw 'Pending message must be English and compact' }
+    foreach ($labels in @('letters', 'unicode')) {
+        foreach ($values in @('percent', 'symbols')) {
+            $global:YAFP_RESOURCE_LABEL_STYLE = $labels
+            $global:YAFP_RESOURCE_VALUE_STYLE = $values
+            $pending = Get-YafpResourceContext
+            $expected = if ($labels -eq 'letters') { 'C⟳ R⟳ S⟳ D⟳' }
+                elseif ($values -eq 'symbols') { '⚙⟳▦⟳⇄⟳◉⟳' } else { '⚙⟳ ▦⟳ ⇄⟳ ◉⟳' }
+            $output = (@(Write-YafpResources -Context ([pscustomobject]@{ Resources = $pending }) 6>&1) |
+                ForEach-Object { "$_" }) -join ''
+            if ($output -ne "↦[$expected]" -or $pending.Suffix -ne '' -or
+                @($pending.Segments | Where-Object Foreground -NE 'DarkGray').Count -ne 0) {
+                throw "Incorrect pending resource frame: $labels/$values/$output"
+            }
+        }
+    }
+    $global:YAFP_RESOURCE_LABEL_STYLE = 'letters'
+    $global:YAFP_RESOURCE_VALUE_STYLE = 'percent'
     1..3 | ForEach-Object { $null = Get-YafpResourceContext }
     if ($script:YafpResourceJob.Id -ne $job.Id) { throw 'Duplicate workers' }
     Invoke-YafpReload
     $global:YAFP_RESOURCE_CHECK_INTERVAL = 30
+    $global:YAFP_RESOURCE_LABEL_STYLE = 'letters'
+    $global:YAFP_RESOURCE_VALUE_STYLE = 'percent'
     $null = Get-YafpResourceContext
     if ($script:YafpResourceJob.Id -ne $job.Id) { throw 'Reload duplicated the worker' }
     $null = Wait-Job -Job $job -Timeout 10

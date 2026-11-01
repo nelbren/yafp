@@ -36,6 +36,7 @@ yafp_resources_context() {
 
     if [ -n "${YAFP_RESOURCE_PID:-}" ] && kill -0 "$YAFP_RESOURCE_PID" 2>/dev/null; then
         yafp_ctx_resources="${yafp_ctx_resources:-Resources: waiting for sample}~"
+        yafp_resources_pending
         return 0
     fi
     YAFP_RESOURCE_PID=''
@@ -59,7 +60,24 @@ yafp_resources_context() {
         yafp_ctx_resources="${yafp_ctx_resources:-Resources: waiting for sample}~"
     fi
     yafp_ctx_resources=${yafp_ctx_resources:-Resources: no valid sample}
+    yafp_resources_pending
     return 0
+}
+
+yafp_resources_pending() {
+    if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
+    [ "$yafp_ctx_resources" = 'Resources: waiting for sample~' ] || return 0
+    local index
+    yafp_ctx_resource_separator=' '
+    if [ "${YAFP_RESOURCE_LABEL_STYLE:-letters}" = unicode ] &&
+       [ "${YAFP_RESOURCE_VALUE_STYLE:-percent}" = symbols ]; then
+        yafp_ctx_resource_separator=''
+    fi
+    for index in 0 1 2 3; do
+        yafp_resource_segment "$index" -
+        yafp_ctx_resource_tokens+=("${yafp_resource_token%N/A}⟳")
+        yafp_ctx_resource_colors+=(90)
+    done
 }
 
 yafp_resource_segment() {
@@ -145,6 +163,7 @@ theme_render_resources() {
             index=$((index + 1))
         done
         case "$yafp_ctx_resources" in
+            'Resources: waiting for sample~') ;;
             *'~') printf '%s%s%s~' "$open" $'\033[0;90m' "$close" ;;
         esac
     else

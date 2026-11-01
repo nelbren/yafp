@@ -148,6 +148,14 @@ function global:Get-YafpResourceContext {
     }
     if ($null -ne $script:YafpResourceJob) { $text += '~'; $suffix += '~' }
     elseif ($null -eq $sample) { $text = 'Resources: no valid sample' }
+    if ($null -eq $sample -and $null -ne $script:YafpResourceJob) {
+        $segments = @(foreach ($kind in @('C', 'R', 'S', 'D')) {
+            $segment = Format-YafpResourceSegment -Kind $kind -Value $null
+            $segment.Text = $segment.Text.Replace('N/A', '⟳')
+            $segment
+        })
+        $suffix = ''
+    }
     return [pscustomobject]@{
         Text = $text; Sample = $sample; Segments = $segments; Suffix = $suffix; Separator = $separator
     }

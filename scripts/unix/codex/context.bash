@@ -37,7 +37,7 @@ yafp_codex_segment() {
 
 yafp_codex_context() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
-    local interval="${YAFP_CODEX_CHECK_INTERVAL:-0}" checked state value primary secondary reset extra item valid=1
+    local interval="${YAFP_CODEX_CHECK_INTERVAL:-0}" checked state value primary secondary reset extra item valid=1 sampled=0
     yafp_ctx_codex='' yafp_ctx_codex_token='' yafp_ctx_codex_color=90
     case "$interval" in ''|*[!0-9]*|0*|??????*) return 0 ;; esac
     [ "$interval" -ge 1 ] && [ "$interval" -le 86400 ] || return 0
@@ -61,6 +61,7 @@ yafp_codex_context() {
         done
         [ -z "$extra" ] || valid=0
         if [ "$valid" = 1 ] && [ "$checked" -le "$SECONDS" ]; then
+            sampled=1
             YAFP_CODEX_STATE=$state YAFP_CODEX_SAMPLE_AT=$checked
             YAFP_CODEX_PRIMARY=$primary YAFP_CODEX_SECONDARY=$secondary
             if [ "$state" = ok ]; then
@@ -73,6 +74,7 @@ yafp_codex_context() {
         fi
     fi
     if [ -n "${YAFP_CODEX_PID:-}" ] && kill -0 "$YAFP_CODEX_PID" 2>/dev/null; then
+        [ "$sampled" = 1 ] || yafp_ctx_codex_token='֍⟳'
         yafp_ctx_codex=$yafp_ctx_codex_token
         return 0
     fi
@@ -92,6 +94,9 @@ yafp_codex_context() {
                 disown "$YAFP_CODEX_PID" 2>/dev/null || true
             fi
         } >/dev/null 2>&1
+    fi
+    if [ "$sampled" = 0 ] && [ -n "${YAFP_CODEX_PID:-}" ]; then
+        yafp_ctx_codex_token='֍⟳'
     fi
     yafp_ctx_codex=$yafp_ctx_codex_token
     return 0

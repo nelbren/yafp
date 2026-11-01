@@ -293,7 +293,11 @@ Braille transitions, and all four combinations across shells and themes.
 Swap usage is relative to allocated capacity; no allocated swap means 0%.
 Age in seconds measures time since sampling, and `~` appears while a probe
 runs. Timed summaries append it directly to the age, such as `17s~`; the prompt
-appends it directly to the final resource token. Pending text is
+appends it directly to the final resource token. While the first sample is
+pending, context supplies gray loading tokens for CPU, RAM, swap, and disk,
+using the configured labels and separator. The prompt displays
+`↦[⚙⟳▦⟳⇄⟳◉⟳]` in Unicode + symbols mode, without a trailing `~`.
+Pending diagnostic text is
 `Resources: waiting for sample~`, and missing samples report
 `Resources: no valid sample`. Diagnostics and test output use English; `N/A`
 is the shared unavailable marker for resources and Codex. `yafp-resources`
@@ -361,7 +365,8 @@ All themes insert `↤[֍value]` immediately after the username, before `@`.
 machine resource options. Braille uses `min(7, floor(value * 8 / 100))` with
 fuller cells meaning greater availability. Foreground is green at 50% or
 above, yellow at 25% or above, and red below 25%. Gray `֍N/A` covers missing
-dependencies, authentication, quota, errors, and pending samples. The frame
+dependencies, authentication, quota, and errors. Before the first sample, an
+active worker displays gray `֍⟳`; later refreshes retain the last sample. The frame
 shares Git delimiter colors and the existing prompt-prefix width measurement.
 Disabled context renders no frame. `yafp-codex` reports sample age and per-window
 availability without blocking.
@@ -533,6 +538,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-30 20:19:47  MBP02 |
+📆 2026-11-01 04:13:55 🪟 No expuesto |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

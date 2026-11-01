@@ -327,8 +327,12 @@ sample age to keep the host block compact. `yafp-resources` still reports age:
 `17s` means seconds elapsed since sampling, rather than a countdown to the
 next update. `~` inside the frame indicates a new sample in progress and
 attaches directly to the last value, for example `↦[⚙⣷▦⣦⇄⡀◉⣿~]`.
-The first sample displays `Resources: waiting for sample~`; an unavailable
-sample reports `Resources: no valid sample`. Unavailable
+While the first sample loads, the prompt displays `↦[⚙⟳▦⟳⇄⟳◉⟳]` in
+Unicode + symbols mode, or `↦[C⟳ R⟳ S⟳ D⟳]` with the default styles.
+Loading tokens use gray and follow the configured labels and spacing, without
+a trailing `~`. The `yafp-resources` diagnostic still reports
+`Resources: waiting for sample~`; an unavailable sample reports
+`Resources: no valid sample`. Unavailable
 metrics appear as `N/A`, never as an invented zero. A swap total of zero means
 no swap/pagefile is allocated: this appears as `S0%` or `⇄0%`, or the
 minimum cell in symbolic mode.
@@ -440,8 +444,9 @@ or invalid reset timestamp omits the countdown while preserving the quota.
 
 Requests have a ten-second deadline in the worker. Rendering reads the cached
 result without waiting or accessing the network. The initial prompt can show
-`֍N/A` until the result is collected at a later prompt. Each session keeps at
-most one quota worker, and reloads reuse it. In zsh, the worker is disowned
+`֍⟳` in gray until the first result is collected at a later prompt. Each session
+keeps at most one quota worker, and reloads reuse it. In zsh, the worker is
+disowned
 at launch to suppress job notifications. There is no persistent polling timer
 or redraw while typing. The last sample remains visible during a refresh;
 a failed refresh replaces it with `֍N/A`.
@@ -1182,6 +1187,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-10-30 20:19:47  MBP02 |
+📆 2026-11-01 04:13:55 🪟 No expuesto |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>
