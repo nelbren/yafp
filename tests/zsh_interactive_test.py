@@ -25,6 +25,7 @@ def main():
             "YAFP_TITLE=0\nYAFP_ERROR=1\nYAFP_PVENV=0\n"
             "YAFP_OSC133=1\nYAFP_STATS_ON_EXIT=0\n"
             "YAFP_RESOURCE_CHECK_INTERVAL=30\n"
+            "YAFP_RESOURCE_LABEL_STYLE=letters\nYAFP_RESOURCE_VALUE_STYLE=percent\n"
         )
         master, slave = pty.openpty()
         environment = dict(
@@ -96,7 +97,16 @@ def main():
             host_match = re.search(rb"(?:^|\r\n)HOST_MARK:([^\r\n]+)\r\n", output)
             assert host_match, output
             host = host_match[1]
-            assert re.search(rb"R(?:\d+%|N/A) S|waiting for sample", ANSI.sub(b"", output)), output
+            plain = ANSI.sub(b"", output)
+            pending_resources = "↦[C⟳ R⟳ S⟳ D⟳]".encode()
+            assert (
+                host + pending_resources in plain
+                or re.search(
+                    re.escape(host + "↦[".encode())
+                    + rb"C(?:\d+%|N/A) R(?:\d+%|N/A) S(?:\d+%|N/A) D(?:\d+%|N/A)\]",
+                    plain,
+                )
+            ), output
             output = run("false")
             assert b"D;1" in OSC.findall(output), output
             assert b"EXISTING:1" in output, output
