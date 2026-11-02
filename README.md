@@ -739,10 +739,12 @@ the prompt unchanged.
 
 The first interactive load in each shell session checks the YAFP installation
 before showing the prompt, regardless of the current directory. The startup
-message identifies the installation path. The header uses intense white text.
+check is silent when the installation matches its upstream. If a problem or
+update is found, the message identifies the installation path with an
+intense-white header. No success message is printed.
 Startup messages have no enclosing parentheses and use YAFP severity colors:
-black on intense yellow for warnings, intense white on red for errors, and
-intense white on green for success; error backgrounds respect `YAFP_DARKC`.
+black on intense yellow for warnings and intense white on red for errors.
+Error backgrounds respect `YAFP_DARKC`.
 This synchronous check waits for Git;
 it does not leave a background job or defer messages to a later prompt.
 Normal repository prompt monitoring remains asynchronous and independent.
@@ -750,7 +752,8 @@ Reloading YAFP does not repeat the startup check in the same session.
 A failed fetch displays `☒🌐 REMOTE CHECK FAILED`; remote authentication or
 configuration errors can produce the same message as an offline connection.
 
-The startup check reports current, ahead, behind, and diverged checkouts.
+The startup check silently accepts current checkouts and reports ahead,
+behind, and diverged states.
 It also explains when Git, a commit, a tracking branch, or a remote is missing,
 or when HEAD is detached. For example:
 
@@ -1208,7 +1211,8 @@ loads successfully. Reloading in the same session does not record another
 activation. Each new terminal or SSH session has its own activation. Internal
 function calls and prompt redraws are not recorded.
 
-A background writer runs once using the existing ai-dev-tools Python runtime.
+A silent background writer runs once using the existing ai-dev-tools Python
+runtime. In zsh, it is disowned at creation to avoid job/PID announcements.
 It uses `AI_DEV_TOOLS_ROOT` or `~/ai-dev-tools` and stores an `application`
 event with source `yafp/startup/bash`, `yafp/startup/zsh`, or
 `yafp/startup/powershell`. It starts no services and makes no network requests.
@@ -1258,6 +1262,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-02 02:07:02 🪟 NDEV-DPC-02 |
+📆 2026-11-02 02:26:53 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6.1 Sol High & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

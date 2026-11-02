@@ -103,9 +103,10 @@ synthesize C, preserving existing interactive bindings and reload safety.
 The first interactive load in a shell session performs a synchronous check of
 YAFP's installation before showing the prompt. A process-ID marker survives
 reloads and is set before checking, preventing recursive or repeated startup
-checks. The installation path is printed explicitly, independent of the current
-directory. The header is intense white. Startup lines have no enclosing
-parentheses and reuse the warning/error/success palette, including
+checks. A current installation produces no startup output. For warnings,
+errors, or an update offer, the installation path is printed explicitly,
+independent of the current directory. The header is intense white. Startup
+lines have no enclosing parentheses and reuse the warning/error palette, including
 `YAFP_DARKC` for error backgrounds. Unix resets ANSI styling before each newline
 and emits plain text when redirected or when `NO_COLOR` is set. PowerShell
 uses the shared text writer and severity style helper. This startup-only wait
@@ -145,6 +146,8 @@ worktrees, detached HEAD, missing upstream, and stale results.
 
 All three loaders invoke the startup adapter outside rendering functions. A
 shell PID marker prevents duplicate events on reload. Unix disowns the writer;
+zsh uses native `&!` at creation so neither launch PIDs nor completion notices
+appear in the terminal;
 PowerShell starts Python directly without creating a PowerShell job. The parent
 process does not wait for the SQLite write, and the adapter makes no network
 requests.
@@ -608,6 +611,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-02 02:07:02 🪟 NDEV-DPC-02 |
+📆 2026-11-02 02:26:53 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6.1 Sol High & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

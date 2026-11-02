@@ -2,6 +2,7 @@
 from pathlib import Path
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -104,7 +105,9 @@ class StartupMetricsTests(unittest.TestCase):
                         f'yafp_record_startup "{self.base}" {shell}; '
                         'yafp_theme_background_color() { :; }; '
                         'for x in 1 2 3 4 5; do yafp_theme_background_color; done; printf ready')
-                self.assertEqual(self.unix(shell, body).stdout, 'ready')
+                completed = self.unix(shell, body)
+                self.assertEqual(completed.stdout, 'ready')
+                self.assertIsNone(re.search(r'\[\d+\]\s+\d+|\[\d+\].*(?:done|exit|terminated)', completed.stderr))
                 self.assertEqual(len(self.events(1)), 1)
                 self.unix(shell, body)
                 self.assertEqual(len(self.events(2)), 2)

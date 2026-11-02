@@ -21,11 +21,16 @@ yafp_update_notice() {
     local state behind head branch upstream ahead extra answer='' root=$YAFP_UPDATE_ROOT
     if [ ! -r "$YAFP_UPDATE_DIR/sample" ]; then
         yafp_update_cleanup
+        yafp_update_message info "YAFP startup check: $root"
         yafp_update_message error '☒🌐 REMOTE CHECK FAILED'
         return 0
     fi
     IFS=' ' read -r state behind head branch upstream ahead extra < "$YAFP_UPDATE_DIR/sample" || state=error
     yafp_update_cleanup
+    case "$state" in
+        missing-git|not-git|unborn|detached|no-upstream|no-remote)
+            yafp_update_message info "YAFP startup check: $root" ;;
+    esac
     case "$state" in
         missing-git) yafp_update_message warning '⚠ GIT NOT AVAILABLE: YAFP startup check skipped'; return 0 ;;
         not-git) yafp_update_message warning '⚠ NOT A GIT REPOSITORY: YAFP installation'; return 0 ;;
@@ -36,6 +41,7 @@ yafp_update_notice() {
     esac
     case "$behind/$ahead" in *[!0-9/]*|/|/*|*/) state=error ;; esac
     if [ "$state" != ok ] || [ -n "$extra" ]; then
+        yafp_update_message info "YAFP startup check: $root"
         yafp_update_message error '☒🌐 REMOTE CHECK FAILED'
         return 0
     fi
@@ -43,6 +49,8 @@ yafp_update_notice() {
     [ "$(git -C "$root" rev-parse --verify HEAD 2>/dev/null)" = "$head" ] || return 0
     [ "$(git -C "$root" symbolic-ref --quiet HEAD 2>/dev/null)" = "$branch" ] || return 0
     [ "$(git -C "$root" rev-parse --symbolic-full-name '@{upstream}' 2>/dev/null)" = "$upstream" ] || return 0
+    [ "$ahead" -ne 0 ] || [ "$behind" -ne 0 ] || return 0
+    yafp_update_message info "YAFP startup check: $root"
     local target=${upstream#refs/remotes/} unit=commits verb=have
     if [ "$ahead" -gt 0 ] && [ "$behind" -gt 0 ]; then
         yafp_update_message error "☒ DIVERGED REPOSITORY: $ahead local commit(s), $behind remote commit(s) from $target"
@@ -53,7 +61,6 @@ yafp_update_notice() {
         yafp_update_message warning "⚠ REMOTE NOT UPDATED: $ahead local $unit $verb not been pushed to $target"
         return 0
     fi
-    if [ "$behind" -eq 0 ]; then yafp_update_message success '✓ REPOSITORY UP TO DATE: YAFP'; return 0; fi
     yafp_update_message error "☒ OUTDATED REPOSITORY: YAFP is $behind commit(s) behind its upstream."
     printf 'Update YAFP now? [y/N] '
     IFS= read -r answer || answer=''
@@ -88,7 +95,6 @@ yafp_update_on_load() {
     [ "${YAFP_UPDATE_CHECK:-1}" != 0 ] || return 0
     [ "${YAFP_UPDATE_SESSION_PID:-}" != "$$" ] || return 0
     YAFP_UPDATE_SESSION_PID=$$
-    yafp_update_message info "YAFP startup check: $YAFP_ROOT"
     yafp_update_start
     yafp_update_notice
 }

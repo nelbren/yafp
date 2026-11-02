@@ -50,6 +50,7 @@ yafp_update_notice > "$TEST_ROOT/output" <<< ''
 [ "$(git -C "$YAFP_ROOT" rev-parse HEAD)" = "$initial" ] || fail 'Default answer pulled'
 [ "$reloads" = 0 ] || fail 'Default answer reloaded'
 grep -q '☒ OUTDATED REPOSITORY: YAFP is 1 commit(s)' "$TEST_ROOT/output" || fail 'Missing behind count'
+grep -q 'YAFP startup check:' "$TEST_ROOT/output" || fail 'Missing installation label for a problem'
 grep -q 'Update YAFP now? \[y/N\]' "$TEST_ROOT/output" || fail 'Missing English consent prompt'
 start_check
 yafp_update_notice < /dev/null > "$TEST_ROOT/output"
@@ -65,11 +66,11 @@ printf 'ok - startup update checks installation, waits for completion, defaults 
 
 start_check
 yafp_update_notice > "$TEST_ROOT/output" <<< y
-grep -q 'REPOSITORY UP TO DATE' "$TEST_ROOT/output" || fail 'Missing current status'
+[ ! -s "$TEST_ROOT/output" ] || fail 'Current checkout must be silent'
 git -C "$YAFP_ROOT" remote set-url origin "$TEST_ROOT/missing.git"
 start_check
 yafp_update_notice > "$TEST_ROOT/output" <<< y
-[ "$(cat "$TEST_ROOT/output")" = '☒🌐 REMOTE CHECK FAILED' ] || fail 'Remote failure message'
+grep -qx '☒🌐 REMOTE CHECK FAILED' "$TEST_ROOT/output" || fail 'Remote failure message'
 [ "$reloads" = 1 ] || fail 'Remote failure reloaded'
 git -C "$YAFP_ROOT" remote set-url origin "$TEST_ROOT/remote.git"
 
@@ -114,7 +115,7 @@ YAFP_ROOT="$TEST_ROOT/worktree"
 start_check
 grep -q '^ok 0 ' "$YAFP_UPDATE_DIR/sample" || fail 'Tracking worktree was not checked'
 yafp_update_notice > "$TEST_ROOT/output" <<< y
-grep -q 'REPOSITORY UP TO DATE' "$TEST_ROOT/output" || fail 'Missing worktree status'
+[ ! -s "$TEST_ROOT/output" ] || fail 'Current worktree must be silent'
 # A hung transport must produce an error and terminate its child process group.
 real_git=$(command -v git)
 mkdir "$TEST_ROOT/bin"
@@ -141,7 +142,9 @@ IFS= read -r transport_pid < "$TEST_ROOT/child"
 sleep 0.1
 if kill -0 "$transport_pid" 2>/dev/null; then fail 'Timed-out transport survived'; fi
 yafp_update_on_load > "$TEST_ROOT/output"
-grep -q 'YAFP startup check:' "$TEST_ROOT/output" || fail 'Missing installation label'
+[ ! -s "$TEST_ROOT/output" ] || fail 'Healthy first load must be silent'
+[ "$YAFP_UPDATE_SESSION_PID" = "$$" ] || fail 'First load did not check'
+YAFP_ROOT="$TEST_ROOT/missing-installation"
 yafp_update_on_load > "$TEST_ROOT/output"
 [ ! -s "$TEST_ROOT/output" ] || fail 'Repeated entry checked twice'
 YAFP_UPDATE_CHECK=0

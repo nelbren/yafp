@@ -90,10 +90,10 @@ try {
     if ((Invoke-TestGit @('-C', $script:YafpRoot, 'rev-parse', 'HEAD')) -ne
         (Invoke-TestGit @('-C', $seed, 'rev-parse', 'HEAD'))) { throw 'Wrong checkout updated' }
     Start-TestCheck
-    if ((Complete-TestCheck) -notmatch 'REPOSITORY UP TO DATE') { throw 'Missing current status' }
+    if ((Complete-TestCheck) -ne '') { throw 'Current checkout must be silent' }
     $null = Invoke-TestGit @('-C', $script:YafpRoot, 'remote', 'set-url', 'origin', (Join-Path $temporary 'missing.git'))
     Start-TestCheck
-    if ((Complete-TestCheck) -ne '☒🌐 REMOTE CHECK FAILED') { throw 'Remote failure message' }
+    if ((Complete-TestCheck) -notmatch '☒🌐 REMOTE CHECK FAILED') { throw 'Remote failure message' }
     $null = Invoke-TestGit @('-C', $script:YafpRoot, 'remote', 'set-url', 'origin', $remote)
     $null = Invoke-TestGit @('-C', $script:YafpRoot, 'config', 'user.name', 'Test')
     $null = Invoke-TestGit @('-C', $script:YafpRoot, 'config', 'user.email', 'test@example.invalid')
@@ -105,7 +105,7 @@ try {
     Set-Content (Join-Path $script:YafpRoot 'dirty.tmp') 'dirty'
     Start-TestCheck
     $dirtyOutput = Complete-TestCheck
-    if ($dirtyOutput -notmatch '^⚠ REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/' -or
+    if ($dirtyOutput -notmatch '⚠ REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/' -or
         $dirtyOutput -match 'UNCOMMITTED CHANGES') { throw 'Startup remote status must be independent of local changes' }
     Remove-Item -LiteralPath (Join-Path $script:YafpRoot 'dirty.tmp')
     Add-Content (Join-Path $seed 'file.txt') 'three'
@@ -130,10 +130,11 @@ try {
     Start-TestCheck
     $sample = $script:YafpUpdateSample
     if ($sample.State -ne 'ok' -or $sample.Behind -ne 0) { throw 'Tracking worktree was not checked' }
-    if ((Complete-TestCheck) -notmatch 'REPOSITORY UP TO DATE') { throw 'Missing worktree status' }
+    if ((Complete-TestCheck) -ne '') { throw 'Current worktree must be silent' }
     $first = (@(Invoke-YafpStartupUpdate -Interactive $true 6>&1) | ForEach-Object { "$_" }) -join ''
+    $script:YafpRoot = Join-Path $temporary 'missing-installation'
     $second = (@(Invoke-YafpStartupUpdate -Interactive $true 6>&1) | ForEach-Object { "$_" }) -join ''
-    if ($first -notmatch 'YAFP startup check:' -or $second -ne '') { throw 'Startup must check once per session' }
+    if ($first -ne '' -or $second -ne '' -or $script:YafpUpdateSessionId -ne $PID) { throw 'Startup must check once per session' }
     $env:YAFP_UPDATE_CHECK = '0'
     Start-YafpUpdateCheck -Interactive $true
     if ($null -ne $script:YafpUpdateSample) { throw 'Disabled check launched a worker' }

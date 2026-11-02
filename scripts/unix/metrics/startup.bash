@@ -13,8 +13,14 @@ yafp_record_startup() {
     YAFP_STARTUP_METRICS_PID=$$
     # One local task; it neither holds the terminal nor contacts the network.
     {
-        "$python" "$recorder" --path "$root" --shell "$shell" </dev/null &
-        disown 2>/dev/null || :
+        if [ -n "${ZSH_VERSION:-}" ]; then
+            # Constant zsh syntax: disown at creation, before job notifications.
+            # Values stay in quoted parameters; no input is evaluated as code.
+            eval '"$python" "$recorder" --path "$root" --shell "$shell" </dev/null &!'
+        else
+            "$python" "$recorder" --path "$root" --shell "$shell" </dev/null &
+            disown 2>/dev/null || :
+        fi
     } >/dev/null 2>&1
     return 0
 }
