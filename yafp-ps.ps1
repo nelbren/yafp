@@ -75,6 +75,9 @@ if (-not (Get-Variable YafpRemoteConnectivityState -Scope Script `
 if (Test-Path (Join-Path $script:YafpRoot 'scripts/windows/codex/context.ps1')) {
     . (Join-Path $script:YafpRoot 'scripts/windows/codex/context.ps1')
 }
+if (Test-Path (Join-Path $script:YafpRoot 'scripts/windows/update/context.ps1')) {
+    . (Join-Path $script:YafpRoot 'scripts/windows/update/context.ps1')
+}
 if (-not (Get-Variable YafpRemoteOfflineAcknowledged -Scope Script `
         -ErrorAction Ignore)) {
     $script:YafpRemoteOfflineAcknowledged = $false
@@ -1883,4 +1886,12 @@ if (Test-Path -LiteralPath $startupHelper -PathType Leaf) {
         ($startupArguments -notcontains '-NonInteractive') -and
         (-not $explicitScript -or $stayInteractive)
     )
+    if (Get-Command Invoke-YafpStartupUpdate -ErrorAction Ignore) {
+        Invoke-YafpStartupUpdate -Interactive (
+            [Environment]::UserInteractive -and $Host.Name -eq 'ConsoleHost' -and
+            -not [Console]::IsInputRedirected -and
+            ($startupArguments -notcontains '-NonInteractive') -and
+            (-not $explicitScript -or $stayInteractive)
+        )
+    }
 }

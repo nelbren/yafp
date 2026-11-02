@@ -116,6 +116,7 @@ bash tests/remote_status_test.bash 2>&1 | colorize_quality_output
 bash tests/resource_collectors_test.bash 2>&1 | colorize_quality_output
 bash tests/resources_test.bash 2>&1 | colorize_quality_output
 bash tests/codex_test.bash 2>&1 | colorize_quality_output
+bash tests/startup_update_test.bash 2>&1 | colorize_quality_output
 bash tests/origin_device_hook_test.bash 2>&1 | colorize_quality_output
 bash tests/psscriptanalyzer_setup_test.bash 2>&1 | colorize_quality_output
 

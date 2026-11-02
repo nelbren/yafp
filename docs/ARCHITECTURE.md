@@ -98,6 +98,47 @@ it emits D for the prior command, A before visible prompt output, and B after
 the prompt mark. It deliberately avoids replacing PSReadLine key handlers to
 synthesize C, preserving existing interactive bindings and reload safety.
 
+## Startup update check
+
+The first interactive load in a shell session performs a synchronous check of
+YAFP's installation before showing the prompt. A process-ID marker survives
+reloads and is set before checking, preventing recursive or repeated startup
+checks. The installation path is printed explicitly, independent of the current
+directory. The header is intense white. Startup lines have no enclosing
+parentheses and reuse the warning/error/success palette, including
+`YAFP_DARKC` for error backgrounds. Unix resets ANSI styling before each newline
+and emits plain text when redirected or when `NO_COLOR` is set. PowerShell
+uses the shared text writer and severity style helper. This startup-only wait
+is an exception to the usual background-only
+remote monitoring; prompt rendering never performs the startup check.
+
+Unix loads `scripts/unix/update/context.bash` and waits for `collect.bash`.
+PowerShell loads `scripts/windows/update/context.ps1` and calls `collect.ps1`
+directly, without jobs. Both collectors disable credential prompts. Unix gives
+Git a private process group for its 15-second fetch deadline; PowerShell drains
+redirected streams and kills timed-out Git process trees after 15 seconds.
+No persistent worker or prompt hook is added. Unix removes its temporary result
+immediately after consumption.
+
+After fetching, ahead and behind counts are computed against the tracking
+branch. Startup distinguishes current, ahead (`⚠ REMOTE NOT UPDATED`), behind
+(`☒ OUTDATED REPOSITORY`), and diverged states, and reports local modifications.
+Missing Git, non-Git installations, unborn branches, detached HEAD, and missing
+upstream/remote configurations receive explicit messages. Failed remote access
+shows `☒🌐 REMOTE CHECK FAILED`, without claiming that general internet access
+was independently tested.
+
+Only a behind-only checkout offers `Update YAFP now? [y/N]`. Enter, EOF, and
+answers other than `y`/`Y` decline. Accepted updates use `git pull --ff-only` in
+the installation and reload only after success. Divergence never creates an
+automatic merge or push. HEAD, branch, and upstream are checked against the
+result before offering an update. Noninteractive or redirected sessions, test
+hook suppression, and `YAFP_UPDATE_CHECK=0` disable startup checking.
+
+Local-remotes tests cover consent, refusal, successful reload, once-per-session
+loading, current/ahead/behind/diverged and dirty states, failed access, timeout,
+worktrees, detached HEAD, missing upstream, and stale results.
+
 ## Local startup counter
 
 All three loaders invoke the startup adapter outside rendering functions. A
@@ -538,6 +579,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-01 04:13:55 🪟 No expuesto |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-11-02 00:15:33 🪟 NDEV-DPC-02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6.1 Sol High & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

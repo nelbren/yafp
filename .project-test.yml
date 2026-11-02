@@ -11,6 +11,7 @@ suites:
   - tests/zsh_interactive_test.py
   - tests/resources_test.bash
   - tests/codex_test.bash
+  - tests/startup_update_test.bash
   - tests/block_frames_test.bash
   - tests/codex_display_cases.txt
   - tests/codex_reset_cases.txt
@@ -174,4 +175,14 @@ suites:
   profiles: [quick, review, ci, full]
   os: [apple, windows, linux]
   side_effects: local
+  timeout_seconds: 120
+- id: startup-update-windows
+  kind: integration
+  stage: test
+  runner: repository-script
+  entrypoint: scripts/windows/quality/startup-update.cmd
+  profiles: [review, ci, full]
+  os: [windows]
+  side_effects: local
+  requires: [pwsh]
   timeout_seconds: 120

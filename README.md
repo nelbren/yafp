@@ -715,6 +715,52 @@ remote check resets the acknowledgement, so a later remote-check failure display
 the expansion again. Outside a remote error state, `yafp-ack` leaves
 the prompt unchanged.
 
+The first interactive load in each shell session checks the YAFP installation
+before showing the prompt, regardless of the current directory. The startup
+message identifies the installation path. The header uses intense white text.
+Startup messages have no enclosing parentheses and use YAFP severity colors:
+black on intense yellow for warnings, intense white on red for errors, and
+intense white on green for success; error backgrounds respect `YAFP_DARKC`.
+This synchronous check waits for Git;
+it does not leave a background job or defer messages to a later prompt.
+Normal repository prompt monitoring remains asynchronous and independent.
+Reloading YAFP does not repeat the startup check in the same session.
+A failed fetch displays `☒🌐 REMOTE CHECK FAILED`; remote authentication or
+configuration errors can produce the same message as an offline connection.
+
+The startup check reports current, ahead, behind, diverged, and dirty checkouts.
+It also explains when Git, a commit, a tracking branch, or a remote is missing,
+or when HEAD is detached. For example:
+
+```text
+YAFP startup check: /home/user/yafp
+⚠ REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/master
+```
+
+When only remote commits are missing, it shows their count and asks in English:
+
+```text
+☒ OUTDATED REPOSITORY: YAFP is 3 commit(s) behind its upstream.
+Update YAFP now? [y/N]
+```
+
+Enter, `N`, EOF, or any answer other than `y`/`Y` leaves the checkout alone.
+Accepting runs `git pull --ff-only` in the YAFP installation and reloads the
+prompt only after success. Divergence displays both local and remote commit
+counts without offering an automatic merge. Local changes are reported and
+retained; if they conflict with an accepted update, Git refuses the pull.
+Noninteractive and redirected-input sessions never start the check.
+
+To disable this startup check, set the environment variable before loading:
+
+```bash
+export YAFP_UPDATE_CHECK=0
+```
+
+```powershell
+$env:YAFP_UPDATE_CHECK = '0'
+```
+
 Use `yafp-reload` to reload the active Bash, zsh, or PowerShell prompt after changing
 its implementation or personal configuration. YAFP also records the commit
 from which it was loaded. After a successful `git pull`, it checks `HEAD` in
@@ -1187,6 +1233,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-01 04:13:55 🪟 No expuesto |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-11-02 00:15:33 🪟 NDEV-DPC-02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6.1 Sol High & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

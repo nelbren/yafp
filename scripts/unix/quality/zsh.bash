@@ -13,4 +13,5 @@ zsh -df tests/block_frames_test.bash
 zsh -df tests/zsh_remote_status_test.zsh
 zsh -df tests/resources_test.bash
 zsh -df tests/codex_test.bash
+zsh -df tests/startup_update_test.bash
 python3 tests/zsh_interactive_test.py

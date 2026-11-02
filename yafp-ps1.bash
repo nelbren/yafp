@@ -2383,6 +2383,9 @@ yafp-stats() {
 yafp_exit_trap() {
     local exit_code=$?
 
+    if declare -F yafp_update_cleanup >/dev/null; then
+        yafp_update_cleanup
+    fi
     if declare -F yafp_resources_cleanup >/dev/null; then
         yafp_resources_cleanup
     fi
@@ -2872,13 +2875,21 @@ theme_build
 previous_command=""
 this_command=""
 previous_timestamp=""
-YAFP_PROMPT_RENDERING=0
+YAFP_PROMPT_RENDERING=${YAFP_PROMPT_RENDERING:-0}
 YAFP_GIT_SYNC_LAST_COMMAND_KEY=""
 
 if [ -r "${SCRIPT_DIR}/scripts/unix/metrics/startup.bash" ]; then
     # shellcheck source=scripts/unix/metrics/startup.bash
     . "${SCRIPT_DIR}/scripts/unix/metrics/startup.bash"
     yafp_record_startup "$YAFP_ROOT" bash
+fi
+
+if [ -r "$YAFP_ROOT/scripts/unix/update/context.bash" ]; then
+    # shellcheck source=scripts/unix/update/context.bash
+    . "$YAFP_ROOT/scripts/unix/update/context.bash"
+    case "$-" in
+        *i*) if [ "${YAFP_NO_INSTALL_HOOKS:-0}" != 1 ] && [ -t 0 ]; then yafp_update_on_load; fi ;;
+    esac
 fi
 
 if [ "${YAFP_NO_INSTALL_HOOKS:-0}" -ne 1 ]; then

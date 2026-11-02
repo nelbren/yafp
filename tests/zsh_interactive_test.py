@@ -35,6 +35,7 @@ def main():
             TERM="xterm-256color",
             YAFP_CONFIG_FILE=str(config),
             YAFP_METRICS_DISABLED="1",
+            YAFP_UPDATE_CHECK="0",
         )
         environment.pop("YAFP_NO_INSTALL_HOOKS", None)
         def attach_terminal():

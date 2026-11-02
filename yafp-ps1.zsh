@@ -2610,6 +2610,7 @@ yafp_preexec() {
 
 yafp_zshexit() {
     emulate -L zsh -o KSH_ARRAYS
+    (( ${+functions[yafp_update_cleanup]} )) && yafp_update_cleanup
     (( ${+functions[yafp_resources_cleanup]} )) && yafp_resources_cleanup
     (( ${+functions[yafp_codex_cleanup]} )) && yafp_codex_cleanup
     [[ "${YAFP_STATS_ON_EXIT:-1}" = 1 ]] && yafp-stats
@@ -2662,7 +2663,7 @@ yafp_zshexit() {
     previous_command=${previous_command:-}
     this_command=${this_command:-}
     previous_timestamp=${previous_timestamp:-}
-    YAFP_PROMPT_RENDERING=0
+    YAFP_PROMPT_RENDERING=${YAFP_PROMPT_RENDERING:-0}
     if [ -r "${SCRIPT_DIR}/scripts/unix/metrics/startup.bash" ]; then
         # shellcheck source=scripts/unix/metrics/startup.bash
         . "${SCRIPT_DIR}/scripts/unix/metrics/startup.bash"
@@ -2681,4 +2682,11 @@ yafp_zshexit() {
 if [[ "${YAFP_NO_INSTALL_HOOKS:-0}" != 1 && -o interactive ]]; then
     setopt PROMPT_PERCENT PROMPT_SUBST
     unsetopt PROMPT_BANG
+fi
+
+if [[ -r "$YAFP_ROOT/scripts/unix/update/context.bash" ]]; then
+    . "$YAFP_ROOT/scripts/unix/update/context.bash"
+    if [[ "${YAFP_NO_INSTALL_HOOKS:-0}" != 1 && -o interactive && -t 0 ]]; then
+        yafp_update_on_load
+    fi
 fi
