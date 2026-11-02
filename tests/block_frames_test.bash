@@ -26,6 +26,8 @@ plain() {
     out=$yafp_plain_text
 }
 # OS glyphs preserve Debian/Kali identities and use Tux for other Linux IDs.
+# Called indirectly by set_SERVER_OS_EMOJI in the sourced Bash/zsh engine.
+# shellcheck disable=SC2317,SC2329
 uname() { printf '%s\n' "$test_platform"; }
 for test_platform in Darwin Linux MINGW64_NT MSYS_NT CYGWIN_NT; do
     case "$test_platform" in Darwin) expected_os='' ;; Linux) expected_os='' ;; *) expected_os='' ;; esac
