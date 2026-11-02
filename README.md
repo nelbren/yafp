@@ -102,8 +102,11 @@ The existing Unix doctor continues to diagnose Bash configuration and profiles.
 ## :art: Styles
 
 OS indicators use Nerd Font glyphs: `` (`U+F179`) for macOS, ``
-(`U+F17A`) for Windows, and `` (`U+F17C`) for Linux. Linux distributions
-share the same Tux symbol. Unix server and client indicators use these glyphs;
+(`U+F17A`) for Windows, and `` (`U+F17C`) for Linux. Server detection
+preserves Debian `` and Kali `㉿`
+using the exact `ID` in `/etc/os-release`. Other distributions, including
+Ubuntu, and missing or unknown IDs use the Tux symbol ``.
+Unix server and client indicators use these glyphs;
 WSL, Cygwin, and Git Bash client indicators retain their environment markers.
 PowerShell uses the Windows glyph where its themes show an OS indicator.
 
@@ -1255,6 +1258,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-02 01:58:54 🪟 NDEV-DPC-02 |
+📆 2026-11-02 02:07:02 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6.1 Sol High & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

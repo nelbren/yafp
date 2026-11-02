@@ -478,8 +478,12 @@ Invoke-ScriptAnalyzer -Path . -Recurse -Settings $settings `
 
 OS indicators use Font Awesome glyphs supplied by Nerd Fonts: macOS ``
 (`U+F179`), Windows `` (`U+F17A`), and Linux `` (`U+F17C`). Unix server
-and client detection shares this mapping, including Linux distributions and
-Windows-backed client composites. PowerShell themes use the Windows glyph
+and client detection shares this mapping, including Windows-backed client
+composites. Linux servers specialize exact `/etc/os-release` IDs `debian`
+(``) and `kali` (`㉿`); all others, including Ubuntu, use ``. Reading uses
+shell builtins without evaluating file contents. Missing or unreadable release
+files and absent IDs fall back to ``; `ID_LIKE` does not select a logo.
+PowerShell themes use the Windows glyph
 where an OS indicator already exists.
 
 Git logo `` (`U+F1D3`) replaces the minimal/light Git marker and the
@@ -604,6 +608,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-02 01:58:54 🪟 NDEV-DPC-02 |
+📆 2026-11-02 02:07:02 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6.1 Sol High & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

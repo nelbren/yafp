@@ -25,13 +25,29 @@ plain() {
     yafp_strip_terminal_styles "$out"
     out=$yafp_plain_text
 }
-# OS symbols are identical across distributions and terminal platforms.
+# OS glyphs preserve Debian/Kali identities and use Tux for other Linux IDs.
 uname() { printf '%s\n' "$test_platform"; }
 for test_platform in Darwin Linux MINGW64_NT MSYS_NT CYGWIN_NT; do
     case "$test_platform" in Darwin) expected_os='' ;; Linux) expected_os='' ;; *) expected_os='' ;; esac
-    set_SERVER_OS_EMOJI
+    set_SERVER_OS_EMOJI "$TEST_ROOT/missing-os-release"
     [ "$SERVER_OS_EMOJI" = "$expected_os" ] || fail "Server OS glyph: $test_platform"
 done
+test_platform=Linux
+for distro in debian kali ubuntu arch fedora unknown; do
+    case "$distro" in debian) expected_os='' ;; kali) expected_os='㉿' ;; *) expected_os='' ;; esac
+    for quoting in bare double single; do
+        case "$quoting" in
+            bare) printf 'ID_LIKE=debian\nID=%s\n' "$distro" > "$TEST_ROOT/os-release" ;;
+            double) printf 'ID="%s"\n' "$distro" > "$TEST_ROOT/os-release" ;;
+            single) printf "ID='%s'\n" "$distro" > "$TEST_ROOT/os-release" ;;
+        esac
+        set_SERVER_OS_EMOJI "$TEST_ROOT/os-release"
+        [ "$SERVER_OS_EMOJI" = "$expected_os" ] || fail "Linux distro glyph: $distro/$quoting"
+    done
+done
+printf 'NAME=Linux\nID_LIKE=debian\n' > "$TEST_ROOT/os-release"
+set_SERVER_OS_EMOJI "$TEST_ROOT/os-release"
+[ "$SERVER_OS_EMOJI" = '' ] || fail 'Missing ID must use generic Linux glyph'
 unset -f uname
 set_SERVER_OS_EMOJI
 saved_client_os=${CLIENT_OS:-}

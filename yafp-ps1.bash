@@ -1444,7 +1444,7 @@ ps1_wrap() {
 
 set_SERVER_OS_EMOJI() {
     local platform
-    local emoji
+    local emoji os_id='' key value release_file="${1:-/etc/os-release}"
 
     platform=$(uname -s)
     emoji="❓"
@@ -1455,8 +1455,24 @@ set_SERVER_OS_EMOJI() {
             emoji=""
             ;;
         Linux)
-            # Anteriores: emoji="㉿" (Kali), emoji="" (Ubuntu/Debian), emoji="🐧".
+            # Anterior genérico: emoji="🐧".
+            # Anterior Ubuntu/Debian: emoji=""; ahora solo Debian conserva ese logo.
             emoji=""
+            if [ -r "$release_file" ]; then
+                while IFS='=' read -r key value || [ -n "$key" ]; do
+                    if [ "$key" = ID ]; then
+                        os_id=${value#\"}
+                        os_id=${os_id%\"}
+                        os_id=${os_id#\'}
+                        os_id=${os_id%\'}
+                        break
+                    fi
+                done < "$release_file"
+            fi
+            case "$os_id" in
+                debian) emoji="" ;;
+                kali) emoji="㉿" ;;
+            esac
             ;;
         MINGW*|MSYS*|CYGWIN*)
             # emoji="🪟"
