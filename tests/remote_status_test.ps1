@@ -672,7 +672,7 @@ try {
         throw 'connection announcement row was not reserved'
     }
     $expansion = Write-YafpRemoteExpansion -Remote $connectedStatus `
-        -IndicatorText '✓🌐︎' 6>&1 | Out-String
+        -IndicatorText '' 6>&1 | Out-String
     if ($expansion -notmatch '\( ✓ INTERNET CONNECTION \)') {
         throw 'connection announcement was not rendered'
     }
@@ -696,7 +696,7 @@ try {
     $null = Write-YafpGitRemoteStatus `
         -Git $connectedContext.Git 6>&1 | Out-String
     $transitionIndicator = $script:connectionWrites |
-        Where-Object Text -EQ '✓🌐︎' | Select-Object -Last 1
+        Where-Object Text -EQ '' | Select-Object -Last 1
     $transitionBanner = $script:connectionWrites |
         Where-Object Text -EQ '( ✓ INTERNET CONNECTION )' |
         Select-Object -Last 1
@@ -704,9 +704,9 @@ try {
         'connection banner foreground'
     Assert-Equal DarkGreen $transitionBanner.Background `
         'connection banner background'
-    Assert-Equal White $transitionIndicator.Foreground `
+    Assert-Equal Green $transitionIndicator.Foreground `
         'connection indicator foreground'
-    Assert-Equal DarkGreen $transitionIndicator.Background `
+    Assert-Equal $null $transitionIndicator.Background `
         'connection indicator background'
 
     $script:connectionWrites.Clear()
@@ -714,7 +714,7 @@ try {
     $null = Write-YafpGitRemoteStatus `
         -Git $connectedContext.Git 6>&1 | Out-String
     $steadyIndicator = $script:connectionWrites |
-        Where-Object Text -EQ '✓🌐︎' | Select-Object -Last 1
+        Where-Object Text -EQ '' | Select-Object -Last 1
     Assert-Equal Green $steadyIndicator.Foreground `
         'steady connection indicator foreground'
     Assert-Equal $null $steadyIndicator.Background `
@@ -723,10 +723,10 @@ try {
         -Value $originalWriteYafpText
 
     foreach ($indicatorCase in @(
-        @{ State = 'current'; Ahead = 0; Text = '✓🌐︎' }
+        @{ State = 'current'; Ahead = 0; Text = '' }
         @{ State = 'ahead'; Ahead = 2; Text = '⇡2' }
         @{ State = 'checking'; Ahead = 0; Text = '…' }
-        @{ State = 'error'; Ahead = 0; Text = '☒🌐︎' }
+        @{ State = 'error'; Ahead = 0; Text = '' }
     )) {
         $status = [pscustomobject]@{
             State = $indicatorCase.State
@@ -763,7 +763,7 @@ try {
         throw 'offline warning row was not reserved'
     }
     $expansion = Write-YafpRemoteExpansion -Remote $offlineStatus `
-        -IndicatorText '☒🌐︎' 6>&1 | Out-String
+        -IndicatorText '' 6>&1 | Out-String
     if ($expansion -notmatch '\( ☒ REMOTE CHECK FAILED \)') {
         throw 'offline expansion was not rendered'
     }
@@ -776,7 +776,7 @@ try {
         Out-String
     Assert-Equal '' $row 'acknowledged offline state reserves no banner row'
     $expansion = Write-YafpRemoteExpansion -Remote $offlineStatus `
-        -IndicatorText '☒🌐︎' 6>&1 | Out-String
+        -IndicatorText '' 6>&1 | Out-String
     Assert-Equal '' $expansion 'acknowledged offline banner is hidden'
 
     $originalWriteYafpText = (Get-Command Write-YafpText).ScriptBlock
@@ -799,11 +799,17 @@ try {
     $null = Write-YafpGitRemoteStatus -Git $offlineContext.Git 6>&1 |
         Out-String
     $ackIndicator = $script:ackWrites |
-        Where-Object Text -EQ '☒🌐︎' | Select-Object -Last 1
+        Where-Object Text -EQ '' | Select-Object -Last 1
     Assert-Equal Red $ackIndicator.Foreground `
         'acknowledged offline indicator foreground'
     Assert-Equal $null $ackIndicator.Background `
         'acknowledged offline indicator background'
+    $script:YafpRemoteOfflineAcknowledged = $false
+    $script:ackWrites.Clear()
+    $null = Write-YafpGitRemoteStatus -Git $offlineContext.Git 6>&1 | Out-String
+    $errorIcon = $script:ackWrites | Where-Object Text -EQ '' | Select-Object -Last 1
+    Assert-Equal Red $errorIcon.Foreground 'unacknowledged offline indicator foreground'
+    Assert-Equal $null $errorIcon.Background 'unacknowledged offline indicator background'
     Set-Item -LiteralPath Function:Write-YafpText `
         -Value $originalWriteYafpText
     $script:YafpRemoteOfflineAcknowledged = $false

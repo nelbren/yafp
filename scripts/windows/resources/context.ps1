@@ -64,7 +64,8 @@ function global:Format-YafpResourceSegment {
     )
     $label = $Kind
     if ($global:YAFP_RESOURCE_LABEL_STYLE -eq 'unicode') {
-        $label = @{ R = '▦'; S = '⇄'; C = '⚙'; D = '◉' }[$Kind]
+        # Anterior: $label = @{ R = '▦'; S = '⇄'; C = '⚙'; D = '◉' }[$Kind]
+        $label = @{ R = '▦'; S = ''; C = ''; D = '' }[$Kind]
     }
     $text = "${label}N/A"
     $color = 'DarkGray'

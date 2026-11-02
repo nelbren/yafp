@@ -40,6 +40,8 @@ foreach ($theme in @('default', 'minimal', 'light')) {
         throw "$theme theme did not render the enabled clock"
     }
 
+    if (-not $withClock.Contains('')) { throw "$theme theme is missing the Font Awesome clock" }
+    if ($theme -ne 'default' -and -not $withClock.Contains('')) { throw "$theme theme is missing the open-folder glyph" }
     $global:YAFP_CLOCK = 0
     $script:promptRan = $false
     $withoutClock = prompt 6>&1 | Out-String

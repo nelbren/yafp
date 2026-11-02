@@ -162,10 +162,10 @@ def main():
             assert host + "↦[C25% R50% S50% D75%]".encode() in ANSI.sub(b"", output), output
             output = run("YAFP_RESOURCE_LABEL_STYLE=unicode; YAFP_RESOURCE_VALUE_STYLE=symbols")
             plain = ANSI.sub(b"", output)
-            assert host + "↦[⚙⣄▦⣦⇄⣦◉⣷]".encode() in plain, output
+            assert host + "↦[⣄▦⣦⣦⣷]".encode() in plain, output
             output = run("YAFP_RESOURCE_VALUE_STYLE=percent")
             plain = ANSI.sub(b"", output)
-            assert host + "↦[⚙25% ▦50% ⇄50% ◉75%]".encode() in plain, output
+            assert host + "↦[25% ▦50% 50% 75%]".encode() in plain, output
             # The quota worker uses the same silent, disowned lifecycle.
             quota_collector = workspace / "scripts/unix/codex/collect.bash"
             quota_collector.parent.mkdir(parents=True)

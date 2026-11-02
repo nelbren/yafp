@@ -101,8 +101,20 @@ The existing Unix doctor continues to diagnose Bash configuration and profiles.
 
 ## :art: Styles
 
-Bash and zsh use `` for macOS in both server and client OS indicators
-across the `default`, `minimal`, and `light` themes.
+OS indicators use Nerd Font glyphs: `` (`U+F179`) for macOS, ``
+(`U+F17A`) for Windows, and `` (`U+F17C`) for Linux. Linux distributions
+share the same Tux symbol. Unix server and client indicators use these glyphs;
+WSL, Cygwin, and Git Bash client indicators retain their environment markers.
+PowerShell uses the Windows glyph where its themes show an OS indicator.
+
+Repository markers use Git logo `` (`U+F1D3`) in all shells and themes.
+It replaces `` in minimal/light and `💾` before the repository name in default;
+the default theme's existing repository/branch separator stays unchanged.
+Directory markers use the open-folder glyph `` (`U+F07C`) instead of `⌂`.
+The current timestamp uses the clock glyph `` (`U+F017`) in all three themes.
+Previous glyph assignments remain commented beside the active code. The
+terminal must use a Nerd Font containing these private-use glyphs; SSH clients
+render them using the font installed locally, independently of the remote OS.
 
 ### :bulb: Colors change according to
 
@@ -174,8 +186,8 @@ use bracketed frames in every shell and theme: `↤[…]` for Codex and
 
 ```text
 USER↤[֍⣷5d9h]
-HOST↦[⚙⣀▦⣶⇄⣦◉⣿]
-↦[⣦✓🌐︎] main↯↦[-1±2+3]
+HOST↦[⣀▦⣶⣦⣿]
+↦[⣦] main↯↦[-1±2+3]
 ```
 
 `↤` associates the username with its Codex quota; `↦` associates the other
@@ -183,12 +195,12 @@ labels with their data. The arrows and brackets use the theme's
 Git delimiter colors; each inner indicator retains its own severity color.
 Codex keeps the reset countdown attached to its value, and resources keep
 their configured separators. The Git remote countdown and status are adjacent
-inside one frame: symbolic `↦[⣦✓🌐︎]` or numeric `↦[(175)✓🌐︎]`. Refresh,
+inside one frame: symbolic `↦[⣦]` or numeric `↦[(175)]`. Refresh,
 tracking, warning, and error states use the same frame. Empty remote and
 counter blocks produce no frame. The `light` theme retains its clean-worktree
 check mark, while the other themes retain their existing clean-state behavior.
 Counter labels and emoji remain theme-specific inside the common frame.
-The remote frame touches the preceding Git marker, as in `↦[⣦✓🌐︎]`,
+The remote frame touches the preceding Git marker, as in `↦[⣦]`,
 with a space after the frame before the branch name.
 
 Remote and staged banners remain aligned with their corresponding indicators,
@@ -293,12 +305,12 @@ The four combinations produce the following output for the same sample:
 
 ```text
 letters + percent: HOST↦[C24% R74% S50% D93%]
-unicode + percent: HOST↦[⚙24% ▦74% ⇄50% ◉93%]
+unicode + percent: HOST↦[24% ▦74% 50% 93%]
 letters + symbols: HOST↦[C⣀ R⣶ S⣦ D⣿]
-unicode + symbols: HOST↦[⚙⣀▦⣶⇄⣦◉⣿]
+unicode + symbols: HOST↦[⣀▦⣶⣦⣿]
 ```
 
-`C`/`⚙`, `R`/`▦`, `S`/`⇄`, and `D`/`◉` represent CPU, RAM, swap, and disk,
+`C`/``, `R`/`▦`, `S`/``, and `D`/`` represent CPU, RAM, swap, and disk,
 respectively. CPU appears first, and swap sits between RAM and disk to
 highlight their relationship. All four modes and all three themes use this
 order. Only Unicode + Braille (`unicode` + `symbols`) removes spaces between
@@ -306,6 +318,10 @@ resources. No space separates the hostname from `↦[`, and there is no inner
 padding next to the brackets. The other three combinations separate resources
 with spaces. Disabled monitoring renders no frame. Invalid styles fall back
 to `letters` and `percent`.
+
+Unicode resource labels use Nerd Font glyphs for CPU (`U+F2DB`), swap
+(`U+F0EC`), and disk (`U+F0A0`). RAM keeps `▦` (`U+25A6`). Previous label
+assignments remain commented in both platform implementations.
 
 Swap usage is relative to its total allocated capacity. Percentages are shown
 as integers without decimal places. The `symbols` mode divides usage into
@@ -326,20 +342,20 @@ even in Braille mode; unavailable values appear in gray. The prompt omits
 sample age to keep the host block compact. `yafp-resources` still reports age:
 `17s` means seconds elapsed since sampling, rather than a countdown to the
 next update. `~` inside the frame indicates a new sample in progress and
-attaches directly to the last value, for example `↦[⚙⣷▦⣦⇄⡀◉⣿~]`.
-While the first sample loads, the prompt displays `↦[⚙⟳▦⟳⇄⟳◉⟳]` in
+attaches directly to the last value, for example `↦[⣷▦⣦⡀⣿~]`.
+While the first sample loads, the prompt displays `↦[⟳▦⟳⟳⟳]` in
 Unicode + symbols mode, or `↦[C⟳ R⟳ S⟳ D⟳]` with the default styles.
 Loading tokens use gray and follow the configured labels and spacing, without
 a trailing `~`. The `yafp-resources` diagnostic still reports
 `Resources: waiting for sample~`; an unavailable sample reports
 `Resources: no valid sample`. Unavailable
 metrics appear as `N/A`, never as an invented zero. A swap total of zero means
-no swap/pagefile is allocated: this appears as `S0%` or `⇄0%`, or the
+no swap/pagefile is allocated: this appears as `S0%` or `0%`, or the
 minimum cell in symbolic mode.
 
 `yafp-resources` shows a plain summary with sample age, used/total RAM and swap
 in MiB, and disk usage in KiB. During refresh, its age and marker are adjacent,
-for example `⚙⣷▦⣦⇄⡀◉⣿ 17s~`. The space before sample age remains.
+for example `⣷▦⣦⡀⣿ 17s~`. The space before sample age remains.
 It does not wait for a pending sample to finish.
 A worker starts during prompt rendering when the interval expires; a later
 prompt reads its result. There is no persistent timer, and the line is not
@@ -403,8 +419,8 @@ is suggested to avoid frequent CLI startup. All three themes attach the block
 directly to the username, preserving the host resource block:
 
 ```text
-percent: USER↤[֍75%5d9h] @ HOST↦[⚙24% ▦74% ⇄50% ◉93%]
-symbols: USER↤[֍⣷5d9h] @ HOST↦[⚙⣀▦⣶⇄⣦◉⣿]
+percent: USER↤[֍75%5d9h] @ HOST↦[24% ▦74% 50% 93%]
+symbols: USER↤[֍⣷5d9h] @ HOST↦[⣀▦⣶⣦⣿]
 ```
 
 The `↤[]` frame uses the Git change delimiter colors. The quota token uses a
@@ -547,21 +563,25 @@ of the branch symbol and to the left of the branch name:
 | --------- | ---------------------- | -------------------------------------- |
 | `(N)`     | Dark gray              | Numeric countdown until next check     |
 | `⣿…⡀`     | Dark gray              | Symbolic countdown until next check    |
-| `✓🌐︎`     | Intense green          | Current: matches upstream              |
+| ``       | Intense green          | Current: matches upstream              |
 | `⇡N`      | Black / intense yellow | Ahead: `N` commits ready to push       |
 | `…`       | Black / intense yellow | Checking: first check is running       |
 | `⟳`       | Black / intense yellow | Refreshing cached state                |
 | `⇣N`      | White / red            | Behind: `N` commits need integration   |
 | `⇡N⇣M`    | White / red            | Diverged: unique commits on both sides |
-| `☒🌐︎`     | White / red            | Remote check failed                    |
+| ``       | Intense red            | Remote check failed                    |
 
 The `⟳` indicator can precede the last known state while YAFP refreshes it,
-for example `⟳✓🌐︎` or `⟳⇣2`. Warning expansions and compact indicators use black
-text on an intense yellow background. Error expansions and compact indicators use
-intense white text on a red background. `YAFP_DARKC` selects the dark or bright
+for example `⟳` or `⟳⇣2`. Warning expansions and compact indicators use black
+text on an intense yellow background. Error expansions and behind/diverged
+indicators use intense white text on a red background. The compact connectivity
+icons always use transparent backgrounds: `` (`U+F1EB`) is intense green and
+`` (`U+F072`) is intense red, including connection announcements and
+acknowledged errors. Their previous glyphs remain commented in the code.
+`YAFP_DARKC` selects the dark or bright
 red background variant without changing that severity contract. When the
 remote check fails, YAFP displays
-`( ☒ REMOTE CHECK FAILED )` centered above the compact `☒🌐︎` indicator. The
+`( ☒ REMOTE CHECK FAILED )` centered above the compact `` indicator. The
 same expansion layout applies to ahead, behind, and diverged messages. All
 expansions, including staged-change messages, use `( MESSAGE )`, with one
 space after `(` and before `)`.
@@ -590,15 +610,14 @@ background above the compact remote indicator.
 Green banners use exact RGB `#008000` with white `#FFFFFF` text; yellow
 banners use `#FFFF00` with black text in Bash and PowerShell. These banners
 use ANSI true color so a customized terminal palette cannot change their tones.
-When that indicator is `✓🌐︎`,
-it uses the same transition colors for that prompt. On later prompts, `✓🌐︎`
-returns to intense green text on a transparent background. The connection
+The compact `` keeps intense green text on a transparent background during
+the announcement and on later prompts. The connection
 expansion appears once per offline-to-online transition; reloading YAFP does
 not duplicate the current state. If the recovered result is ahead, behind, or
 diverged, the connection expansion takes precedence for one prompt and the
 repository-state expansion returns on the next prompt.
 
-The offline compact indicator is `☒🌐︎`.
+The offline compact indicator is ``.
 
 The cache tracks both the local commit and the upstream tracking commit. A
 successful push therefore invalidates an outdated `Ahead` result immediately,
@@ -609,9 +628,9 @@ The detailed `yafp-status` report uses the same severity colors: current is
 intense green; ahead, checking, and refreshing are intense yellow; and behind,
 diverged, and remote-check errors are intense red.
 
-For example, ` (250) ⇡1 master` means that the local branch is one commit
+For example, ` (250) ⇡1 master` means that the local branch is one commit
 ahead and the next remote check will run in 250 seconds. When the countdown
-reaches zero, the display can temporarily become ` (0) ⟳⇡1 master` while the
+reaches zero, the display can temporarily become ` (0) ⟳⇡1 master` while the
 background refresh completes.
 
 A successful `git push`, `git fetch`, or `git pull` bypasses the remaining
@@ -709,8 +728,8 @@ error even before its cache interval expires. Checks from restricted shells
 can write failures into the same repository cache used by your terminal.
 
 After a remote check fails, use `yafp-ack` to acknowledge the current alert. The
-`( ☒ REMOTE CHECK FAILED )` expansion then stays hidden and the compact
-`☒🌐︎` changes to intense red text on a transparent background. A successful
+`( ☒ REMOTE CHECK FAILED )` expansion then stays hidden while the compact
+`` remains intense red on a transparent background. A successful
 remote check resets the acknowledgement, so a later remote-check failure displays
 the expansion again. Outside a remote error state, `yafp-ack` leaves
 the prompt unchanged.
@@ -1236,6 +1255,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-02 00:29:35 🪟 NDEV-DPC-02 |
+📆 2026-11-02 01:58:54 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6.1 Sol High & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

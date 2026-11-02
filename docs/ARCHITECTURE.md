@@ -189,7 +189,7 @@ foreground:
 - `yafp-status` reads the same cached context for an exact, on-demand timer
   report, while `yafp-refresh` requests a background refresh without blocking.
 - `yafp-ack` acknowledges the current remote-check failure for the session. It
-  suppresses the error expansion and changes the compact indicator to intense
+  suppresses the error expansion and keeps the compact indicator intense
   red on a transparent background until a successful check resets it.
 - The refreshing state remains visible on every render while the background
   worker or its cross-process lock is active.
@@ -214,7 +214,7 @@ banner. Staging preserves it; the first commit clears it. Neither local
 warning starts a worker. Bash and zsh invalidate a cached non-repository
 when a `.git` directory appears in the current directory, using a built-in
 filesystem check.
-The error state renders `☒🌐︎` as its compact indicator and the
+The error state renders `` as its compact indicator and the
 `( ☒ REMOTE CHECK FAILED )` expansion in all three shells. This
 state covers fetch and reference-comparison failures; it does not establish
 that the internet is unavailable. Cache files are shared by shells using the
@@ -258,15 +258,20 @@ width of prompt symbols.
 The first successful remote check and each later offline-to-online transition
 set a one-render announcement. It displays
 `( ✓ INTERNET CONNECTION )` with intense white text on a normal green
-background and uses that same transition style for a compact `✓🌐︎`. Later
-renders restore the normal intense-green foreground and transparent background.
+background. The compact `` remains intense green on a transparent background
+during that announcement and on subsequent renders.
 The announcement takes precedence over any repository-state expansion for that
 one prompt. Cached success from before the session does not trigger the initial
 announcement, and reloads preserve the current connectivity state.
-Bash, zsh, and PowerShell render the compact current-state `✓🌐︎` in intense green.
+Bash, zsh, and PowerShell use Nerd Font icons `` (`U+F1EB`) for successful
+remote checks and `` (`U+F072`) for failures. Old indicators remain commented
+in their rendering code. Each icon occupies one cell for banner alignment.
 Expansions and compact prompt indicators share one severity contract: warnings
-use black text on an intense yellow background, while errors use intense white
-text on a red background. The warning background remains intense for contrast,
+use black text on an intense yellow background, while error banners and
+behind/diverged counters use intense white
+text on a red background. The compact error icon `` always uses intense red
+text on a transparent background, before and after acknowledgement. The
+warning background remains intense for contrast,
 while `YAFP_DARKC` selects the dark or bright red error background. The
 detailed `yafp-status` report retains foreground-only severity colors.
 
@@ -303,7 +308,7 @@ Bash/zsh use `yafp_ctx_resources` in their general host renderer.
 Presentation attaches `↦[resources]` directly to the hostname in every theme,
 before the path or other host metadata. The old standalone resource position
 is removed. `YAFP_RESOURCE_LABEL_STYLE` selects `letters`
-(`C/R/S/D`, default) or `unicode` (`⚙/▦/⇄/◉`). The display order is CPU, RAM,
+(`C/R/S/D`, default) or `unicode` (`/▦//`). The display order is CPU, RAM,
 swap, and disk: swap sits between RAM and disk in every mode and theme. The
 collection and cache order is unchanged. `YAFP_RESOURCE_VALUE_STYLE` selects
 `percent` (default) or `symbols`. These options are independent, and invalid
@@ -339,7 +344,7 @@ runs. Timed summaries append it directly to the age, such as `17s~`; the prompt
 appends it directly to the final resource token. While the first sample is
 pending, context supplies gray loading tokens for CPU, RAM, swap, and disk,
 using the configured labels and separator. The prompt displays
-`↦[⚙⟳▦⟳⇄⟳◉⟳]` in Unicode + symbols mode, without a trailing `~`.
+`↦[⟳▦⟳⟳⟳]` in Unicode + symbols mode, without a trailing `~`.
 Pending diagnostic text is
 `Resources: waiting for sample~`, and missing samples report
 `Resources: no valid sample`. Diagnostics and test output use English; `N/A`
@@ -431,7 +436,7 @@ existing color, including warnings, errors, staged counts, and the connection
 announcement. The closing bracket restores the frame style.
 
 The remote renderer groups countdown, refresh marker, and status without inner
-spaces: `↦[⣦✓🌐︎]` or `↦[(175)✓🌐︎]`. All remote states share that wrapper;
+spaces: `↦[⣦]` or `↦[(175)]`. All remote states share that wrapper;
 an empty context emits nothing. The frame is attached directly to the preceding
 Git marker, without a leading space; one trailing space separates the branch.
 Unix themes own this trailing separator, and PowerShell emits it in the remote
@@ -468,6 +473,24 @@ $settings = './.PSScriptAnalyzerSettings.psd1'
 Invoke-ScriptAnalyzer -Path . -Recurse -Settings $settings `
     -SuppressedOnly
 ```
+
+## OS and repository glyphs
+
+OS indicators use Font Awesome glyphs supplied by Nerd Fonts: macOS ``
+(`U+F179`), Windows `` (`U+F17A`), and Linux `` (`U+F17C`). Unix server
+and client detection shares this mapping, including Linux distributions and
+Windows-backed client composites. PowerShell themes use the Windows glyph
+where an OS indicator already exists.
+
+Git logo `` (`U+F1D3`) replaces the minimal/light Git marker and the
+repository-name prefix in default. Branch separators, remote origin symbols,
+and counters retain their semantics. Old assignments remain commented beside
+their replacements. These glyphs use existing colors and width measurement;
+rendering adds no font probing or external process. Existing directory markers
+use `` (`U+F07C`); current timestamp markers use `` (`U+F017`) across themes.
+Their replaced assignments remain commented in the engines and themes.
+The terminal's local Nerd
+Font must contain the glyphs, including when displaying a remote shell.
 
 ## Theme contract
 
@@ -581,6 +604,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-02 00:29:35 🪟 NDEV-DPC-02 |
+📆 2026-11-02 01:58:54 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6.1 Sol High & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

@@ -49,13 +49,13 @@ try {
                 $git.RemoteStatus.State = 'current'; $git.RemoteStatus.RefreshIn = 175
                 $out = (@(Write-YafpGitRemoteStatus -Git $git 6>&1) | ForEach-Object { "$_" }) -join ''
                 $out = $out -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
-                $expected = if ($style -eq 'symbols') { '↦[⣦✓🌐︎]' } else { '↦[(175)✓🌐︎]' }
+                $expected = if ($style -eq 'symbols') { '↦[⣦]' } else { '↦[(175)]' }
                 if ($out.TrimEnd() -ne $expected) { throw "Remote frame mismatch: $theme/$style/$out" }
             }
             $git.RemoteStatus.RefreshIn = $null
             foreach ($case in @(
                 @('no-commits', '○0'), @('no-upstream', '⇡?'), @('checking', '…'),
-                @('ahead', '⇡2'), @('behind', '⇣3'), @('diverged', '⇡2⇣3'), @('error', '☒🌐︎')
+                @('ahead', '⇡2'), @('behind', '⇣3'), @('diverged', '⇡2⇣3'), @('error', '')
             )) {
                 $git.RemoteStatus.State = $case[0]
                 $out = (@(Write-YafpGitRemoteStatus -Git $git 6>&1) | ForEach-Object { "$_" }) -join ''
@@ -74,7 +74,11 @@ try {
             $git.RemoteStatus.State = 'current'; $git.RemoteStatus.RefreshIn = 175
             $out = (@(Write-YafpTheme -Context $context 6>&1) | ForEach-Object { "$_" }) -join ''
             $out = $out -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
-            $gitIndicator = if ($theme -eq 'default') { 'ᚼ' } else { '' }
+            if (-not $out.Contains('')) { throw "Git logo missing: $theme" }
+            if ($theme -ne 'default' -and (-not $out.Contains(' ') -or $out.Contains('🪟'))) {
+                throw "Windows font glyph missing: $theme"
+            }
+            $gitIndicator = if ($theme -eq 'default') { 'ᚼ' } else { '' }
             if (-not $out.Contains("$gitIndicator↦[")) { throw "Space between Git marker and remote frame: $theme" }
             if ([regex]::Matches($out, '↦\[').Count -ne 2 -or $out.Contains('↦[↦[')) {
                 throw "Missing or nested Git frames: $theme/$out"
@@ -97,7 +101,7 @@ try {
                         throw "Frame color mismatch: $theme/$dark"
                     }
                 }
-                foreach ($case in @(@('✓🌐︎', 'Green'), @('-1', 'Red'), @('±2', 'Yellow'), @('+3', 'Cyan'))) {
+                foreach ($case in @(@('', 'Green'), @('-1', 'Red'), @('±2', 'Yellow'), @('+3', 'Cyan'))) {
                     $token = @($script:frameWrites | Where-Object Text -EQ $case[0])
                     if ($token.Count -ne 1 -or $token[0].Foreground -ne $case[1] -or $null -ne $token[0].Background) {
                         throw "Token color changed: $($case[0])"

@@ -29,7 +29,8 @@ function script:Write-YafpTheme {
     Write-YafpStagedExpansionRow -Context $Context
     Write-YafpRemoteExpansionRow -Context $Context
 
-    Write-YafpText -Text '🪟 ' -ForegroundColor White `
+    # Anterior: Write-YafpText -Text '🪟 ' -ForegroundColor White
+    Write-YafpText -Text ' ' -ForegroundColor White `
         -BackgroundColor $null -NoNewline
     $userColor = if ($Context.IsAdmin) { 'Red' } else { 'Cyan' }
     Write-YafpText -Text $Context.User -ForegroundColor $userColor `
@@ -42,13 +43,16 @@ function script:Write-YafpTheme {
     Write-YafpText -Text $Context.Computer -ForegroundColor $hostColor `
         -BackgroundColor $null -NoNewline
     Write-YafpResources -Context $Context
-    Write-Host ' ⌂ ' -ForegroundColor White -NoNewline
+    # Anterior: Write-Host ' ⌂ ' -ForegroundColor White -NoNewline
+    Write-Host '  ' -ForegroundColor White -NoNewline
     Write-YafpText -Text $Context.Path -ForegroundColor Yellow `
         -BackgroundColor $null -NoNewline
 
     if ($Context.Git) {
         $remoteSymbol = if ($Context.Git.Remote -eq 'remote') { '↯' } else { '⇣' }
-        Write-Host ' ' -ForegroundColor White -NoNewline
+        # Anterior: Write-Host ' ' -ForegroundColor White -NoNewline
+        # Anterior (cuadrado): Write-Host ' ' -ForegroundColor White -NoNewline
+        Write-Host ' ' -ForegroundColor White -NoNewline
         Write-YafpGitRemoteStatus -Git $Context.Git
         Write-YafpText -Text $Context.Git.Branch -ForegroundColor Blue `
             -BackgroundColor $null -NoNewline
@@ -75,7 +79,8 @@ function script:Write-YafpTheme {
     }
 
     if ($Context.ClockEnabled) {
-        Write-Host ' ⧖ ' -ForegroundColor White -NoNewline
+        # Anterior: Write-Host ' ⧖ ' -ForegroundColor White -NoNewline
+        Write-Host '  ' -ForegroundColor White -NoNewline
         Write-YafpText -Text $Context.Timestamp -ForegroundColor White `
             -BackgroundColor $null -NoNewline
     }

@@ -59,7 +59,8 @@ theme_render_general_block() {
         "$cSeparator ◎ "
         "$cCountryPS1${country_text//\%/%%}"
         "$cNormalPS1"
-        "$cSeparator ⌂ "
+        # Anterior: "$cSeparator ⌂ "
+        "$cSeparator  "
         "$cDirPS1%~"
         "$cSeparator"
     )
@@ -145,7 +146,8 @@ theme_render_timestamp() {
     fi
 
     local parts=(
-        "$cSeparator $YAFP_CLOCK_EMOJI "
+        # Anterior: "$cSeparator $YAFP_CLOCK_EMOJI "
+        "$cSeparator  "
         "${cTimestamp}$yafp_ctx_timestamp"
         "$cSeparator $day"
     )

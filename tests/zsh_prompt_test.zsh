@@ -127,7 +127,7 @@ assert_contains "$out" '📦4' 'narrow compact indicator retained'
 yafp_ctx_git_remote_state=error
 YAFP_REMOTE_OFFLINE_ACKNOWLEDGED=1
 out="$(theme_render_git_remote_status)"
-assert_contains "$out" '☒🌐︎' 'acknowledged compact error'
+assert_contains "$out" '' 'acknowledged compact error'
 [[ "$out" != *'REMOTE CHECK FAILED'* ]] || fail 'acknowledged banner hidden'
 
 YAFP_COMMANDS_TOTAL=0 YAFP_COMMANDS_SUCCEEDED=0 YAFP_COMMANDS_FAILED=0

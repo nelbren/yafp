@@ -61,7 +61,7 @@ foreach ($line in Get-Content (Join-Path $PSScriptRoot 'resource_display_cases.t
             $global:YAFP_RESOURCE_LABEL_STYLE = $labels
             $global:YAFP_RESOURCE_VALUE_STYLE = $values
             $label = if ($labels -eq 'letters') { $kind }
-                else { @{ R = '▦'; S = '⇄'; C = '⚙'; D = '◉' }[$kind] }
+                else { @{ R = '▦'; S = ''; C = ''; D = '' }[$kind] }
             $expected = if ($values -eq 'percent' -and $null -ne $number) { "$label$value%" }
                 else { "$label$cell" }
             $segment = Format-YafpResourceSegment -Kind $kind -Value $number
@@ -103,7 +103,7 @@ try {
             $global:YAFP_RESOURCE_VALUE_STYLE = $values
             $pending = Get-YafpResourceContext
             $expected = if ($labels -eq 'letters') { 'C⟳ R⟳ S⟳ D⟳' }
-                elseif ($values -eq 'symbols') { '⚙⟳▦⟳⇄⟳◉⟳' } else { '⚙⟳ ▦⟳ ⇄⟳ ◉⟳' }
+                elseif ($values -eq 'symbols') { '⟳▦⟳⟳⟳' } else { '⟳ ▦⟳ ⟳ ⟳' }
             $output = (@(Write-YafpResources -Context ([pscustomobject]@{ Resources = $pending }) 6>&1) |
                 ForEach-Object { "$_" }) -join ''
             if ($output -ne "↦[$expected]" -or $pending.Suffix -ne '' -or
@@ -155,9 +155,9 @@ try {
         Import-YafpTheme
         foreach ($case in @(
             @{ Labels = 'letters'; Values = 'percent'; Text = 'C25% R50% S50% D75%' }
-            @{ Labels = 'unicode'; Values = 'percent'; Text = '⚙25% ▦50% ⇄50% ◉75%' }
+            @{ Labels = 'unicode'; Values = 'percent'; Text = '25% ▦50% 50% 75%' }
             @{ Labels = 'letters'; Values = 'symbols'; Text = 'C⣄ R⣦ S⣦ D⣷' }
-            @{ Labels = 'unicode'; Values = 'symbols'; Text = '⚙⣄▦⣦⇄⣦◉⣷' }
+            @{ Labels = 'unicode'; Values = 'symbols'; Text = '⣄▦⣦⣦⣷' }
         )) {
             $global:YAFP_RESOURCE_LABEL_STYLE = $case.Labels
             $global:YAFP_RESOURCE_VALUE_STYLE = $case.Values

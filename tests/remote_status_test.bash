@@ -692,11 +692,11 @@ indicator="$(theme_render_git_remote_status)"
 set -u
 assert_eq '\n' "$warning" 'connection announcement row'
 case "$indicator" in
-    *'( ✓ INTERNET CONNECTION )'*'✓🌐︎'*) ;;
+    *'( ✓ INTERNET CONNECTION )'*''*) ;;
     *) fail 'connection announcement was not rendered' ;;
 esac
 case "$indicator" in
-    *"$cRemoteConnection"'( ✓ INTERNET CONNECTION )'*"$(ps1_wrap "$cRemoteConnection")"'✓🌐︎'*) ;;
+    *"$cRemoteConnection"'( ✓ INTERNET CONNECTION )'*"$(ps1_wrap "$cRemoteOk")"''*) ;;
     *) fail 'connection transition is not intense white on normal green' ;;
 esac
 yafp_ctx_git_remote_connection_announcement=0
@@ -704,11 +704,11 @@ set +u
 indicator="$(theme_render_git_remote_status)"
 set -u
 case "$indicator" in
-    *'✓🌐︎'*) ;;
+    *''*) ;;
     *) fail 'current indicator was not rendered' ;;
 esac
 case "$indicator" in
-    *"$(ps1_wrap "$cRemoteOk")"✓🌐︎*) ;;
+    *"$(ps1_wrap "$cRemoteOk")"*) ;;
     *) fail 'current indicator is not intense green' ;;
 esac
 
@@ -762,8 +762,12 @@ indicator="$(theme_render_git_remote_status)"
 warning="$(theme_reserve_remote_expansion_row)"
 set -u
 case "$indicator" in
-    *'☒🌐︎'*) ;;
+    *''*) ;;
     *) fail 'offline indicator was not rendered' ;;
+esac
+case "$indicator" in
+    *"$(ps1_wrap "$cRemoteAcknowledged")"''*) ;;
+    *) fail 'Unacknowledged offline icon must be intense red on transparent' ;;
 esac
 case "$warning" in
     '\n') ;;
@@ -771,7 +775,7 @@ case "$warning" in
 esac
 assert_eq '\n' "${warning: -2}" 'offline warning line break'
 case "$indicator" in
-    *'( ☒ REMOTE CHECK FAILED )'*'☒🌐︎'*) ;;
+    *'( ☒ REMOTE CHECK FAILED )'*''*) ;;
     *) fail 'offline expansion was not rendered' ;;
 esac
 case "$indicator" in
@@ -789,7 +793,7 @@ case "$indicator" in
     *'( ☒ REMOTE CHECK FAILED )'*)
         fail 'acknowledged offline banner was still rendered'
         ;;
-    *"$(ps1_wrap "$cRemoteAcknowledged")"'☒🌐︎'*) ;;
+    *"$(ps1_wrap "$cRemoteAcknowledged")"''*) ;;
     *) fail 'acknowledged offline indicator is not intense red on transparent' ;;
 esac
 YAFP_REMOTE_OFFLINE_ACKNOWLEDGED=0
@@ -864,7 +868,7 @@ done
 [ ! -d "${cache_file}.lock" ] || fail 'failed refresh did not finish'
 yafp_remote_context "$TEST_ROOT/local" main
 assert_eq error "$yafp_ctx_git_remote_state" 'invalid remote is a check error'
-assert_eq '☒🌐︎ Remote check failed' "$(yafp_remote_state_label error 0 0)" \
+assert_eq ' Remote check failed' "$(yafp_remote_state_label error 0 0)" \
     'fetch failure does not diagnose internet connectivity'
 git -C "$TEST_ROOT/local" remote set-url origin "$TEST_ROOT/origin.git"
 yafp-refresh

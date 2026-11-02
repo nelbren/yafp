@@ -126,7 +126,8 @@ YAFP_COLOR_GIT_BRANCH_FG="white"
 # Symbols and labels
 YAFP_SYMBOL_ON="🔛"
 YAFP_SYMBOL_END="🔚"
-YAFP_SYMBOL_SOON="🔜"
+# YAFP_SYMBOL_SOON="🔜"
+YAFP_SYMBOL_SOON=""
 
 YAFP_SYMBOL_CMD="🚀"
 YAFP_SYMBOL_OK="✅"
@@ -137,8 +138,12 @@ YAFP_SYMBOL_MORNING="🌅"
 YAFP_SYMBOL_AFTERNOON="🌇"
 YAFP_SYMBOL_NIGHT="🌃"
 
-YAFP_SYMBOL_GIT_EMOJI=""
-YAFP_SYMBOL_GIT_REPO="💾"
+# YAFP_SYMBOL_GIT_EMOJI=""
+# Anterior (cuadrado): YAFP_SYMBOL_GIT_EMOJI=""
+YAFP_SYMBOL_GIT_EMOJI=""
+# YAFP_SYMBOL_GIT_REPO="💾"
+# Anterior (cuadrado): YAFP_SYMBOL_GIT_REPO=""
+YAFP_SYMBOL_GIT_REPO=""
 YAFP_SYMBOL_GIT_DIR="💻"
 YAFP_SYMBOL_GIT_SEP="ᚼ"
 YAFP_SYMBOL_REMOTE="⚡"
@@ -696,7 +701,7 @@ theme_render_remote_expansion() {
             diverged)
                 indicator_width=$((2 + ${#yafp_ctx_git_ahead} + ${#yafp_ctx_git_behind}))
                 ;;
-            current) indicator_width=3 ;;
+            current) indicator_width=1 ;;
             *) return 0 ;;
         esac
     else
@@ -767,7 +772,7 @@ theme_render_remote_expansion() {
             [ "${YAFP_REMOTE_OFFLINE_ACKNOWLEDGED:-0}" -eq 0 ] || return 0
             message="☒ REMOTE CHECK FAILED"
             color="$cRemoteProblem"
-            indicator_width=3
+            indicator_width=1
             ;;
         *) return 0 ;;
         esac
@@ -826,12 +831,9 @@ theme_render_git_remote_status() {
 
     case "${yafp_ctx_git_remote_state:-}" in
         current)
-            if [ "${yafp_ctx_git_remote_connection_announcement:-0}" -eq 1 ]; then
-                color="$cRemoteConnection"
-            else
-                color="$cRemoteOk"
-            fi
-            indicator="✓🌐︎"
+            color="$cRemoteOk"
+            # indicator="✓🌐︎"
+            indicator=""
             ;;
         no-commits)
             color="$cRemotePending"
@@ -858,12 +860,9 @@ theme_render_git_remote_status() {
             indicator="…"
             ;;
         error)
-            if [ "${YAFP_REMOTE_OFFLINE_ACKNOWLEDGED:-0}" -eq 1 ]; then
-                color="$cRemoteAcknowledged"
-            else
-                color="$cRemoteProblem"
-            fi
-            indicator="☒🌐︎"
+            color="$cRemoteAcknowledged"
+            # indicator="☒🌐︎"
+            indicator=""
             ;;
         *)
             if [ -n "$out" ]; then
@@ -1320,42 +1319,23 @@ ps1_wrap() {
 set_SERVER_OS_EMOJI() {
     emulate -L zsh -o KSH_ARRAYS
     local platform
-    local os_id
     local emoji
 
     platform=$(uname -s)
-    os_id=""
     emoji="❓"
 
     case "$platform" in
         Darwin)
-            emoji=""
+            # emoji=""
+            emoji=""
             ;;
         Linux)
-            if [ -r /etc/os-release ]; then
-                while IFS='=' read -r key value; do
-                    if [ "$key" = "ID" ]; then
-                        os_id=${value#\"}
-                        os_id=${os_id%\"}
-                        break
-                    fi
-                done < /etc/os-release
-            fi
-
-            case "$os_id" in
-                kali)
-                    emoji="㉿"
-                    ;;
-                ubuntu|debian)
-                    emoji=""
-                    ;;
-                *)
-                    emoji="🐧"
-                    ;;
-            esac
+            # Anteriores: emoji="㉿" (Kali), emoji="" (Ubuntu/Debian), emoji="🐧".
+            emoji=""
             ;;
         MINGW*|MSYS*|CYGWIN*)
-            emoji="🪟"
+            # emoji="🪟"
+            emoji=""
             ;;
         *)
             emoji="❓"
@@ -1371,12 +1351,18 @@ set_CLIENT_OS_EMOJI() {
     local emoji
 
     case "$CLIENT_OS" in
-        WINDOWS) emoji="🪟" ;;
-        MACOS)   emoji="" ;;
-        LINUX)   emoji="🐧" ;;
-        WSL2)    emoji="🐧▶🪟" ;;
-        CYGWIN)  emoji="⬘▶🪟" ;;
-        GITBASH) emoji="⬙▶🪟" ;;
+        # WINDOWS) emoji="🪟" ;;
+        WINDOWS) emoji="" ;;
+        # MACOS)   emoji="" ;;
+        MACOS)   emoji="" ;;
+        # LINUX)   emoji="🐧" ;;
+        LINUX)   emoji="" ;;
+        # WSL2)    emoji="🐧▶🪟" ;;
+        WSL2)    emoji="▶" ;;
+        # CYGWIN)  emoji="⬘▶🪟" ;;
+        CYGWIN)  emoji="⬘▶" ;;
+        # GITBASH) emoji="⬙▶🪟" ;;
+        GITBASH) emoji="⬙▶" ;;
         *)       emoji="❓" ;;
     esac
 
@@ -1943,7 +1929,8 @@ yafp_remote_state_label() {
         behind) printf '⇣%s Behind' "$behind" ;;
         diverged) printf '⇡%s⇣%s Diverged' "$ahead" "$behind" ;;
         checking) printf '%s' '… Checking' ;;
-        error) printf '%s' '☒🌐︎ Remote check failed' ;;
+        # Anterior: ☒🌐︎ Remote check failed
+        error) printf '%s' ' Remote check failed' ;;
         *) printf '%s' '— unavailable' ;;
     esac
 }

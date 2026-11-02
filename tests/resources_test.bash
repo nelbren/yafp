@@ -84,8 +84,8 @@ for labels in letters unicode; do
         yafp_resources_pending
         expected='C⟳ R⟳ S⟳ D⟳'
         if [ "$labels" = unicode ]; then
-            expected='⚙⟳ ▦⟳ ⇄⟳ ◉⟳'
-            [ "$values" != symbols ] || expected='⚙⟳▦⟳⇄⟳◉⟳'
+            expected='⟳ ▦⟳ ⟳ ⟳'
+            [ "$values" != symbols ] || expected='⟳▦⟳⟳⟳'
         fi
         out="$(theme_render_resources)"
         plain_prompt
@@ -120,9 +120,9 @@ for theme in default minimal light; do
             YAFP_RESOURCE_LABEL_STYLE=$labels YAFP_RESOURCE_VALUE_STYLE=$values
             case "$labels/$values" in
                 letters/percent) expected='C25% R50% S50% D75%' ;;
-                unicode/percent) expected='⚙25% ▦50% ⇄50% ◉75%' ;;
+                unicode/percent) expected='25% ▦50% 50% 75%' ;;
                 letters/symbols) expected='C⣄ R⣦ S⣦ D⣷' ;;
-                unicode/symbols) expected='⚙⣄▦⣦⇄⣦◉⣷' ;;
+                unicode/symbols) expected='⣄▦⣦⣦⣷' ;;
             esac
             yafp_resources_context
             out="$(theme_render_main_block)"
@@ -200,9 +200,9 @@ YAFP_RESOURCE_LABEL_STYLE=letters YAFP_RESOURCE_VALUE_STYLE=percent
 while IFS='|' read -r kind value color cell; do
     case "$kind" in
         R) index=1; unicode_label='▦' ;;
-        S) index=2; unicode_label='⇄' ;;
-        C) index=0; unicode_label='⚙' ;;
-        D) index=3; unicode_label='◉' ;;
+        S) index=2; unicode_label='' ;;
+        C) index=0; unicode_label='' ;;
+        D) index=3; unicode_label='' ;;
     esac
     case "$color" in Green) code=92 ;; Yellow) code=93 ;; Red) code=91 ;; DarkGray) code=90 ;; esac
     for labels in letters unicode; do

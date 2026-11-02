@@ -99,7 +99,8 @@ YAFP_SYMBOL_GIT_DELETE_EMOJI=""
 YAFP_SYMBOL_GIT_CHANGE_EMOJI=""
 YAFP_SYMBOL_GIT_NEW_EMOJI=""
 
-YAFP_CLOCK_EMOJI="⧖"
+# Anterior: YAFP_CLOCK_EMOJI="⧖"
+YAFP_CLOCK_EMOJI=""
 YAFP_SYMBOL_ERROR="☒"
 YAFP_SYMBOL_OK="✓"
 
@@ -146,7 +147,8 @@ theme_render_general_block() {
         theme_render_resources
     fi
     parts=(
-        "$cSeparator ⌂ "
+        # Anterior: "$cSeparator ⌂ "
+        "$cSeparator  "
         "$cDirPS1\\w"
         "$cSeparator"
     )

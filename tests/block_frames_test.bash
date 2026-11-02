@@ -25,6 +25,28 @@ plain() {
     yafp_strip_terminal_styles "$out"
     out=$yafp_plain_text
 }
+# OS symbols are identical across distributions and terminal platforms.
+uname() { printf '%s\n' "$test_platform"; }
+for test_platform in Darwin Linux MINGW64_NT MSYS_NT CYGWIN_NT; do
+    case "$test_platform" in Darwin) expected_os='' ;; Linux) expected_os='' ;; *) expected_os='' ;; esac
+    set_SERVER_OS_EMOJI
+    [ "$SERVER_OS_EMOJI" = "$expected_os" ] || fail "Server OS glyph: $test_platform"
+done
+unset -f uname
+set_SERVER_OS_EMOJI
+saved_client_os=${CLIENT_OS:-}
+for CLIENT_OS in WINDOWS MACOS LINUX WSL2 CYGWIN GITBASH; do
+    case "$CLIENT_OS" in
+        WINDOWS) expected_os='' ;; MACOS) expected_os='' ;; LINUX) expected_os='' ;;
+        WSL2) expected_os='▶' ;; CYGWIN) expected_os='⬘▶' ;; GITBASH) expected_os='⬙▶' ;;
+    esac
+    set_CLIENT_OS_EMOJI
+    [ "$CLIENT_OS_EMOJI" = "$expected_os" ] || fail "Client OS glyph: $CLIENT_OS"
+done
+CLIENT_OS=$saved_client_os
+set_CLIENT_OS_EMOJI
+[ "$YAFP_SYMBOL_GIT_EMOJI/$YAFP_SYMBOL_GIT_REPO" = '/' ] || fail 'Git logo glyphs'
+
 yafp_ctx_git_has_repo=1 yafp_ctx_git_remote=remote yafp_ctx_git_branch=main
 yafp_ctx_git_repo=fixture yafp_ctx_git_last_ts='2026-10-29 12:00:00'
 yafp_ctx_git_ahead=2 yafp_ctx_git_behind=3 yafp_ctx_git_upstream=origin/main
@@ -36,6 +58,9 @@ for dark in 0 1; do
         YAFP_THEME=$theme
         load_theme
         theme_build
+        yafp_ctx_timestamp='2026-11-02 01:24:59'
+        out="$(theme_render_timestamp)"
+        contains "$out" '' "Clock glyph in $theme"
         frame=$cSeparator
         [ "$theme" != default ] || frame=$cGit
         for style in numeric symbols; do
@@ -44,10 +69,10 @@ for dark in 0 1; do
             out="$(theme_render_git_remote_status)"
             contains "$out" "$(ps1_wrap "$frame")↦[" 'Git frame opening style'
             contains "$out" "$(ps1_wrap "$frame")]" 'Git frame closing style'
-            contains "$out" "$(ps1_wrap "$cRemoteOk")✓🌐︎" 'Existing success color'
+            contains "$out" "$(ps1_wrap "$cRemoteOk")" 'Existing success color'
             plain
-            expected='↦[⣦✓🌐︎]'
-            [ "$style" != numeric ] || expected='↦[(175)✓🌐︎]'
+            expected='↦[⣦]'
+            [ "$style" != numeric ] || expected='↦[(175)]'
             [ "$out" = "$expected" ] || fail "Compact remote block: $theme/$style/$out"
         done
         # Narrow terminals suppress banners while retaining every compact state.
@@ -58,7 +83,7 @@ for dark in 0 1; do
             case "$state" in
                 no-commits) indicator='○0' ;; no-upstream) indicator='⇡?' ;;
                 checking) indicator='…' ;; ahead) indicator='⇡2' ;;
-                behind) indicator='⇣3' ;; diverged) indicator='⇡2⇣3' ;; error) indicator='☒🌐︎' ;;
+                behind) indicator='⇣3' ;; diverged) indicator='⇡2⇣3' ;; error) indicator='' ;;
             esac
             out="$(theme_render_git_remote_status)"
             plain
@@ -85,6 +110,7 @@ for dark in 0 1; do
         plain
         [ "$out" = "↦[⣦${YAFP_REMOTE_EXPANSION_MARKER}⇣3]" ] || fail 'Remote anchor must include the new frame'
         out="$(YAFP_MEASURE_EXPANSIONS=1 theme_render_git_block)"
+        contains "$out" '' "Git logo in $theme"
         plain
         count=0 rest=$out
         while :; do

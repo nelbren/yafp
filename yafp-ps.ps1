@@ -807,7 +807,8 @@ function Format-YafpRemoteStateLabel {
         'behind' { "⇣$Behind Behind" }
         'diverged' { "⇡$Ahead⇣$Behind Diverged" }
         'checking' { '… Checking' }
-        'error' { '☒🌐︎ Remote check failed' }
+        # Anterior: ☒🌐︎ Remote check failed
+        'error' { ' Remote check failed' }
         default { '— unavailable' }
     }
 }
@@ -1250,19 +1251,17 @@ function Write-YafpGitRemoteStatus {
     if (-not $remote) {
         return
     }
-    $announceConnection = $remote.PSObject.Properties[
-        'ConnectionAnnouncement'
-    ] -and $remote.ConnectionAnnouncement
-
     $text = switch ($remote.State) {
         'no-commits' { '○0' }
         'no-upstream' { '⇡?' }
-        'current' { '✓🌐︎' }
+        # Anterior: 'current' { '✓🌐︎' }
+        'current' { '' }
         'ahead' { "⇡$($remote.Ahead)" }
         'behind' { "⇣$($remote.Behind)" }
         'diverged' { "⇡$($remote.Ahead)⇣$($remote.Behind)" }
         'checking' { '…' }
-        'error' { '☒🌐︎' }
+        # Anterior: 'error' { '☒🌐︎' }
+        'error' { '' }
         default { '' }
     }
 
@@ -1303,22 +1302,15 @@ function Write-YafpGitRemoteStatus {
     Write-YafpRemoteExpansion -Remote $remote -IndicatorText $text
 
     if ($remote.State -eq 'current') {
-        if ($announceConnection) {
-            Write-YafpText -Text $text -ForegroundColor White `
-                -BackgroundColor DarkGreen -NoNewline
-        }
-        else {
-            Write-YafpText -Text $text -ForegroundColor Green `
-                -BackgroundColor $null -NoNewline
-        }
+        Write-YafpText -Text $text -ForegroundColor Green `
+            -BackgroundColor $null -NoNewline
     }
     elseif ($remote.State -in @('no-commits', 'no-upstream', 'ahead', 'checking')) {
         $style = Get-YafpSeverityStyle -Severity warning
         Write-YafpText -Text $text -ForegroundColor $style.Foreground `
             -BackgroundColor $style.Background -NoNewline
     }
-    elseif ($remote.State -eq 'error' -and
-        $script:YafpRemoteOfflineAcknowledged) {
+    elseif ($remote.State -eq 'error') {
         Write-YafpText -Text $text -ForegroundColor Red `
             -BackgroundColor $null -NoNewline
     }
@@ -1449,12 +1441,7 @@ function Write-YafpRemoteExpansion {
         'ConnectionAnnouncement'
     ] -and $Remote.ConnectionAnnouncement
     $indicatorColumn = Get-YafpCursorColumn
-    $indicatorWidth = if ($Remote.State -eq 'error') {
-        3
-    }
-    else {
-        $IndicatorText.Length
-    }
+    $indicatorWidth = $IndicatorText.Length
     $style = Get-YafpSeverityStyle -Severity error
     if ($announceConnection) {
         $message = '✓ INTERNET CONNECTION'

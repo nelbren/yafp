@@ -15,7 +15,8 @@ function script:Write-YafpTheme {
     Write-YafpRemoteExpansionRow -Context $Context
 
     $userIcon = if ($Context.IsAdmin) { '💀' } else { '👤' }
-    Write-Host "🪟 $userIcon " -ForegroundColor White -NoNewline
+    # Anterior: Write-Host "🪟 $userIcon " -ForegroundColor White -NoNewline
+    Write-Host " $userIcon " -ForegroundColor White -NoNewline
     $userColor = if ($Context.IsAdmin) { $redColorForeground } else { $cyanColorForeground }
     $userBackground = if ($Context.IsAdmin) { $redColorBackground } else { $cyanColorBackground }
     Write-YafpText -Text $Context.User -ForegroundColor $userColor `
@@ -29,14 +30,17 @@ function script:Write-YafpTheme {
     Write-YafpText -Text $Context.Computer -ForegroundColor $hostColor `
         -BackgroundColor $hostBackground -NoNewline
     Write-YafpResources -Context $Context
-    Write-Host ' ← 🖥️ LOCAL ◎ 🏠 ⌂ ' -ForegroundColor White -NoNewline
+    # Anterior: Write-Host ' ← 🖥️ LOCAL ◎ 🏠 ⌂ ' -ForegroundColor White -NoNewline
+    Write-Host ' ← 🖥️ LOCAL ◎ 🏠  ' -ForegroundColor White -NoNewline
     Write-YafpText -Text $Context.Path -ForegroundColor $yellowColorForeground `
         -BackgroundColor $yellowColorBackground -NoNewline
 
     if ($Context.Git) {
         $remoteSymbol = if ($Context.Git.Remote -eq 'remote') { '⚡' } else { '⇣' }
         Write-Host ' on ' -ForegroundColor White -NoNewline
-        Write-YafpText -Text '' `
+        # Anterior: Write-YafpText -Text ''
+        # Anterior (cuadrado): Write-YafpText -Text ''
+        Write-YafpText -Text '' `
             -ForegroundColor $blueColorForeground `
             -BackgroundColor $blueColorBackground -NoNewline
         Write-YafpGitRemoteStatus -Git $Context.Git
@@ -62,7 +66,8 @@ function script:Write-YafpTheme {
     }
 
     if ($Context.ClockEnabled) {
-        Write-Host ' ⧖ ' -ForegroundColor White -NoNewline
+        # Anterior: Write-Host ' ⧖ ' -ForegroundColor White -NoNewline
+        Write-Host '  ' -ForegroundColor White -NoNewline
         Write-YafpText -Text $Context.Timestamp -ForegroundColor White `
             -BackgroundColor $null -NoNewline
         Write-Host " $($Context.DaySymbol)" -ForegroundColor White -NoNewline

@@ -83,7 +83,8 @@ yafp_resources_pending() {
 yafp_resource_segment() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
     local index="$1" value="$2" label level warning=85 critical=95
-    local labels=(C R S D) unicode_labels=('⚙' '▦' '⇄' '◉')
+    # Anterior: unicode_labels=('⚙' '▦' '⇄' '◉')
+    local labels=(C R S D) unicode_labels=('' '▦' '' '')
     local cells=('⡀' '⣀' '⣄' '⣤' '⣦' '⣶' '⣷' '⣿')
     label="${labels[$index]}"
     if [ "${YAFP_RESOURCE_LABEL_STYLE:-letters}" = unicode ]; then

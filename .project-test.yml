@@ -140,11 +140,11 @@ suites:
   kind: integration
   stage: test
   runner: repository-script
-  entrypoint: tests/resources_test.ps1
+  entrypoint: scripts/windows/quality/resources.cmd
   profiles: [review, ci, full]
   os: [windows]
   side_effects: local
-  requires: [powershell]
+  requires: [pwsh]
   timeout_seconds: 60
 - id: codex-quota-windows
   kind: integration
@@ -160,11 +160,11 @@ suites:
   kind: integration
   stage: test
   runner: repository-script
-  entrypoint: tests/block_frames_test.ps1
+  entrypoint: scripts/windows/quality/block-frames.cmd
   profiles: [review, ci, full]
   os: [windows]
   side_effects: local
-  requires: [powershell]
+  requires: [pwsh]
   timeout_seconds: 60
 - id: startup-metrics
   kind: contract

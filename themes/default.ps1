@@ -95,7 +95,9 @@ function script:Write-YafpTheme {
 
     if ($Context.Git) {
         $remoteSymbol = if ($Context.Git.Remote -eq 'remote') { '⚡' } else { '⇣' }
-        Write-YafpText -Text "[🔛$($Context.Git.LastTimestamp)💾$($Context.Git.Repository)ᚼ" `
+        # Anterior: Write-YafpText -Text "[🔛$($Context.Git.LastTimestamp)💾$($Context.Git.Repository)ᚼ"
+        # Anterior (cuadrado): Write-YafpText -Text "[🔛$($Context.Git.LastTimestamp)$($Context.Git.Repository)ᚼ"
+        Write-YafpText -Text "[🔛$($Context.Git.LastTimestamp)$($Context.Git.Repository)ᚼ" `
             -ForegroundColor $grayColorForeground `
             -BackgroundColor $grayColorBackground -NoNewline
         Write-YafpGitRemoteStatus -Git $Context.Git
@@ -135,7 +137,8 @@ function script:Write-YafpTheme {
     }
 
     if ($Context.ClockEnabled) {
-        Write-YafpText -Text "[🔜$($Context.Timestamp)$($Context.DaySymbol)]" `
+        # Anterior: Write-YafpText -Text "[🔜$($Context.Timestamp)$($Context.DaySymbol)]"
+        Write-YafpText -Text "[$($Context.Timestamp)$($Context.DaySymbol)]" `
             -ForegroundColor $cyanColorForeground `
             -BackgroundColor $cyanColorBackground
     }
