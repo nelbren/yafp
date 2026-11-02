@@ -122,7 +122,8 @@ immediately after consumption.
 
 After fetching, ahead and behind counts are computed against the tracking
 branch. Startup distinguishes current, ahead (`⚠ REMOTE NOT UPDATED`), behind
-(`☒ OUTDATED REPOSITORY`), and diverged states, and reports local modifications.
+(`☒ OUTDATED REPOSITORY`), and diverged states, without a separate warning for
+local modifications.
 Missing Git, non-Git installations, unborn branches, detached HEAD, and missing
 upstream/remote configurations receive explicit messages. Failed remote access
 shows `☒🌐 REMOTE CHECK FAILED`, without claiming that general internet access
@@ -136,7 +137,8 @@ result before offering an update. Noninteractive or redirected sessions, test
 hook suppression, and `YAFP_UPDATE_CHECK=0` disable startup checking.
 
 Local-remotes tests cover consent, refusal, successful reload, once-per-session
-loading, current/ahead/behind/diverged and dirty states, failed access, timeout,
+loading, current/ahead/behind/diverged states independent of local edits,
+failed access, timeout,
 worktrees, detached HEAD, missing upstream, and stale results.
 
 ## Local startup counter
@@ -579,6 +581,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-02 00:15:33 🪟 NDEV-DPC-02 |
+📆 2026-11-02 00:29:35 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6.1 Sol High & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

@@ -728,7 +728,7 @@ Reloading YAFP does not repeat the startup check in the same session.
 A failed fetch displays `☒🌐 REMOTE CHECK FAILED`; remote authentication or
 configuration errors can produce the same message as an offline connection.
 
-The startup check reports current, ahead, behind, diverged, and dirty checkouts.
+The startup check reports current, ahead, behind, and diverged checkouts.
 It also explains when Git, a commit, a tracking branch, or a remote is missing,
 or when HEAD is detached. For example:
 
@@ -747,8 +747,11 @@ Update YAFP now? [y/N]
 Enter, `N`, EOF, or any answer other than `y`/`Y` leaves the checkout alone.
 Accepting runs `git pull --ff-only` in the YAFP installation and reloads the
 prompt only after success. Divergence displays both local and remote commit
-counts without offering an automatic merge. Local changes are reported and
-retained; if they conflict with an accepted update, Git refuses the pull.
+counts without offering an automatic merge. Local changes remain intact; if
+they conflict with an accepted update, Git
+refuses the pull. Startup reports remote state independently of local edits,
+without a separate `UNCOMMITTED CHANGES` line. The normal prompt still shows
+local change counters when that checkout is the current directory.
 Noninteractive and redirected-input sessions never start the check.
 
 To disable this startup check, set the environment variable before loading:
@@ -1233,6 +1236,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-02 00:15:33 🪟 NDEV-DPC-02 |
+📆 2026-11-02 00:29:35 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6.1 Sol High & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

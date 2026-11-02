@@ -3,7 +3,7 @@
 root=$1
 sample=$2
 timeout_seconds=${3:-15}
-state=missing-git ahead=0 dirty=0 behind=0 head=- branch=- upstream=- child=''
+state=missing-git ahead=0 behind=0 head=- branch=- upstream=- child=''
 # Give Git its own process group so timeout/exit cleanup also stops SSH helpers.
 set -m
 trap '[ -z "$child" ] || kill -- -"$child" 2>/dev/null || true' EXIT
@@ -43,7 +43,6 @@ if command -v git >/dev/null 2>&1; then
                     head=$(git -C "$root" rev-parse --verify HEAD 2>/dev/null) || head=-
                     behind=$(git -C "$root" rev-list --count 'HEAD..@{upstream}' 2>/dev/null) || behind=-
                     ahead=$(git -C "$root" rev-list --count '@{upstream}..HEAD' 2>/dev/null) || ahead=-
-                    [ -z "$(git -C "$root" status --porcelain 2>/dev/null)" ] || dirty=1
                     case "$behind/$ahead" in
                         *[!0-9/]*|/|/*|*/) behind=0 ahead=0 ;;
                         *) if [ "$head" != - ] && [ "$timed_out" = 0 ]; then state=ok; fi ;;
@@ -54,5 +53,5 @@ if command -v git >/dev/null 2>&1; then
     fi
     fi
 fi
-printf '%s %s %s %s %s %s %s\n' "$state" "$behind" "$head" "$branch" "$upstream" "$ahead" "$dirty" > "$sample.tmp" &&
+printf '%s %s %s %s %s %s\n' "$state" "$behind" "$head" "$branch" "$upstream" "$ahead" > "$sample.tmp" &&
     mv -f -- "$sample.tmp" "$sample"

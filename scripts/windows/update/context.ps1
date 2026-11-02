@@ -34,7 +34,6 @@ function global:Complete-YafpUpdateCheck {
     $branch = & git -C $root symbolic-ref --quiet HEAD 2>$null
     $upstream = & git -C $root rev-parse --symbolic-full-name '@{upstream}' 2>$null
     if ("$head" -ne $sample.Head -or "$branch" -ne $sample.Branch -or "$upstream" -ne $sample.Upstream) { return }
-    if ($sample.Dirty) { Write-YafpUpdateMessage -Severity warning -Text '⚠ UNCOMMITTED CHANGES: YAFP has local modifications' }
     $target = $sample.Upstream -replace '^refs/remotes/', ''
     if ($sample.Ahead -gt 0 -and $sample.Behind -gt 0) {
         Write-YafpUpdateMessage -Severity error -Text "☒ DIVERGED REPOSITORY: $($sample.Ahead) local commit(s), $($sample.Behind) remote commit(s) from $target"

@@ -18,13 +18,13 @@ yafp_update_start() {
 yafp_update_notice() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
     [ -n "${YAFP_UPDATE_DIR:-}" ] || return 0
-    local state behind head branch upstream ahead dirty extra answer='' root=$YAFP_UPDATE_ROOT
+    local state behind head branch upstream ahead extra answer='' root=$YAFP_UPDATE_ROOT
     if [ ! -r "$YAFP_UPDATE_DIR/sample" ]; then
         yafp_update_cleanup
         yafp_update_message error '☒🌐 REMOTE CHECK FAILED'
         return 0
     fi
-    IFS=' ' read -r state behind head branch upstream ahead dirty extra < "$YAFP_UPDATE_DIR/sample" || state=error
+    IFS=' ' read -r state behind head branch upstream ahead extra < "$YAFP_UPDATE_DIR/sample" || state=error
     yafp_update_cleanup
     case "$state" in
         missing-git) yafp_update_message warning '⚠ GIT NOT AVAILABLE: YAFP startup check skipped'; return 0 ;;
@@ -43,7 +43,6 @@ yafp_update_notice() {
     [ "$(git -C "$root" rev-parse --verify HEAD 2>/dev/null)" = "$head" ] || return 0
     [ "$(git -C "$root" symbolic-ref --quiet HEAD 2>/dev/null)" = "$branch" ] || return 0
     [ "$(git -C "$root" rev-parse --symbolic-full-name '@{upstream}' 2>/dev/null)" = "$upstream" ] || return 0
-    if [ "$dirty" = 1 ]; then yafp_update_message warning '⚠ UNCOMMITTED CHANGES: YAFP has local modifications'; fi
     local target=${upstream#refs/remotes/} unit=commits verb=have
     if [ "$ahead" -gt 0 ] && [ "$behind" -gt 0 ]; then
         yafp_update_message error "☒ DIVERGED REPOSITORY: $ahead local commit(s), $behind remote commit(s) from $target"

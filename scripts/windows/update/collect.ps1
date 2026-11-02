@@ -39,7 +39,7 @@ function Invoke-UpdateGit {
     }
 }
 
-$sample = [pscustomobject]@{ State = 'missing-git'; Ahead = 0; Dirty = $false; Behind = 0; Head = ''; Branch = ''; Upstream = '' }
+$sample = [pscustomobject]@{ State = 'missing-git'; Ahead = 0; Behind = 0; Head = ''; Branch = ''; Upstream = '' }
 try {
     if ($Pull) {
         $result = Invoke-UpdateGit @('pull', '--ff-only')
@@ -66,12 +66,10 @@ try {
     $head = Invoke-UpdateGit @('rev-parse', '--verify', 'HEAD')
     $behind = Invoke-UpdateGit @('rev-list', '--count', 'HEAD..@{upstream}')
     $ahead = Invoke-UpdateGit @('rev-list', '--count', '@{upstream}..HEAD')
-    $dirty = Invoke-UpdateGit @('status', '--porcelain')
     if ($ahead.Code -eq 0 -and $ahead.Text -match '^\d+$' -and $head.Code -eq 0 -and $behind.Code -eq 0 -and $behind.Text -match '^\d+$') {
         $sample.State = 'ok'
         $sample.Behind = [long]$behind.Text
         $sample.Ahead = [long]$ahead.Text
-        $sample.Dirty = -not [string]::IsNullOrEmpty($dirty.Text)
         $sample.Head = $head.Text
         $sample.Branch = $branch.Text
         $sample.Upstream = $upstream.Text
