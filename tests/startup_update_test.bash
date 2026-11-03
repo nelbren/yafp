@@ -49,7 +49,7 @@ yafp_update_notice > "$TEST_ROOT/output" <<< ''
 [ ! -d "$empty_path" ] || fail 'Startup cache was not removed'
 [ "$(git -C "$YAFP_ROOT" rev-parse HEAD)" = "$initial" ] || fail 'Default answer pulled'
 [ "$reloads" = 0 ] || fail 'Default answer reloaded'
-grep -q '☒ OUTDATED REPOSITORY: YAFP is 1 commit(s)' "$TEST_ROOT/output" || fail 'Missing behind count'
+grep -q ' OUTDATED REPOSITORY: YAFP is 1 commit(s)' "$TEST_ROOT/output" || fail 'Missing behind count'
 grep -q 'YAFP startup check:' "$TEST_ROOT/output" || fail 'Missing installation label for a problem'
 grep -q 'Update YAFP now? \[y/N\]' "$TEST_ROOT/output" || fail 'Missing English consent prompt'
 start_check
@@ -70,7 +70,7 @@ yafp_update_notice > "$TEST_ROOT/output" <<< y
 git -C "$YAFP_ROOT" remote set-url origin "$TEST_ROOT/missing.git"
 start_check
 yafp_update_notice > "$TEST_ROOT/output" <<< y
-grep -qx '☒🌐 REMOTE CHECK FAILED' "$TEST_ROOT/output" || fail 'Remote failure message'
+grep -qx '🌐 REMOTE CHECK FAILED' "$TEST_ROOT/output" || fail 'Remote failure message'
 [ "$reloads" = 1 ] || fail 'Remote failure reloaded'
 git -C "$YAFP_ROOT" remote set-url origin "$TEST_ROOT/remote.git"
 
@@ -94,7 +94,7 @@ git -C "$TEST_ROOT/seed" push --quiet origin HEAD
 local_head=$(git -C "$YAFP_ROOT" rev-parse HEAD)
 start_check
 yafp_update_notice > "$TEST_ROOT/output" 2>&1 <<< y
-grep -q '☒ DIVERGED REPOSITORY' "$TEST_ROOT/output" || fail 'Diverged update must fail safely'
+grep -q ' DIVERGED REPOSITORY' "$TEST_ROOT/output" || fail 'Diverged update must fail safely'
 [ "$(git -C "$YAFP_ROOT" rev-parse HEAD)" = "$local_head" ] || fail 'Divergence changed HEAD'
 [ "$reloads" = 1 ] || fail 'Failed pull reloaded'
 

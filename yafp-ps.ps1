@@ -84,6 +84,7 @@ if (-not (Get-Variable YafpRemoteOfflineAcknowledged -Scope Script `
 }
 
 function Write-YafpText {
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
         [AllowEmptyString()]
@@ -95,13 +96,14 @@ function Write-YafpText {
         [switch]$NoNewline
     )
 
-    $writeHostParams = @{
-        Object = $Text
-        ForegroundColor = $ForegroundColor
-        NoNewline = $true
-    }
+    # Keep unspecified backgrounds null. Write-Host fills them from RawUI on
+    # Windows, which would turn a transparent diagnostic into an explicit color.
+    $message = [Management.Automation.HostInformationMessage]::new()
+    $message.Message = $Text
+    $message.ForegroundColor = [ConsoleColor]$ForegroundColor
+    $message.NoNewLine = $true
     if (-not [string]::IsNullOrEmpty($BackgroundColor)) {
-        $writeHostParams.BackgroundColor = $BackgroundColor
+        $message.BackgroundColor = [ConsoleColor]$BackgroundColor
     }
     # ConsoleColor names use the terminal palette; banner colors must be exact.
     $rgb = if ($ForegroundColor -eq 'White' -and $BackgroundColor -eq 'DarkGreen') {
@@ -112,12 +114,15 @@ function Write-YafpText {
     }
     else { '' }
     if ($rgb) {
-        $writeHostParams.Object = "$rgb$Text$([char]27)[0m"
+        $message.Message = "$rgb$Text$([char]27)[0m"
     }
-    Write-Host @writeHostParams
+    $PSCmdlet.WriteInformation($message, [string[]]@('PSHOST'))
     if (-not $NoNewline) {
         # Reset the colors before scrolling creates a new terminal row.
-        Write-Host
+        $newline = [Management.Automation.HostInformationMessage]::new()
+        $newline.Message = ''
+        $newline.NoNewLine = $false
+        $PSCmdlet.WriteInformation($newline, [string[]]@('PSHOST'))
     }
 }
 
@@ -1094,7 +1099,7 @@ function Show-YafpMessages {
     }
     foreach ($group in @(
         @{ Foreground = 'White'; Background = 'DarkGreen'; Messages = @(
-            '✓ INTERNET CONNECTION'
+            ' INTERNET CONNECTION'
         ) }
         @{ Foreground = 'Black'; Background = 'Yellow'; Messages = @(
             ' REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/main'
@@ -1103,11 +1108,11 @@ function Show-YafpMessages {
             ' COMMIT PENDING: 1'
         ) }
         @{ Foreground = 'White'; Background = (Get-YafpSeverityStyle -Severity error).Background; Messages = @(
-            '☒ OUTDATED REPOSITORY: 1 commit is missing from origin/main'
-            '☒ PULL PENDING: 1'
-            '☒ DIVERGED REPOSITORY: local +1 / remote +1 relative to origin/main'
-            '☒ DIVERGED: ⇡1 ⇣1'
-            '☒ REMOTE CHECK FAILED'
+            ' OUTDATED REPOSITORY: 1 commit is missing from origin/main'
+            ' PULL PENDING: 1'
+            ' DIVERGED REPOSITORY: local +1 / remote +1 relative to origin/main'
+            ' DIVERGED: ⇡1 ⇣1'
+            ' REMOTE CHECK FAILED'
         ) }
     )) {
         foreach ($message in $group.Messages) {
@@ -1166,9 +1171,9 @@ function Show-YafpStats {
     $succeededRate = $succeededPercent.ToString('000')
     $failedRate = $failedPercent.ToString('000')
     $separator = '━' * (20 + $countWidth)
-    $succeededText = "✓ $('Succeeded:'.PadRight(10)) " +
+    $succeededText = " $('Succeeded:'.PadRight(10)) " +
         "$succeededCount ($succeededRate%)"
-    $failedText = "☒ $('Failed:'.PadRight(10)) " +
+    $failedText = " $('Failed:'.PadRight(10)) " +
         "$failedCount ($failedRate%)"
     $totalText = "∑ $('Total:'.PadRight(10)) $totalCount (100%)"
     . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
@@ -1341,8 +1346,14 @@ function Write-YafpGitRemoteStatus {
             -BackgroundColor $style.Background -NoNewline
     }
     elseif ($remote.State -eq 'error') {
-        Write-YafpText -Text $text -ForegroundColor Red `
-            -BackgroundColor $null -NoNewline
+        if ($script:YafpRemoteOfflineAcknowledged) {
+            Write-YafpText -Text $text -ForegroundColor Red `
+                -BackgroundColor $null -NoNewline
+        }
+        else {
+            Write-YafpText -Text $text -ForegroundColor White `
+                -BackgroundColor Red -NoNewline
+        }
     }
     else {
         $style = Get-YafpSeverityStyle -Severity error
@@ -1474,7 +1485,7 @@ function Write-YafpRemoteExpansion {
     $indicatorWidth = $IndicatorText.Length
     $style = Get-YafpSeverityStyle -Severity error
     if ($announceConnection) {
-        $message = '✓ INTERNET CONNECTION'
+        $message = ' INTERNET CONNECTION'
         $style = [pscustomobject]@{
             Foreground = 'White'
             Background = 'DarkGreen'
@@ -1507,21 +1518,21 @@ function Write-YafpRemoteExpansion {
         $unit = if ($Remote.Behind -eq 1) { 'commit' } else { 'commits' }
         $verb = if ($Remote.Behind -eq 1) { 'is missing' } else { 'are missing' }
         $message = Get-YafpExpansionMessage `
-            -LongMessage "☒ OUTDATED REPOSITORY: $($Remote.Behind) $unit $verb from $($Remote.Upstream)" `
-            -ShortMessage "☒ PULL PENDING: $($Remote.Behind)" `
+            -LongMessage " OUTDATED REPOSITORY: $($Remote.Behind) $unit $verb from $($Remote.Upstream)" `
+            -ShortMessage " PULL PENDING: $($Remote.Behind)" `
             -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
     }
     elseif ($Remote.State -eq 'diverged') {
         $message = Get-YafpExpansionMessage `
-            -LongMessage "☒ DIVERGED REPOSITORY: local +$($Remote.Ahead) / remote +$($Remote.Behind) relative to $($Remote.Upstream)" `
-            -ShortMessage "☒ DIVERGED: ⇡$($Remote.Ahead) ⇣$($Remote.Behind)" `
+            -LongMessage " DIVERGED REPOSITORY: local +$($Remote.Ahead) / remote +$($Remote.Behind) relative to $($Remote.Upstream)" `
+            -ShortMessage " DIVERGED: ⇡$($Remote.Ahead) ⇣$($Remote.Behind)" `
             -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
     }
     elseif ($Remote.State -eq 'error') {
         if ($script:YafpRemoteOfflineAcknowledged) {
             return
         }
-        $message = '☒ REMOTE CHECK FAILED'
+        $message = ' REMOTE CHECK FAILED'
     }
     else {
         return

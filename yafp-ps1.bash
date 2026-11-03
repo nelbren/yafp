@@ -280,6 +280,9 @@ theme_build() {
     # Exact banner colors do not depend on the terminal's ANSI palette.
     cRemoteConnection=$'\033[0;48;2;0;128;0;38;2;255;255;255m'
 
+    # Unacknowledged remote failure: bright white on bright red in every theme.
+    cRemoteFailure=$'\033[0;101;97m'
+
     cRemoteAcknowledged="$(theme_color \
         "$YAFP_COLOR_REMOTE_ACKNOWLEDGED_BG" \
         "$YAFP_COLOR_REMOTE_ACKNOWLEDGED_FG")"
@@ -705,7 +708,7 @@ theme_render_remote_expansion() {
     fi
 
     if [ "${yafp_ctx_git_remote_connection_announcement:-0}" -eq 1 ]; then
-        message="✓ INTERNET CONNECTION"
+        message=" INTERNET CONNECTION"
         color="$cRemoteConnection"
         case "${yafp_ctx_git_remote_state:-}" in
             ahead) indicator_width=$((1 + ${#yafp_ctx_git_ahead})) ;;
@@ -763,8 +766,8 @@ theme_render_remote_expansion() {
             fi
             indicator_width=$((1 + ${#yafp_ctx_git_behind}))
             theme_select_expansion_message \
-                "☒ OUTDATED REPOSITORY: ${yafp_ctx_git_behind} ${unit} ${verb} from ${yafp_ctx_git_upstream}" \
-                "☒ PULL PENDING: ${yafp_ctx_git_behind}" \
+                " OUTDATED REPOSITORY: ${yafp_ctx_git_behind} ${unit} ${verb} from ${yafp_ctx_git_upstream}" \
+                " PULL PENDING: ${yafp_ctx_git_behind}" \
                 "${yafp_ctx_git_remote_indicator_column:-0}" \
                 "$indicator_width"
             message="$yafp_expansion_message"
@@ -773,8 +776,8 @@ theme_render_remote_expansion() {
         diverged)
             indicator_width=$((2 + ${#yafp_ctx_git_ahead} + ${#yafp_ctx_git_behind}))
             theme_select_expansion_message \
-                "☒ DIVERGED REPOSITORY: local +${yafp_ctx_git_ahead} / remote +${yafp_ctx_git_behind} relative to ${yafp_ctx_git_upstream}" \
-                "☒ DIVERGED: ⇡${yafp_ctx_git_ahead} ⇣${yafp_ctx_git_behind}" \
+                " DIVERGED REPOSITORY: local +${yafp_ctx_git_ahead} / remote +${yafp_ctx_git_behind} relative to ${yafp_ctx_git_upstream}" \
+                " DIVERGED: ⇡${yafp_ctx_git_ahead} ⇣${yafp_ctx_git_behind}" \
                 "${yafp_ctx_git_remote_indicator_column:-0}" \
                 "$indicator_width"
             message="$yafp_expansion_message"
@@ -782,7 +785,7 @@ theme_render_remote_expansion() {
             ;;
         error)
             [ "${YAFP_REMOTE_OFFLINE_ACKNOWLEDGED:-0}" -eq 0 ] || return 0
-            message="☒ REMOTE CHECK FAILED"
+            message=" REMOTE CHECK FAILED"
             color="$cRemoteProblem"
             indicator_width=1
             ;;
@@ -871,7 +874,8 @@ theme_render_git_remote_status() {
             indicator="…"
             ;;
         error)
-            color="$cRemoteAcknowledged"
+            color="$cRemoteFailure"
+            [ "${YAFP_REMOTE_OFFLINE_ACKNOWLEDGED:-0}" -eq 0 ] || color="$cRemoteAcknowledged"
             # indicator="☒🌐︎"
             indicator=""
             ;;
@@ -2316,16 +2320,16 @@ yafp-msgs() {
         esac
         printf '%s%s%s\n' "$color" "( ${message} )" $'\033[0m'
     done <<'EOF'
-green|✓ INTERNET CONNECTION
+green| INTERNET CONNECTION
 yellow| REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/main
 yellow| PUSH PENDING: 1
 yellow| COMMIT PENDING: 1 staged file is ready to commit
 yellow| COMMIT PENDING: 1
-red|☒ OUTDATED REPOSITORY: 1 commit is missing from origin/main
-red|☒ PULL PENDING: 1
-red|☒ DIVERGED REPOSITORY: local +1 / remote +1 relative to origin/main
-red|☒ DIVERGED: ⇡1 ⇣1
-red|☒ REMOTE CHECK FAILED
+red| OUTDATED REPOSITORY: 1 commit is missing from origin/main
+red| PULL PENDING: 1
+red| DIVERGED REPOSITORY: local +1 / remote +1 relative to origin/main
+red| DIVERGED: ⇡1 ⇣1
+red| REMOTE CHECK FAILED
 EOF
 }
 
@@ -2389,7 +2393,7 @@ yafp-stats() {
     if [ -n "${NO_COLOR:-}" ]; then
         reset='' succeeded_color='' failed_color='' separator_color='' total_color=''
     fi
-    printf -v report '%s✓ %-10s %*d (%03d%%)%s\n%s☒ %-10s %*d (%03d%%)%s\n%s%s%s\n%s∑ %-10s %*d (100%%)%s' \
+    printf -v report '%s %-10s %*d (%03d%%)%s\n%s %-10s %*d (%03d%%)%s\n%s%s%s\n%s∑ %-10s %*d (100%%)%s' \
         "$succeeded_color" 'Succeeded:' "$count_width" "$YAFP_COMMANDS_SUCCEEDED" "$succeeded_percent" "$reset" \
         "$failed_color" 'Failed:' "$count_width" "$YAFP_COMMANDS_FAILED" "$failed_percent" "$reset" \
         "$separator_color" "$separator" "$reset" \

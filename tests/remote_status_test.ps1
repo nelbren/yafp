@@ -355,8 +355,8 @@ try {
     }
     yafp-stats 6>$null
     $expectedStatsWrites = @(
-        [pscustomobject]@{ Text = '✓ Succeeded: 1 (050%)'; Color = 'Green' }
-        [pscustomobject]@{ Text = '☒ Failed:    1 (050%)'; Color = 'Red' }
+        [pscustomobject]@{ Text = ' Succeeded: 1 (050%)'; Color = 'Green' }
+        [pscustomobject]@{ Text = ' Failed:    1 (050%)'; Color = 'Red' }
         [pscustomobject]@{ Text = ('━' * 21); Color = 'Gray' }
         [pscustomobject]@{ Text = '∑ Total:     2 (100%)'; Color = 'White' }
     )
@@ -373,9 +373,9 @@ try {
     $script:YafpCommandsFailed = 0
     $script:statsWrites.Clear()
     yafp-stats 6>$null
-    Assert-Equal '✓ Succeeded: 0 (000%)' $script:statsWrites[0].Text `
+    Assert-Equal ' Succeeded: 0 (000%)' $script:statsWrites[0].Text `
         'empty succeeded percentage'
-    Assert-Equal '☒ Failed:    0 (000%)' $script:statsWrites[1].Text `
+    Assert-Equal ' Failed:    0 (000%)' $script:statsWrites[1].Text `
         'empty failed percentage'
     Assert-Equal '∑ Total:     0 (100%)' $script:statsWrites[3].Text `
         'empty total percentage'
@@ -384,9 +384,9 @@ try {
     $script:YafpCommandsFailed = 2
     $script:statsWrites.Clear()
     yafp-stats 6>$null
-    Assert-Equal '✓ Succeeded: 11 (085%)' $script:statsWrites[0].Text `
+    Assert-Equal ' Succeeded: 11 (085%)' $script:statsWrites[0].Text `
         'aligned succeeded count'
-    Assert-Equal '☒ Failed:     2 (015%)' $script:statsWrites[1].Text `
+    Assert-Equal ' Failed:     2 (015%)' $script:statsWrites[1].Text `
         'aligned failed count'
     Assert-Equal ('━' * 22) $script:statsWrites[2].Text `
         'expanded statistics separator'
@@ -673,7 +673,7 @@ try {
     }
     $expansion = Write-YafpRemoteExpansion -Remote $connectedStatus `
         -IndicatorText '' 6>&1 | Out-String
-    if ($expansion -notmatch '\( ✓ INTERNET CONNECTION \)') {
+    if ($expansion -notmatch '\(  INTERNET CONNECTION \)') {
         throw 'connection announcement was not rendered'
     }
     $originalWriteYafpText = (Get-Command Write-YafpText).ScriptBlock
@@ -698,7 +698,7 @@ try {
     $transitionIndicator = $script:connectionWrites |
         Where-Object Text -EQ '' | Select-Object -Last 1
     $transitionBanner = $script:connectionWrites |
-        Where-Object Text -EQ '( ✓ INTERNET CONNECTION )' |
+        Where-Object Text -EQ '(  INTERNET CONNECTION )' |
         Select-Object -Last 1
     Assert-Equal White $transitionBanner.Foreground `
         'connection banner foreground'
@@ -764,7 +764,7 @@ try {
     }
     $expansion = Write-YafpRemoteExpansion -Remote $offlineStatus `
         -IndicatorText '' 6>&1 | Out-String
-    if ($expansion -notmatch '\( ☒ REMOTE CHECK FAILED \)') {
+    if ($expansion -notmatch '\(  REMOTE CHECK FAILED \)') {
         throw 'offline expansion was not rendered'
     }
     if ($expansion -notmatch ([regex]::Escape("$([char]27)[s$([char]27)[1A"))) {
@@ -808,8 +808,8 @@ try {
     $script:ackWrites.Clear()
     $null = Write-YafpGitRemoteStatus -Git $offlineContext.Git 6>&1 | Out-String
     $errorIcon = $script:ackWrites | Where-Object Text -EQ '' | Select-Object -Last 1
-    Assert-Equal Red $errorIcon.Foreground 'unacknowledged offline indicator foreground'
-    Assert-Equal $null $errorIcon.Background 'unacknowledged offline indicator background'
+    Assert-Equal White $errorIcon.Foreground 'unacknowledged offline indicator foreground'
+    Assert-Equal Red $errorIcon.Background 'unacknowledged offline indicator background'
     Set-Item -LiteralPath Function:Write-YafpText `
         -Value $originalWriteYafpText
     $script:YafpRemoteOfflineAcknowledged = $false
@@ -824,7 +824,7 @@ try {
     }
     $expansion = Write-YafpRemoteExpansion -Remote $remote `
         -IndicatorText '⇣1' 6>&1 | Out-String
-    if ($expansion -notmatch '\( ☒ OUTDATED REPOSITORY' -or
+    if ($expansion -notmatch '\(  OUTDATED REPOSITORY' -or
         $expansion -notmatch '1 commit is missing from origin/main \)') {
         throw 'behind expansion was not rendered'
     }
@@ -880,7 +880,7 @@ try {
     $expansion = Write-YafpRemoteExpansion -Remote $divergedStatus `
         -IndicatorText '⇡2⇣3' 6>&1 | Out-String
     if ($expansion -notmatch (
-        '\( ☒ DIVERGED REPOSITORY: local \+2 / remote \+3 relative to ' +
+        '\(  DIVERGED REPOSITORY: local \+2 / remote \+3 relative to ' +
         'origin/main \)'
     )) {
         throw 'diverged expansion was not rendered'
@@ -890,15 +890,15 @@ try {
             -LongMessage ' REMOTE NOT UPDATED: 2 local commits have not been pushed to origin/main' `
             -ShortMessage ' PUSH PENDING: 2' -TerminalWidth 22
     ) 'compact ahead expansion message'
-    Assert-Equal '☒ PULL PENDING: 1' (
+    Assert-Equal ' PULL PENDING: 1' (
         Get-YafpExpansionMessage `
-            -LongMessage '☒ OUTDATED REPOSITORY: 1 commit is missing from origin/main' `
-            -ShortMessage '☒ PULL PENDING: 1' -TerminalWidth 22
+            -LongMessage ' OUTDATED REPOSITORY: 1 commit is missing from origin/main' `
+            -ShortMessage ' PULL PENDING: 1' -TerminalWidth 22
     ) 'compact behind expansion message'
-    Assert-Equal '☒ DIVERGED: ⇡2 ⇣3' (
+    Assert-Equal ' DIVERGED: ⇡2 ⇣3' (
         Get-YafpExpansionMessage `
-            -LongMessage '☒ DIVERGED REPOSITORY: local +2 / remote +3 relative to origin/main' `
-            -ShortMessage '☒ DIVERGED: ⇡2 ⇣3' -TerminalWidth 22
+            -LongMessage ' DIVERGED REPOSITORY: local +2 / remote +3 relative to origin/main' `
+            -ShortMessage ' DIVERGED: ⇡2 ⇣3' -TerminalWidth 22
     ) 'compact diverged expansion message'
 
     & git -C $local config user.name 'YAFP Test'

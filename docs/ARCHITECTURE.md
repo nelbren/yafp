@@ -182,11 +182,11 @@ immediately after consumption.
 
 After fetching, ahead and behind counts are computed against the tracking
 branch. Startup distinguishes current, ahead (` REMOTE NOT UPDATED`), behind
-(`☒ OUTDATED REPOSITORY`), and diverged states, without a separate warning for
+(` OUTDATED REPOSITORY`), and diverged states, without a separate warning for
 local modifications.
 Missing Git, non-Git installations, unborn branches, detached HEAD, and missing
 upstream/remote configurations receive explicit messages. Failed remote access
-shows `☒🌐 REMOTE CHECK FAILED`, without claiming that general internet access
+shows `🌐 REMOTE CHECK FAILED`, without claiming that general internet access
 was independently tested.
 
 Only a behind-only checkout offers `Update YAFP now? [y/N]`. Enter, EOF, and
@@ -277,7 +277,7 @@ warning starts a worker. Bash and zsh invalidate a cached non-repository
 when a `.git` directory appears in the current directory, using a built-in
 filesystem check.
 The error state renders `` as its compact indicator and the
-`( ☒ REMOTE CHECK FAILED )` expansion in all three shells. This
+`(  REMOTE CHECK FAILED )` expansion in all three shells. This
 state covers fetch and reference-comparison failures; it does not establish
 that the internet is unavailable. Cache files are shared by shells using the
 same Git directory, including restricted processes. A manual refresh bypasses
@@ -291,7 +291,7 @@ render path.
 Every expansion uses `( MESSAGE )`, with one space after the opening
 delimiter and before the closing delimiter. Width and centering calculations
 include both delimiters and the two inner spaces.
-Message text includes a severity symbol (`✓`, ``, or `☒`), so the fit and
+Message text includes a severity symbol (``, ``, or ``), so the fit and
 centering calculations include its width too. Connection and warning styles
 use explicit RGB green/white and yellow/black in all three shells, independent of
 the terminal's configurable ANSI palette.
@@ -319,7 +319,7 @@ temporarily report a wider `COLUMNS` value and fonts can disagree on the cell
 width of prompt symbols.
 The first successful remote check and each later offline-to-online transition
 set a one-render announcement. It displays
-`( ✓ INTERNET CONNECTION )` with intense white text on a normal green
+`(  INTERNET CONNECTION )` with intense white text on a normal green
 background. The compact `` remains intense green on a transparent background
 during that announcement and on subsequent renders.
 The announcement takes precedence over any repository-state expansion for that
@@ -331,9 +331,10 @@ in their rendering code. Each icon occupies one cell for banner alignment.
 Expansions and compact prompt indicators share one severity contract: warnings
 use black text on an intense yellow background, while error banners and
 behind/diverged counters use intense white
-text on a red background. The compact error icon `` always uses intense red
-text on a transparent background, before and after acknowledgement. The
-warning background remains intense for contrast,
+text on a red background. The compact error icon `` uses intense white
+text on an intense red background while the alert is active, independently of
+`YAFP_DARKC`. After acknowledgement, it uses intense red text on a transparent
+background. The warning background remains intense for contrast,
 while `YAFP_DARKC` selects the dark or bright red error background. The
 detailed `yafp-status` report retains foreground-only severity colors.
 
@@ -596,7 +597,7 @@ The terminal's local Nerd
 Font must contain the glyphs, including when displaying a remote shell.
 
 Los estados y las etiquetas decorativas del prompt usan los glifos Font
-Awesome documentados en [FONTS.md](FONTS.md#iconos-del-prompt). Bash y zsh
+Awesome documentados en [FONTS.md](FONTS.md#prompt-icons). Bash y zsh
 conservan sus variables `YAFP_SYMBOL_*`; PowerShell usa los mismos glifos en
 sus renderizadores. Los reemplazos se limitan a etiquetas estáticas: no se
 reescribe el texto de comandos, rutas, ramas ni entornos. No se incorporan
@@ -605,11 +606,11 @@ procesos, detección de fuentes ni trabajo adicional por renderizado.
 Los contadores mantienen sus signos y colores, y las expansiones miden el
 texto que se muestra con los nuevos glifos. El temporizador remoto usa ``
 con los tonos verde, amarillo o rojo existentes; el texto conserva porcentaje
-y segundos. `light` mantiene sus marcas `✓`, `☒`, `↯` y los contadores
-numéricos. Los indicadores Braille, `֍`, ``, `⟳`, marcos y momentos del día
-conservan su representación. Las pruebas de presentación verifican las
-variantes oscuras/claras, los tres temas, los umbrales de rendimiento y los
-anclajes de las expansiones con estas etiquetas.
+y segundos. Todos los temas usan `` y `` para éxito y error; `light`
+mantiene `↯` y sus contadores numéricos. Los indicadores Braille, `֍`, ``,
+`⟳`, marcos y momentos del día conservan su representación. Las pruebas de
+presentación verifican las variantes oscuras/claras, los tres temas, los
+umbrales de rendimiento y los anclajes de las expansiones con estas etiquetas.
 
 El informe compartido de `yafp-status` y `yafp-demo` usa iconos Font Awesome
 para remoto, estado al día, hora actual y próxima revisión. Las cuatro
@@ -629,6 +630,14 @@ renderizado del prompt interactivo. La vista previa normal sigue disponible
 sin marco; Bash/zsh seleccionan el cuadro con el argumento interno `frame`.
 PowerShell captura los registros de información de la vista previa y convierte
 sus colores de consola a SGR antes de dibujar el cuadro.
+
+`Write-YafpText` emite registros `HostInformationMessage` con los colores
+solicitados: un fondo no especificado permanece nulo. Así se evita que
+`Write-Host` materialice el fondo actual de `RawUI` en Windows y lo convierta
+en un fondo explícito dentro del cuadro. Los fondos solicitados, los avisos
+RGB y los saltos de línea separados conservan su comportamiento. Las pruebas
+fijan fondos de consola negro y azul para verificar esta captura también en
+los hosts que normalmente no exponen un color predeterminado.
 
 Un lienzo de celdas interpreta saltos de línea, SGR, borrado de línea y los
 movimientos relativos y de guardado/restauración usados por los avisos. Solo
@@ -782,6 +791,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-02 23:35:53 🍎 MBP02 |
+📆 2026-11-03 00:23:38 🍎 MBP02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

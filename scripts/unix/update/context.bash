@@ -22,7 +22,7 @@ yafp_update_notice() {
     if [ ! -r "$YAFP_UPDATE_DIR/sample" ]; then
         yafp_update_cleanup
         yafp_update_message info "YAFP startup check: $root"
-        yafp_update_message error '☒🌐 REMOTE CHECK FAILED'
+        yafp_update_message error '🌐 REMOTE CHECK FAILED'
         return 0
     fi
     IFS=' ' read -r state behind head branch upstream ahead extra < "$YAFP_UPDATE_DIR/sample" || state=error
@@ -42,7 +42,7 @@ yafp_update_notice() {
     case "$behind/$ahead" in *[!0-9/]*|/|/*|*/) state=error ;; esac
     if [ "$state" != ok ] || [ -n "$extra" ]; then
         yafp_update_message info "YAFP startup check: $root"
-        yafp_update_message error '☒🌐 REMOTE CHECK FAILED'
+        yafp_update_message error '🌐 REMOTE CHECK FAILED'
         return 0
     fi
     # Discard a result if the user switched branches or changed HEAD while checking.
@@ -53,7 +53,7 @@ yafp_update_notice() {
     yafp_update_message info "YAFP startup check: $root"
     local target=${upstream#refs/remotes/} unit=commits verb=have
     if [ "$ahead" -gt 0 ] && [ "$behind" -gt 0 ]; then
-        yafp_update_message error "☒ DIVERGED REPOSITORY: $ahead local commit(s), $behind remote commit(s) from $target"
+        yafp_update_message error " DIVERGED REPOSITORY: $ahead local commit(s), $behind remote commit(s) from $target"
         return 0
     fi
     if [ "$ahead" -gt 0 ]; then
@@ -61,7 +61,7 @@ yafp_update_notice() {
         yafp_update_message warning " REMOTE NOT UPDATED: $ahead local $unit $verb not been pushed to $target"
         return 0
     fi
-    yafp_update_message error "☒ OUTDATED REPOSITORY: YAFP is $behind commit(s) behind its upstream."
+    yafp_update_message error " OUTDATED REPOSITORY: YAFP is $behind commit(s) behind its upstream."
     printf 'Update YAFP now? [y/N] '
     IFS= read -r answer || answer=''
     case "$answer" in y|Y) ;; *) return 0 ;; esac
@@ -72,12 +72,12 @@ yafp_update_notice() {
        git -C "$root" -c credential.interactive=never \
            -c http.lowSpeedLimit=1 -c http.lowSpeedTime=10 pull --ff-only; then
         if ! yafp-reload; then
-            yafp_update_message error '☒ RELOAD FAILED: restart YAFP after fixing its configuration.'
+            yafp_update_message error ' RELOAD FAILED: restart YAFP after fixing its configuration.'
         fi
         this_command=$saved_this_command previous_command=$saved_previous_command
         previous_timestamp=$saved_previous_timestamp
     else
-        yafp_update_message error '☒ UPDATE FAILED: YAFP was not reloaded.'
+        yafp_update_message error ' UPDATE FAILED: YAFP was not reloaded.'
     fi
     return 0
 }

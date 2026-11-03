@@ -354,8 +354,8 @@ assert_eq 1 "$YAFP_COMMANDS_FAILED" 'failed command count'
 printf -v stats_separator_one_digit '%*s' 21 ''
 stats_separator_one_digit=${stats_separator_one_digit// /━}
 expected_stats="$(printf '%s\n' \
-    '✓ Succeeded: 1 (050%)' \
-    '☒ Failed:    1 (050%)' \
+    ' Succeeded: 1 (050%)' \
+    ' Failed:    1 (050%)' \
     "$stats_separator_one_digit" \
     '∑ Total:     2 (100%)')"
 assert_eq "$expected_stats" "$(framed_output yafp-stats)" 'yafp-stats output'
@@ -363,8 +363,8 @@ YAFP_COMMANDS_TOTAL=0
 YAFP_COMMANDS_SUCCEEDED=0
 YAFP_COMMANDS_FAILED=0
 expected_empty_stats="$(printf '%s\n' \
-    '✓ Succeeded: 0 (000%)' \
-    '☒ Failed:    0 (000%)' \
+    ' Succeeded: 0 (000%)' \
+    ' Failed:    0 (000%)' \
     "$stats_separator_one_digit" \
     '∑ Total:     0 (100%)')"
 assert_eq "$expected_empty_stats" "$(framed_output yafp-stats)" 'empty yafp-stats output'
@@ -374,8 +374,8 @@ YAFP_COMMANDS_FAILED=2
 printf -v stats_separator_two_digits '%*s' 22 ''
 stats_separator_two_digits=${stats_separator_two_digits// /━}
 expected_aligned_stats="$(printf '%s\n' \
-    '✓ Succeeded: 11 (085%)' \
-    '☒ Failed:     2 (015%)' \
+    ' Succeeded: 11 (085%)' \
+    ' Failed:     2 (015%)' \
     "$stats_separator_two_digits" \
     '∑ Total:     13 (100%)')"
 assert_eq "$expected_aligned_stats" "$(framed_output yafp-stats)" \
@@ -715,11 +715,11 @@ indicator="$(theme_render_git_remote_status)"
 set -u
 assert_eq '\n' "$warning" 'connection announcement row'
 case "$indicator" in
-    *'( ✓ INTERNET CONNECTION )'*''*) ;;
+    *'(  INTERNET CONNECTION )'*''*) ;;
     *) fail 'connection announcement was not rendered' ;;
 esac
 case "$indicator" in
-    *"$cRemoteConnection"'( ✓ INTERNET CONNECTION )'*"$(ps1_wrap "$cRemoteOk")"''*) ;;
+    *"$cRemoteConnection"'(  INTERNET CONNECTION )'*"$(ps1_wrap "$cRemoteOk")"''*) ;;
     *) fail 'connection transition is not intense white on normal green' ;;
 esac
 yafp_ctx_git_remote_connection_announcement=0
@@ -789,8 +789,8 @@ case "$indicator" in
     *) fail 'offline indicator was not rendered' ;;
 esac
 case "$indicator" in
-    *"$(ps1_wrap "$cRemoteAcknowledged")"''*) ;;
-    *) fail 'Unacknowledged offline icon must be intense red on transparent' ;;
+    *"$(ps1_wrap "$cRemoteFailure")"''*) ;;
+    *) fail 'Unacknowledged offline icon must be intense white on intense red' ;;
 esac
 case "$warning" in
     '\n') ;;
@@ -798,11 +798,11 @@ case "$warning" in
 esac
 assert_eq '\n' "${warning: -2}" 'offline warning line break'
 case "$indicator" in
-    *'( ☒ REMOTE CHECK FAILED )'*''*) ;;
+    *'(  REMOTE CHECK FAILED )'*''*) ;;
     *) fail 'offline expansion was not rendered' ;;
 esac
 case "$indicator" in
-    *$'\033[s\033[1A\033['*D*'( ☒ REMOTE CHECK FAILED )'*$'\033[u'*) ;;
+    *$'\033[s\033[1A\033['*D*'(  REMOTE CHECK FAILED )'*$'\033[u'*) ;;
     *) fail 'offline expansion was not centered above its indicator' ;;
 esac
 
@@ -813,7 +813,7 @@ indicator="$(theme_render_git_remote_status)"
 set -u
 assert_eq '' "$warning" 'acknowledged offline state reserves no banner row'
 case "$indicator" in
-    *'( ☒ REMOTE CHECK FAILED )'*)
+    *'(  REMOTE CHECK FAILED )'*)
         fail 'acknowledged offline banner was still rendered'
         ;;
     *"$(ps1_wrap "$cRemoteAcknowledged")"''*) ;;
@@ -829,12 +829,12 @@ warning="$(theme_reserve_remote_expansion_row)"
 indicator="$(theme_render_git_remote_status)"
 set -u
 case "$indicator" in
-    *'( ☒ OUTDATED REPOSITORY'*'1 commit is missing from origin/main )'*) ;;
+    *'(  OUTDATED REPOSITORY'*'1 commit is missing from origin/main )'*) ;;
     *) fail 'behind expansion was not rendered' ;;
 esac
 COLUMNS=22
 case "$(theme_render_git_remote_status)" in
-    *'( ☒ PULL PENDING: 1 )'*) ;;
+    *'(  PULL PENDING: 1 )'*) ;;
     *) fail 'compact behind expansion was not rendered' ;;
 esac
 COLUMNS=200
@@ -847,12 +847,12 @@ set +u
 indicator="$(theme_render_git_remote_status)"
 set -u
 case "$indicator" in
-    *'( ☒ DIVERGED REPOSITORY: local +2 / remote +3 relative to origin/main )'*'⇡2⇣3'*) ;;
+    *'(  DIVERGED REPOSITORY: local +2 / remote +3 relative to origin/main )'*'⇡2⇣3'*) ;;
     *) fail 'diverged expansion was not rendered' ;;
 esac
 COLUMNS=22
 case "$(theme_render_git_remote_status)" in
-    *'( ☒ DIVERGED: ⇡2 ⇣3 )'*) ;;
+    *'(  DIVERGED: ⇡2 ⇣3 )'*) ;;
     *) fail 'compact diverged expansion was not rendered' ;;
 esac
 COLUMNS=200

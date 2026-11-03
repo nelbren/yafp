@@ -1,80 +1,84 @@
 # Fonts with consistent Unicode fallback
 
-## Iconos del prompt
+## Prompt icons
 
-Las etiquetas estáticas usan Font Awesome mediante Nerd Fonts en Bash, zsh y
-PowerShell. La terminal local debe usar una Nerd Font que incluya estos
-códigos, también al mostrar una sesión SSH. Python y `user-shield` usan los
-códigos remapeados de Nerd Fonts, no los puntos de código de la fuente
-original de Font Awesome.
+Static labels use Font Awesome through Nerd Fonts in Bash, zsh, and
+PowerShell. The local terminal must use a Nerd Font containing these code
+points, including when displaying an SSH session. Python and `user-shield`
+use Nerd Fonts remapped code points rather than the original Font Awesome
+code points.
 
-| N.º | Uso                             | Icono       | Código Nerd Fonts    |
+| No. | Use                             | Icon        | Nerd Fonts code      |
 | --- | ------------------------------- | ----------- | -------------------- |
-| 1   | Advertencia                     | ``         | `F071`               |
+| 1   | Warning                         | ``         | `F071`               |
 | 2   | Error                           | ``         | `F057`               |
-| 3   | Éxito                           | ``         | `F058`               |
-| 4   | Git: eliminados                 | ``         | `F1F8`               |
-| 5   | Git: modificados                | ``         | `F044`               |
-| 6   | Git: nuevos                     | ``         | `F0FE`               |
-| 7   | Git: preparados para commit     | ``         | `F187`               |
+| 3   | Success                         | ``         | `F058`               |
+| 4   | Git: deleted                    | ``         | `F1F8`               |
+| 5   | Git: modified                   | ``         | `F044`               |
+| 6   | Git: new                        | ``         | `F0FE`               |
+| 7   | Git: staged for commit          | ``         | `F187`               |
 | 8   | Python                          | ``         | `ED1B`               |
-| 9   | Usuario                         | ``         | `F007`               |
-| 10  | Administrador                   | ``         | `EDCF`               |
-| 11  | Equipo local / cliente SSH      | ` / `     | `F108 / F109`        |
-| 12  | Ubicación local en minimal      | ``         | `F015`               |
-| 13  | Comando anterior en default     | ``         | `F120`               |
-| 14  | Remoto / temporizador           | ``         | `F0E7`               |
-| 15  | Rendimiento: rápido/medio/lento | ` /  / ` | `F135 / F2F2 / F252` |
-| 16  | Contexto general de depuración  | ``         | `F013`               |
-| 17  | Contexto Git de depuración      | ``         | `F1D3`               |
-| 18  | Urgencia del próximo chequeo    | ``         | `F111`               |
+| 9   | User                            | ``         | `F007`               |
+| 10  | Administrator                   | ``         | `EDCF`               |
+| 11  | Local computer / SSH client     | ` / `     | `F108 / F109`        |
+| 12  | Local location in minimal       | ``         | `F015`               |
+| 13  | Previous command in default     | ``         | `F120`               |
+| 14  | Remote / timer                  | ``         | `F0E7`               |
+| 15  | Performance: fast/medium/slow   | ` /  / ` | `F135 / F2F2 / F252` |
+| 16  | General debugging context       | ``         | `F013`               |
+| 17  | Git debugging context           | ``         | `F1D3`               |
+| 18  | Urgency of the next check       | ``         | `F111`               |
 
-El catálogo corresponde a los reemplazos aprobados; cada tema conserva las
-etiquetas que ya mostraba. Por ejemplo, el entorno de `default` en Bash/zsh
-mantiene su nombre entre corchetes, y `light` conserva `✓`, `☒`, `↯` y los
-contadores numéricos. El círculo del temporizador mantiene los colores verde,
-amarillo y rojo junto al porcentaje y los segundos. No se cambian los
-umbrales, los colores ni la lógica.
+The catalog lists the approved replacements; each theme keeps the labels it
+already displayed. For example, the Bash/zsh `default` environment keeps its
+name in brackets, and `light` keeps `↯` and its numeric counters. Success and
+error markers use `` and `` throughout YAFP's prompt, banners, message
+catalog, statistics, and startup update messages, including `light`. The timer
+circle keeps its green, yellow, and red colors alongside the percentage and
+seconds. Thresholds and logic remain unchanged.
 
-Se conservan los indicadores Braille, `֍`, `` para refresco en segundo plano,
-`⟳` para datos iniciales pendientes, los marcos y los momentos del día. La
-sustitución afecta a la decoración de YAFP; los emojis escritos en comandos,
-rutas, ramas o nombres de entornos permanecen intactos. Los mensajes de las
-herramientas de instalación, doctor y calidad conservan sus símbolos de texto.
+The compact remote failure icon `` (`U+F072`) uses intense white text on an
+intense red background while the `(  REMOTE CHECK FAILED )` alert is active,
+independently of `YAFP_DARKC`. After `yafp-ack`, the banner is hidden and the
+icon uses intense red text on a transparent background.
 
-`yafp-status` y `yafp-demo` usan `` (`U+F0AC`) para el remoto, ``
-(`U+F058`) para el estado al día, `` (`U+F017`) para la hora actual y ``
-(`U+F274`) para la próxima revisión. Las etiquetas del informe quedan
-alineadas y conservan los colores y la salida `unavailable`. La vista previa
-se anuncia con `` (`U+F120`); el recordatorio de `Ctrl+C` usa ``
-(`U+EDFE`, infinito remapeado por Nerd Fonts) y `` (`U+F021`, refresco).
-El intervalo del bucle sigue siendo de cuatro segundos.
+Braille indicators, `֍`, `` for background refresh, `⟳` for initial pending
+data, frames, and time-of-day symbols retain their representation. Replacements
+affect YAFP's decoration; emoji in commands, paths, branches, or environment
+names remain intact. Installation, doctor, and quality tools keep their text
+symbols.
 
-El cuadro de `yafp-codex` usa `` (`U+F274`) para el restablecimiento,
-`` (`U+F21E`, heartbeat) para el estado y `` (`U+F200`, chart-pie) para la
-cuota restante. Los estados usan `` (`U+F058`) para `ok`, `` (`U+F252`)
-para `pending`, `` (`U+F204`) para `disabled`, `` (`U+F023`) para
-`logged-out`, `` (`U+F05E`) para `unsupported-auth`, `` (`U+F071`) para
-dependencias ausentes, `` (`U+F017`) para `timeout` y `` (`U+F057`) para
-`unavailable`. Los datos no disponibles de `Reset` y `Remaining` usan ``
-(`U+F059`, question-circle) en gris. Los nombres de estado acompañan los iconos
-incluso sin color.
+`yafp-status` and `yafp-demo` use `` (`U+F0AC`) for the remote, ``
+(`U+F058`) for up-to-date status, `` (`U+F017`) for the current time, and ``
+(`U+F274`) for the next check. Report labels stay aligned and preserve their
+colors and `unavailable` output. The preview is introduced by `` (`U+F120`);
+the `Ctrl+C` reminder uses `` (`U+EDFE`, infinity remapped by Nerd Fonts) and
+`` (`U+F021`, refresh). The loop interval remains four seconds.
 
-El informe `yafp-resources` añade `` (`U+EFC5`, memory, remapeado por Nerd
-Fonts) para RAM. CPU usa `` (`U+F2DB`), SWAP `` (`U+F0EC`) y disco ``
-(`U+F0A0`). El estado reutiliza `` (`U+F21E`), la edad `` (`U+F017`) y los
-valores ausentes `` (`U+F059`) en gris. El refresco `` y sus datos en caché
-conservan el significado del monitor.
+The `yafp-codex` frame uses `` (`U+F274`) for the reset, `` (`U+F21E`,
+heartbeat) for the state, and `` (`U+F200`, chart-pie) for the remaining quota.
+States use `` (`U+F058`) for `ok`, `` (`U+F252`) for `pending`, ``
+(`U+F204`) for `disabled`, `` (`U+F023`) for `logged-out`, `` (`U+F05E`)
+for `unsupported-auth`, `` (`U+F071`) for missing dependencies, ``
+(`U+F017`) for `timeout`, and `` (`U+F057`) for `unavailable`. Unavailable
+`Reset` and `Remaining` values use a gray `` (`U+F059`, question-circle).
+State names accompany the icons even without color.
 
-Referencias: [Font Awesome][font-awesome] y [catálogo Nerd Fonts][nerd-glyphs].
+The `yafp-resources` report adds `` (`U+EFC5`, memory remapped by Nerd Fonts)
+for RAM. CPU uses `` (`U+F2DB`), SWAP uses `` (`U+F0EC`), and disk uses
+`` (`U+F0A0`). State reuses `` (`U+F21E`), sample age uses ``
+(`U+F017`), and missing values use a gray `` (`U+F059`). The refresh icon
+`` and cached data retain their monitoring semantics.
+
+References: [Font Awesome][font-awesome] and the [Nerd Fonts catalog][nerd-glyphs].
 
 [font-awesome]: https://github.com/FortAwesome/Font-Awesome/blob/6.7.2/css/all.css
 [nerd-glyphs]: https://github.com/ryanoasis/nerd-fonts/blob/master/glyphnames.json
 
 ## Preview sample
 
-Las capturas siguientes conservan esta muestra histórica, anterior a los
-reemplazos de iconos del catálogo actual.
+The following screenshots preserve this historical sample, which predates the
+icon replacements in the current catalog.
 
 <!-- markdownlint-disable MD013 -->
 ```less
@@ -405,6 +409,6 @@ $
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-02 23:09:10 🍎 MBP02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-11-03 00:16:15 🍎 MBP02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

@@ -67,7 +67,7 @@ function script:Write-YafpTheme {
             Write-YafpGitCounts -Git $Context.Git -Plain
         }
         else {
-            Write-YafpText -Text '✓' -ForegroundColor Green `
+            Write-YafpText -Text '' -ForegroundColor Green `
                 -BackgroundColor $null -NoNewline
         }
     }
@@ -87,11 +87,11 @@ function script:Write-YafpTheme {
 
     if ($Context.HadError) {
         $style = Get-YafpCommandErrorStyle
-        Write-YafpText -Text " ☒ $($Context.ExitCode)" `
+        Write-YafpText -Text "  $($Context.ExitCode)" `
             -ForegroundColor $style.Foreground -BackgroundColor $style.Background
     }
     else {
-        Write-YafpText -Text ' ✓' -ForegroundColor Green `
+        Write-YafpText -Text ' ' -ForegroundColor Green `
             -BackgroundColor $null
     }
 

@@ -44,10 +44,10 @@ Import-YafpTheme
 $script:promptRan = $false
 $global:LASTEXITCODE = 141
 $renderedPrompt = prompt 6>&1 | Out-String
-if ($renderedPrompt -match '☒\s*141') {
+if ($renderedPrompt -match '\s*141') {
     throw 'prompt rendered a stale native exit code as an error'
 }
-if ($renderedPrompt -notmatch '✓') {
+if ($renderedPrompt -notmatch '') {
     throw 'prompt did not render the successful PowerShell command state'
 }
 

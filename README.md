@@ -137,9 +137,9 @@ render them using the font installed locally, independently of the remote OS.
 
 Los iconos de estado, contadores Git, Python, usuario/equipo y diagnóstico
 usan Font Awesome mediante Nerd Fonts. El catálogo de glifos y sus códigos se
-encuentra en [FONTS.md](docs/FONTS.md#iconos-del-prompt). Los colores, códigos
-de salida, umbrales y significados permanecen iguales. `light` conserva sus
-marcas compactas `✓`, `☒` y `↯`, y sus contadores numéricos; los archivos,
+encuentra en [FONTS.md](docs/FONTS.md#prompt-icons). Los códigos de salida,
+umbrales y significados permanecen iguales. Todos los temas usan `` y ``
+para éxito y error; `light` conserva `↯` y sus contadores numéricos; los archivos,
 comandos y otros textos del usuario se muestran sin sustituir sus emojis.
 
 ### :bulb: Colors change according to
@@ -653,19 +653,21 @@ of the branch symbol and to the left of the branch name:
 | ``       | Black / intense yellow | Refreshing cached state                |
 | `⇣N`      | White / red            | Behind: `N` commits need integration   |
 | `⇡N⇣M`    | White / red            | Diverged: unique commits on both sides |
-| ``       | Intense red            | Remote check failed                    |
+| ``       | White / intense red    | Remote check failed                    |
 
 The `` indicator can precede the last known state while YAFP refreshes it,
 for example `` or `⇣2`. Warning expansions and compact indicators use black
 text on an intense yellow background. Error expansions and behind/diverged
 indicators use intense white text on a red background. The compact connectivity
-icons always use transparent backgrounds: `` (`U+F1EB`) is intense green and
-`` (`U+F072`) is intense red, including connection announcements and
-acknowledged errors. Their previous glyphs remain commented in the code.
+icon `` (`U+F1EB`) uses intense green on a transparent background. The
+compact failure icon `` (`U+F072`) uses intense white on intense red while
+the remote error alert is active, independently of `YAFP_DARKC`. Acknowledged
+errors use intense red on a transparent background. Their previous glyphs
+remain commented in the code.
 `YAFP_DARKC` selects the dark or bright
 red background variant without changing that severity contract. When the
 remote check fails, YAFP displays
-`( ☒ REMOTE CHECK FAILED )` centered above the compact `` indicator. The
+`(  REMOTE CHECK FAILED )` centered above the compact `` indicator. The
 same expansion layout applies to ahead, behind, and diverged messages. All
 expansions, including staged-change messages, use `( MESSAGE )`, with one
 space after `(` and before `)`.
@@ -682,14 +684,14 @@ expansions are cleared immediately when the prompt leaves the repository.
 Long remote messages are used only when the complete centered banner fits
 between the terminal edges at the compact indicator's current column. Narrow
 or crowded prompts automatically use ` PUSH PENDING: N`,
-`☒ PULL PENDING: N`, or
-`☒ DIVERGED: ⇡N ⇣M`; all variants retain the centered `( … )` presentation.
+` PULL PENDING: N`, or
+` DIVERGED: ⇡N ⇣M`; all variants retain the centered `( … )` presentation.
 Bash keeps a small right-edge safety margin for terminals that report stale
 columns or render prompt glyphs wider than their Unicode cell estimate.
 
 After the first fresh successful check, or after connectivity recovers from an
 offline state, YAFP displays
-`( ✓ INTERNET CONNECTION )` with intense white text on a normal green
+`(  INTERNET CONNECTION )` with intense white text on a normal green
 background above the compact remote indicator.
 Green banners use exact RGB `#008000` with white `#FFFFFF` text; yellow
 banners use `#FFFF00` with black text in Bash and PowerShell. These banners
@@ -812,7 +814,7 @@ without an upstream, `yafp-status` reports that the timer is unavailable and
 YAFP checks the configured Git remote, not general internet connectivity.
 Authentication, permissions, an invalid remote, DNS, or a restricted execution
 environment can all make `git fetch` fail while other internet access works.
-The `☒ REMOTE CHECK FAILED` banner reflects that uncertainty, including for
+The ` REMOTE CHECK FAILED` banner reflects that uncertainty, including for
 previously cached errors. To see Git's diagnostic, run `git fetch` in your
 terminal; after resolving the cause, run `yafp-refresh` and render another
 prompt once the background check finishes. A successful check replaces the
@@ -820,7 +822,7 @@ error even before its cache interval expires. Checks from restricted shells
 can write failures into the same repository cache used by your terminal.
 
 After a remote check fails, use `yafp-ack` to acknowledge the current alert. The
-`( ☒ REMOTE CHECK FAILED )` expansion then stays hidden while the compact
+`(  REMOTE CHECK FAILED )` expansion then stays hidden while the compact
 `` remains intense red on a transparent background. A successful
 remote check resets the acknowledgement, so a later remote-check failure displays
 the expansion again. Outside a remote error state, `yafp-ack` leaves
@@ -838,7 +840,7 @@ This synchronous check waits for Git;
 it does not leave a background job or defer messages to a later prompt.
 Normal repository prompt monitoring remains asynchronous and independent.
 Reloading YAFP does not repeat the startup check in the same session.
-A failed fetch displays `☒🌐 REMOTE CHECK FAILED`; remote authentication or
+A failed fetch displays `🌐 REMOTE CHECK FAILED`; remote authentication or
 configuration errors can produce the same message as an offline connection.
 
 The startup check silently accepts current checkouts and reports ahead,
@@ -854,7 +856,7 @@ YAFP startup check: /home/user/yafp
 When only remote commits are missing, it shows their count and asks in English:
 
 ```text
-☒ OUTDATED REPOSITORY: YAFP is 3 commit(s) behind its upstream.
+ OUTDATED REPOSITORY: YAFP is 3 commit(s) behind its upstream.
 Update YAFP now? [y/N]
 ```
 
@@ -923,7 +925,7 @@ and `( MESSAGE )` spacing. The examples use one commit or staged file and
 `origin/main`; they do not query Git or change the remote cache, timer, or
 alert acknowledgement. Run `yafp-reload` to make the command available in an
 already open shell after updating YAFP.
-Every banner begins with `✓` for success, `` for warnings, or `☒` for errors
+Every banner begins with `` for success, `` for warnings, or `` for errors
 inside its opening parenthesis, for example `(  PUSH PENDING: 1 )`.
 One space separates the severity symbol from the message text.
 
@@ -934,8 +936,8 @@ including an interrupted command, counts as failed:
 
 ```text
 ┌──────────────────────────┐
-│ ✓ Succeeded: 38 (090%)   │
-│ ☒ Failed:     4 (010%)   │
+│  Succeeded: 38 (090%)   │
+│  Failed:     4 (010%)   │
 │ ━━━━━━━━━━━━━━━━━━━━━━   │
 │ ∑ Total:     42 (100%)   │
 └──────────────────────────┘
@@ -1389,6 +1391,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-02 23:35:53 🍎 MBP02 |
+📆 2026-11-03 00:16:15 🍎 MBP02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

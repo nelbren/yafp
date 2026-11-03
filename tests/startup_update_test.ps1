@@ -79,7 +79,7 @@ try {
     if ($null -ne $script:YafpUpdateSample) { throw 'Noninteractive loading started a check' }
     Start-TestCheck
     $output = Complete-TestCheck
-    if ($output -notmatch '☒ OUTDATED REPOSITORY: YAFP is 1 commit\(s\)' -or $script:reloads -ne 0) {
+    if ($output -notmatch ' OUTDATED REPOSITORY: YAFP is 1 commit\(s\)' -or $script:reloads -ne 0) {
         throw "Default consent or behind count incorrect: $output"
     }
     if ((Invoke-TestGit @('-C', $script:YafpRoot, 'rev-parse', 'HEAD')) -ne $initial) { throw 'Default answer pulled' }
@@ -93,7 +93,7 @@ try {
     if ((Complete-TestCheck) -ne '') { throw 'Current checkout must be silent' }
     $null = Invoke-TestGit @('-C', $script:YafpRoot, 'remote', 'set-url', 'origin', (Join-Path $temporary 'missing.git'))
     Start-TestCheck
-    if ((Complete-TestCheck) -notmatch '☒🌐 REMOTE CHECK FAILED') { throw 'Remote failure message' }
+    if ((Complete-TestCheck) -notmatch '🌐 REMOTE CHECK FAILED') { throw 'Remote failure message' }
     $null = Invoke-TestGit @('-C', $script:YafpRoot, 'remote', 'set-url', 'origin', $remote)
     $null = Invoke-TestGit @('-C', $script:YafpRoot, 'config', 'user.name', 'Test')
     $null = Invoke-TestGit @('-C', $script:YafpRoot, 'config', 'user.email', 'test@example.invalid')
@@ -113,7 +113,7 @@ try {
     $null = Invoke-TestGit @('-C', $seed, 'push', '--quiet', 'origin', 'HEAD')
     $head = Invoke-TestGit @('-C', $script:YafpRoot, 'rev-parse', 'HEAD')
     Start-TestCheck
-    if ((Complete-TestCheck) -notmatch '☒ DIVERGED REPOSITORY' -or $script:reloads -ne 1) { throw 'Diverged pull reloaded' }
+    if ((Complete-TestCheck) -notmatch ' DIVERGED REPOSITORY' -or $script:reloads -ne 1) { throw 'Diverged pull reloaded' }
     if ((Invoke-TestGit @('-C', $script:YafpRoot, 'rev-parse', 'HEAD')) -ne $head) { throw 'Divergence changed HEAD' }
     Start-TestCheck
     $null = Invoke-TestGit @('-C', $script:YafpRoot, 'checkout', '--quiet', '--detach')

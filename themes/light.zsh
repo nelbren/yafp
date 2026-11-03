@@ -101,8 +101,8 @@ YAFP_SYMBOL_GIT_NEW_EMOJI=""
 
 # Anterior: YAFP_CLOCK_EMOJI="⧖"
 YAFP_CLOCK_EMOJI=""
-YAFP_SYMBOL_ERROR="☒"
-YAFP_SYMBOL_OK="✓"
+YAFP_SYMBOL_ERROR=""
+YAFP_SYMBOL_OK=""
 
 theme_render_general_block() {
     emulate -L zsh -o KSH_ARRAYS
@@ -182,7 +182,7 @@ theme_render_git_block() {
     fi
 
     if [ -z "$counts" ]; then
-        text="${cStatusOk}✓${cSeparator}"
+        text="${cStatusOk}${cSeparator}"
     else
         text="$counts"
     fi

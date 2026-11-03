@@ -91,15 +91,13 @@ for dark in 0 1; do
         yafp_ctx_previous_command='echo ⚠️'
         yafp_ctx_previous_timestamp='' yafp_ctx_exit=0
         out="$(theme_render_status_ok_block)"
-        if [ "$theme" != light ]; then
-            contains "$out" '' "Success glyph in $theme"
-        fi
+        contains "$out" '' "Success glyph in $theme"
         if [ "$theme" = default ]; then
             contains "$out" 'echo ⚠️' 'Command marker must not alter command text'
         fi
         yafp_ctx_exit=7
         out="$(theme_render_status_error_block)"
-        case "$theme" in default) error_text='7' ;; minimal) error_text=' 7' ;; light) error_text='☒ 7' ;; esac
+        case "$theme" in default) error_text='7' ;; minimal) error_text=' 7' ;; light) error_text=' 7' ;; esac
         contains "$out" "$(ps1_wrap "$cCmdError")${error_text}" 'Error symbol and status keep their color'
         if [ "$theme" = minimal ]; then
             case "$YAFP_USER_TYPE" in root) user_icon='' ;; *) user_icon='' ;; esac
@@ -156,6 +154,16 @@ for dark in 0 1; do
             plain
             [ "$out" = "↦[$indicator]" ] || fail "Remote state framing: $theme/$state/$out"
         done
+        # The failure highlight is independent of theme darkness; acknowledgement clears it.
+        yafp_ctx_git_remote_state=error
+        for acknowledged in 0 1; do
+            YAFP_REMOTE_OFFLINE_ACKNOWLEDGED=$acknowledged
+            out="$(theme_render_git_remote_status)"
+            expected_color=$'\033[0;101;97m'
+            [ "$acknowledged" -eq 0 ] || expected_color=$cRemoteAcknowledged
+            contains "$out" "$(ps1_wrap "$expected_color")" "Offline highlight: $theme/$dark/$acknowledged"
+        done
+        YAFP_REMOTE_OFFLINE_ACKNOWLEDGED=0
         yafp_ctx_git_remote_state=''
         [ -z "$(theme_render_git_remote_status)" ] || fail 'Empty remote frame'
         yafp_ctx_git_delete=0 yafp_ctx_git_change=0 yafp_ctx_git_new=0 yafp_ctx_git_staged=0
@@ -216,12 +224,12 @@ contains "$out" '       Remote:  Up to date' 'Framed status fields'
 contains "$out" '   Next check:' 'Framed next-check field'
 YAFP_COMMANDS_TOTAL=13 YAFP_COMMANDS_SUCCEEDED=11 YAFP_COMMANDS_FAILED=2
 out="$(NO_COLOR='' yafp-stats)"
-contains "$out" $'\033[92m✓ Succeeded:' 'Framed succeeded color'
-contains "$out" $'\033[91m☒ Failed:' 'Framed failed color'
+contains "$out" $'\033[92m Succeeded:' 'Framed succeeded color'
+contains "$out" $'\033[91m Failed:' 'Framed failed color'
 contains "$out" $'\033[97m∑ Total:' 'Framed total color'
 plain
-contains "$out" '✓ Succeeded: 11 (085%)' 'Framed succeeded precision'
-contains "$out" '☒ Failed:     2 (015%)' 'Framed failed alignment'
+contains "$out" ' Succeeded: 11 (085%)' 'Framed succeeded precision'
+contains "$out" ' Failed:     2 (015%)' 'Framed failed alignment'
 contains "$out" '∑ Total:     13 (100%)' 'Framed total'
 out="$(NO_COLOR='' yafp-help)"
 contains "$out" '┌' 'Help opening frame'
@@ -234,8 +242,8 @@ contains "$out" '┌' 'Message catalog opening frame'
 contains "$out" '┘' 'Message catalog closing frame'
 contains "$out" "${cRemotePending}(  PUSH PENDING: 1 )" 'Message catalog warning colors'
 plain
-contains "$out" '( ✓ INTERNET CONNECTION )' 'Success catalog entry'
-contains "$out" '( ☒ REMOTE CHECK FAILED )' 'Error catalog entry'
+contains "$out" '(  INTERNET CONNECTION )' 'Success catalog entry'
+contains "$out" '(  REMOTE CHECK FAILED )' 'Error catalog entry'
 for fixture in $'\033[31m12345678901234567890\033[0m\n$ ' \
     $'\nabcdef\033[s\033[1A\033[3D\033[33mWARN\033[0m\033[uXYZ\n$ ' \
     $'abc\033[K\nA界é\n$ '; do

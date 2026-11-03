@@ -83,6 +83,7 @@ try {
             if (-not $out.Contains('') -or -not $out.Contains('env⚠️') -or -not $out.Contains('4')) {
                 throw "Python/staged glyph missing or environment name changed: $theme"
             }
+            if (-not $out.Contains('')) { throw "Success glyph missing: $theme" }
             if ($theme -ne 'light') {
                 if (-not $out.Contains('-1') -or -not $out.Contains('±2') -or
                     -not $out.Contains('+3') -or -not $out.Contains('') -or -not $out.Contains('')) {
@@ -103,7 +104,7 @@ try {
             }
             $context.HadError = $true; $context.ExitCode = 7
             $errorText = (@(Write-YafpTheme -Context $context 6>&1) | ForEach-Object { "$_" }) -join ''
-            $expectedError = switch ($theme) { default { '7' }; minimal { ' 7' }; light { '☒ 7' } }
+            $expectedError = switch ($theme) { default { '7' }; minimal { ' 7' }; light { ' 7' } }
             if (-not $errorText.Contains($expectedError)) { throw "Command error glyph/code changed: $theme" }
             $context.HadError = $false; $context.ExitCode = 0
             if ($theme -ne 'default' -and (-not $out.Contains(' ') -or $out.Contains('🪟'))) {
@@ -148,6 +149,20 @@ try {
                     throw 'Refresh icon must preserve its existing warning colors'
                 }
                 $git.RemoteStatus.Refreshing = $false
+                $git.RemoteStatus.State = 'error'
+                foreach ($acknowledged in @($false, $true)) {
+                    $script:YafpRemoteOfflineAcknowledged = $acknowledged
+                    $script:frameWrites.Clear()
+                    $null = Write-YafpGitRemoteStatus -Git $git 6>&1 | Out-String
+                    $icon = $script:frameWrites | Where-Object Text -EQ '' | Select-Object -Last 1
+                    $expectedForeground = if ($acknowledged) { 'Red' } else { 'White' }
+                    $expectedBackground = if ($acknowledged) { $null } else { 'Red' }
+                    if ($icon.Foreground -ne $expectedForeground -or $icon.Background -ne $expectedBackground) {
+                        throw "Offline highlight mismatch: $theme/$dark/$acknowledged"
+                    }
+                }
+                $script:YafpRemoteOfflineAcknowledged = $false
+                $git.RemoteStatus.State = 'current'
             }
             finally { Set-Item Function:Write-YafpText -Value $writer }
         }
@@ -176,10 +191,10 @@ if (-not $statusOutput.Contains('┌') -or -not $statusOutput.Contains('┘') -o
 }
 $script:YafpCommandsTotal = 13; $script:YafpCommandsSucceeded = 11; $script:YafpCommandsFailed = 2
 $statsOutput = (@(Show-YafpStats 6>&1) | ForEach-Object { "$_" }) -join "`n"
-foreach ($text in @('┌', '┘', '✓ Succeeded: 11 (085%)', '☒ Failed:     2 (015%)', '∑ Total:     13 (100%)')) {
+foreach ($text in @('┌', '┘', ' Succeeded: 11 (085%)', ' Failed:     2 (015%)', '∑ Total:     13 (100%)')) {
     if (-not $statsOutput.Contains($text)) { throw "Framed stats field missing: $text" }
 }
-foreach ($text in @("$([char]27)[92m✓", "$([char]27)[91m☒", "$([char]27)[97m∑")) {
+foreach ($text in @("$([char]27)[92m", "$([char]27)[91m", "$([char]27)[97m∑")) {
     if (-not $statsOutput.Contains($text)) { throw 'Framed stats severity color changed' }
 }
 $consoleOutput = [Console]::Out
@@ -237,10 +252,42 @@ foreach ($fixture in @(
     }
     if ($fixture.StartsWith('abc') -and -not $plain.Contains('abc')) { throw 'Erase-to-end deleted preceding text' }
 }
+# Windows has concrete RawUI colors even when no background was requested.
+# Reproduce that host state on every platform instead of relying on CI defaults.
+$originalHostForeground = $Host.UI.RawUI.ForegroundColor
+$originalHostBackground = $Host.UI.RawUI.BackgroundColor
+try {
+    $Host.UI.RawUI.ForegroundColor = [ConsoleColor]::Gray
+    foreach ($hostBackground in @([ConsoleColor]::Black, [ConsoleColor]::DarkBlue)) {
+        $Host.UI.RawUI.BackgroundColor = $hostBackground
+        $records = @(Write-YafpText -Text 'transparent' -ForegroundColor Red -BackgroundColor $null -NoNewline 6>&1)
+        if ($records.Count -ne 1 -or $records[0].MessageData.ForegroundColor -ne [ConsoleColor]::Red -or
+            $null -ne $records[0].MessageData.BackgroundColor -or -not $records[0].MessageData.NoNewLine) {
+            throw "Host background leaked into transparent text: $hostBackground"
+        }
+        $text = ConvertTo-YafpPreviewText -Records $records
+        if ($text -ne "$([char]27)[91mtransparent$([char]27)[0m") {
+            throw 'Transparent text must retain its requested color without inheriting the console background'
+        }
+        $records = @(Write-YafpText -Text 'explicit' -ForegroundColor Red -BackgroundColor Black 6>&1)
+        if ($records.Count -ne 2 -or $records[0].MessageData.BackgroundColor -ne [ConsoleColor]::Black -or
+            $records[1].MessageData.NoNewLine -or $null -ne $records[1].MessageData.BackgroundColor) {
+            throw 'Explicit backgrounds and separate uncolored newlines must remain intact'
+        }
+        $statsOutput = (@(Show-YafpStats 6>&1) | ForEach-Object { "$_" }) -join "`n"
+        foreach ($token in @("$([char]27)[92m", "$([char]27)[91m", "$([char]27)[97m∑")) {
+            if (-not $statsOutput.Contains($token)) { throw "Stats inherited host background: $hostBackground" }
+        }
+    }
+}
+finally {
+    $Host.UI.RawUI.ForegroundColor = $originalHostForeground
+    $Host.UI.RawUI.BackgroundColor = $originalHostBackground
+}
 $records = @(Write-Host red -ForegroundColor Red -BackgroundColor DarkBlue -NoNewline 6>&1)
 $text = ConvertTo-YafpPreviewText -Records $records
 if (-not $text.Contains("$([char]27)[91;44mred")) { throw 'Captured preview colors were lost' }
-$records = @(Write-Host transparent -ForegroundColor Red -NoNewline 6>&1)
+$records = @(Write-YafpText -Text 'transparent' -ForegroundColor Red -BackgroundColor $null -NoNewline 6>&1)
 $text = ConvertTo-YafpPreviewText -Records $records
 if (-not $text.Contains("$([char]27)[91mtransparent") -or $text.Contains(';40m')) {
     throw 'Capturing a transparent background must not introduce black'

@@ -18,7 +18,7 @@ function global:Complete-YafpUpdateCheck {
     $script:YafpUpdateSample = $null
     if ($null -eq $sample -or $sample.State -eq 'error') {
         Write-YafpUpdateMessage -Severity info -Text "YAFP startup check: $root"
-        Write-YafpUpdateMessage -Severity error -Text '☒🌐 REMOTE CHECK FAILED'
+        Write-YafpUpdateMessage -Severity error -Text '🌐 REMOTE CHECK FAILED'
         return
     }
     $messages = @{
@@ -41,7 +41,7 @@ function global:Complete-YafpUpdateCheck {
     Write-YafpUpdateMessage -Severity info -Text "YAFP startup check: $root"
     $target = $sample.Upstream -replace '^refs/remotes/', ''
     if ($sample.Ahead -gt 0 -and $sample.Behind -gt 0) {
-        Write-YafpUpdateMessage -Severity error -Text "☒ DIVERGED REPOSITORY: $($sample.Ahead) local commit(s), $($sample.Behind) remote commit(s) from $target"
+        Write-YafpUpdateMessage -Severity error -Text " DIVERGED REPOSITORY: $($sample.Ahead) local commit(s), $($sample.Behind) remote commit(s) from $target"
         return
     }
     if ($sample.Ahead -gt 0) {
@@ -50,15 +50,15 @@ function global:Complete-YafpUpdateCheck {
         Write-YafpUpdateMessage -Severity warning -Text " REMOTE NOT UPDATED: $($sample.Ahead) local $unit $verb not been pushed to $target"
         return
     }
-    Write-YafpUpdateMessage -Severity error -Text "☒ OUTDATED REPOSITORY: YAFP is $($sample.Behind) commit(s) behind its upstream."
+    Write-YafpUpdateMessage -Severity error -Text " OUTDATED REPOSITORY: YAFP is $($sample.Behind) commit(s) behind its upstream."
     $answer = Read-Host 'Update YAFP now? [y/N]'
     if ($answer -cnotin @('y', 'Y')) { return }
     $result = & (Join-Path $root 'scripts/windows/update/collect.ps1') -Root $root -Pull $true
     if ($result.State -eq 'updated') {
         try { Invoke-YafpReload }
-        catch { Write-YafpUpdateMessage -Severity error -Text '☒ RELOAD FAILED: restart YAFP after fixing its configuration.' }
+        catch { Write-YafpUpdateMessage -Severity error -Text ' RELOAD FAILED: restart YAFP after fixing its configuration.' }
     }
-    else { Write-YafpUpdateMessage -Severity error -Text '☒ UPDATE FAILED: YAFP was not reloaded.' }
+    else { Write-YafpUpdateMessage -Severity error -Text ' UPDATE FAILED: YAFP was not reloaded.' }
 }
 
 function global:Invoke-YafpStartupUpdate {
