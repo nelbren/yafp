@@ -39,8 +39,10 @@ yafp_codex_context() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
     local interval="${YAFP_CODEX_CHECK_INTERVAL:-0}" checked state value primary secondary reset extra item valid=1 sampled=0
     yafp_ctx_codex='' yafp_ctx_codex_token='' yafp_ctx_codex_color=90
+    yafp_ctx_codex_state=disabled yafp_ctx_codex_remaining='-' yafp_ctx_codex_resets_at='-'
     case "$interval" in ''|*[!0-9]*|0*|??????*) return 0 ;; esac
     [ "$interval" -ge 1 ] && [ "$interval" -le 86400 ] || return 0
+    yafp_ctx_codex_state=unavailable
     yafp_codex_segment -
     if [ -n "${YAFP_CODEX_DIR:-}" ] && [ -r "$YAFP_CODEX_DIR/sample" ]; then
         IFS=' ' read -r checked state value primary secondary reset extra < "$YAFP_CODEX_DIR/sample" || valid=0
@@ -62,9 +64,11 @@ yafp_codex_context() {
         [ -z "$extra" ] || valid=0
         if [ "$valid" = 1 ] && [ "$checked" -le "$SECONDS" ]; then
             sampled=1
+            yafp_ctx_codex_state=$state
             YAFP_CODEX_STATE=$state YAFP_CODEX_SAMPLE_AT=$checked
             YAFP_CODEX_PRIMARY=$primary YAFP_CODEX_SECONDARY=$secondary
             if [ "$state" = ok ]; then
+                yafp_ctx_codex_remaining=$value yafp_ctx_codex_resets_at=$reset
                 yafp_codex_segment "$value"
                 if [ "$value" != - ] && [ "$reset" != - ]; then
                     yafp_codex_format_reset "$((reset - SECONDS))"
@@ -74,14 +78,17 @@ yafp_codex_context() {
         fi
     fi
     if [ -n "${YAFP_CODEX_PID:-}" ] && kill -0 "$YAFP_CODEX_PID" 2>/dev/null; then
-        [ "$sampled" = 1 ] || yafp_ctx_codex_token='֍⟳'
+        if [ "$sampled" != 1 ]; then
+            yafp_ctx_codex_token='֍⟳d⟳h' yafp_ctx_codex_state=pending
+        fi
         yafp_ctx_codex=$yafp_ctx_codex_token
         return 0
     fi
     YAFP_CODEX_PID=''
     if [ -z "${YAFP_CODEX_ATTEMPT:-}" ] || [ "$((SECONDS - YAFP_CODEX_ATTEMPT))" -ge "$interval" ]; then
         YAFP_CODEX_ATTEMPT=$SECONDS
-        if [ -z "${YAFP_CODEX_DIR:-}" ]; then
+        # An open session can outlive its temporary directory.
+        if [ -z "${YAFP_CODEX_DIR:-}" ] || [ ! -d "$YAFP_CODEX_DIR" ]; then
             YAFP_CODEX_DIR=$(mktemp -d "${TMPDIR:-/tmp}/yafp-codex.XXXXXXXX") || return 0
         fi
         {
@@ -96,7 +103,7 @@ yafp_codex_context() {
         } >/dev/null 2>&1
     fi
     if [ "$sampled" = 0 ] && [ -n "${YAFP_CODEX_PID:-}" ]; then
-        yafp_ctx_codex_token='֍⟳'
+        yafp_ctx_codex_token='֍⟳d⟳h' yafp_ctx_codex_state=pending
     fi
     yafp_ctx_codex=$yafp_ctx_codex_token
     return 0
@@ -115,19 +122,36 @@ theme_render_codex() {
 }
 
 yafp-codex() {
+    if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
+    local report reset_text='' remaining_text='' seconds
+    local state_icon state_color reset_color=90
     yafp_codex_context
-    if [ -z "$yafp_ctx_codex" ]; then
-        printf '%s\n' 'Codex quota disabled. Set YAFP_CODEX_CHECK_INTERVAL=300.'
-        return 0
+    case "$yafp_ctx_codex_state" in
+        ok) state_icon=''; state_color=92 ;;
+        pending) state_icon=''; state_color=93 ;;
+        disabled) state_icon=''; state_color=90 ;;
+        logged-out) state_icon=''; state_color=91 ;;
+        unsupported-auth) state_icon=''; state_color=93 ;;
+        missing-cli|missing-python) state_icon=''; state_color=93 ;;
+        timeout) state_icon=''; state_color=91 ;;
+        *) state_icon=''; state_color=91 ;;
+    esac
+    if [ "$yafp_ctx_codex_remaining" != - ]; then
+        remaining_text="${yafp_ctx_codex_remaining}%"
+        if [ "$yafp_ctx_codex_resets_at" != - ]; then
+            seconds=$((yafp_ctx_codex_resets_at - SECONDS))
+            [ "$seconds" -ge 0 ] || seconds=0
+            reset_text="$((seconds / 86400))d$((seconds % 86400 / 3600))h"
+            reset_color=93
+        fi
     fi
-    printf '%s\n' "$yafp_ctx_codex"
-    printf 'State: %s\n' "${YAFP_CODEX_STATE:-pending}"
-    if [ -n "${YAFP_CODEX_SAMPLE_AT:-}" ]; then
-        local primary='N/A' secondary='N/A'
-        [ "$YAFP_CODEX_PRIMARY" = - ] || primary="${YAFP_CODEX_PRIMARY}%"
-        [ "$YAFP_CODEX_SECONDARY" = - ] || secondary="${YAFP_CODEX_SECONDARY}%"
-        printf 'Remaining: primary %s; secondary %s; sample age %ss\n' \
-            "$primary" "$secondary" "$((SECONDS - YAFP_CODEX_SAMPLE_AT))"
+    printf -v report '        Reset: \033[%sm%s\033[0m\n        State: \033[%sm%s %s\033[0m\n    Remaining: \033[%sm%s\033[0m' \
+        "$reset_color" "$reset_text" "$state_color" "$state_icon" "$yafp_ctx_codex_state" \
+        "$yafp_ctx_codex_color" "$remaining_text"
+    . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
+    yafp_preview_frame "$report"
+    if [ "$yafp_ctx_codex_state" = disabled ]; then
+        printf '%s\n' 'Codex quota disabled. Set YAFP_CODEX_CHECK_INTERVAL=300.'
     fi
 }
 

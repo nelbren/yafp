@@ -101,11 +101,11 @@ try {
     $null = Invoke-TestGit @('-C', $script:YafpRoot, 'add', 'local.txt')
     $null = Invoke-TestGit @('-C', $script:YafpRoot, 'commit', '--quiet', '-m', 'local')
     Start-TestCheck
-    if ((Complete-TestCheck) -notmatch '⚠ REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/') { throw 'Missing ahead warning' }
+    if ((Complete-TestCheck) -notmatch ' REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/') { throw 'Missing ahead warning' }
     Set-Content (Join-Path $script:YafpRoot 'dirty.tmp') 'dirty'
     Start-TestCheck
     $dirtyOutput = Complete-TestCheck
-    if ($dirtyOutput -notmatch '⚠ REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/' -or
+    if ($dirtyOutput -notmatch ' REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/' -or
         $dirtyOutput -match 'UNCOMMITTED CHANGES') { throw 'Startup remote status must be independent of local changes' }
     Remove-Item -LiteralPath (Join-Path $script:YafpRoot 'dirty.tmp')
     Add-Content (Join-Path $seed 'file.txt') 'three'

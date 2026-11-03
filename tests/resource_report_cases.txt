@@ -1,0 +1,5 @@
+ok||92
+refreshing||90
+pending||93
+disabled||90
+unavailable||91

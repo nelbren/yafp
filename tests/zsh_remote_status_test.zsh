@@ -129,7 +129,7 @@ for theme in default minimal light; do
     load_theme
     indicator="$(theme_render_git_remote_status)"
     case "$indicator" in
-        *'○0'*'⚠ NO COMMITS'*|*'⚠ NO COMMITS'*'○0'*) ;;
+        *'○0'*' NO COMMITS'*|*' NO COMMITS'*'○0'*) ;;
         *) fail "$theme missing initial commit warning" ;;
     esac
 done
@@ -155,7 +155,7 @@ for theme in default minimal light; do
     YAFP_THEME="$theme"
     load_theme
     indicator="$(theme_render_git_remote_status)"
-    [[ "$indicator" == *'⇡?'* && "$indicator" == *'⚠ NO UPSTREAM'* ]] ||
+    [[ "$indicator" == *'⇡?'* && "$indicator" == *' NO UPSTREAM'* ]] ||
         fail "$theme tracking warning"
 done
 git remote remove origin

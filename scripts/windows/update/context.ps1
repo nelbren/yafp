@@ -22,12 +22,12 @@ function global:Complete-YafpUpdateCheck {
         return
     }
     $messages = @{
-        'missing-git' = '⚠ GIT NOT AVAILABLE: YAFP startup check skipped'
-        'not-git' = '⚠ NOT A GIT REPOSITORY: YAFP installation'
-        'unborn' = '⚠ NO COMMITS: YAFP installation'
-        'detached' = '⚠ DETACHED HEAD: YAFP startup update unavailable'
-        'no-upstream' = '⚠ NO UPSTREAM: YAFP startup update unavailable'
-        'no-remote' = '⚠ NO REMOTE: YAFP startup update unavailable'
+        'missing-git' = ' GIT NOT AVAILABLE: YAFP startup check skipped'
+        'not-git' = ' NOT A GIT REPOSITORY: YAFP installation'
+        'unborn' = ' NO COMMITS: YAFP installation'
+        'detached' = ' DETACHED HEAD: YAFP startup update unavailable'
+        'no-upstream' = ' NO UPSTREAM: YAFP startup update unavailable'
+        'no-remote' = ' NO REMOTE: YAFP startup update unavailable'
     }
     if ($messages.ContainsKey($sample.State)) {
         Write-YafpUpdateMessage -Severity info -Text "YAFP startup check: $root"
@@ -47,7 +47,7 @@ function global:Complete-YafpUpdateCheck {
     if ($sample.Ahead -gt 0) {
         $unit = if ($sample.Ahead -eq 1) { 'commit' } else { 'commits' }
         $verb = if ($sample.Ahead -eq 1) { 'has' } else { 'have' }
-        Write-YafpUpdateMessage -Severity warning -Text "⚠ REMOTE NOT UPDATED: $($sample.Ahead) local $unit $verb not been pushed to $target"
+        Write-YafpUpdateMessage -Severity warning -Text " REMOTE NOT UPDATED: $($sample.Ahead) local $unit $verb not been pushed to $target"
         return
     }
     Write-YafpUpdateMessage -Severity error -Text "☒ OUTDATED REPOSITORY: YAFP is $($sample.Behind) commit(s) behind its upstream."

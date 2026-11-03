@@ -82,6 +82,22 @@ YAFP owns the visible prompt; other successful `precmd`, `preexec`, and
 array indexing, stay local to YAFP functions. Prompt data is expanded once,
 so paths and names containing substitution syntax cannot execute commands.
 
+YAFP also mitigates visual remnants when navigating zsh history entries with
+potentially wide emoji or symbol sequences. It requests a full redraw when
+entering or leaving such an entry, reusing the cached prompt without changing
+the command, its cursor, key bindings, or execution. Detection is conservative:
+variation selectors, joined emoji, flags, keycaps, and symbol/emoji ranges are
+candidates, rather than proof that a particular terminal displays them wrongly.
+Ordinary ASCII and accented Latin history entries keep normal incremental
+redrawing. Existing ZLE hooks remain registered, and reloads do not duplicate
+YAFP's hooks.
+
+The mitigation is enabled by default. To disable it, add
+`YAFP_ZSH_HISTORY_REDRAW=0` to your personal `yafp-cfg.zsh` and run `yafp-reload`.
+It addresses history transitions, not zsh's internal Unicode width tables;
+cursor positioning while editing an emoji sequence can still differ between
+terminals. `Ctrl+L` remains available for a manual screen redraw.
+
 The zsh implementation includes the remote checks, staged and remote banners,
 virtual environments, previous-command exit status, execution statistics,
 OSC 133, reload, development timing, and the `yafp-*` helper commands described
@@ -118,6 +134,13 @@ The current timestamp uses the clock glyph `` (`U+F017`) in all three themes.
 Previous glyph assignments remain commented beside the active code. The
 terminal must use a Nerd Font containing these private-use glyphs; SSH clients
 render them using the font installed locally, independently of the remote OS.
+
+Los iconos de estado, contadores Git, Python, usuario/equipo y diagnóstico
+usan Font Awesome mediante Nerd Fonts. El catálogo de glifos y sus códigos se
+encuentra en [FONTS.md](docs/FONTS.md#iconos-del-prompt). Los colores, códigos
+de salida, umbrales y significados permanecen iguales. `light` conserva sus
+marcas compactas `✓`, `☒` y `↯`, y sus contadores numéricos; los archivos,
+comandos y otros textos del usuario se muestran sin sustituir sus emojis.
 
 ### :bulb: Colors change according to
 
@@ -174,7 +197,7 @@ The origin symbol distinguishes repositories by configuration:
 | Symbol | Themes               | Meaning                                |
 | ------ | -------------------- | -------------------------------------- |
 | `↯`    | `light`              | The repository has a configured remote |
-| `⚡`   | `default`, `minimal` | The repository has a configured remote |
+| ``    | `default`, `minimal` | The repository has a configured remote |
 | `⇣`    | All                  | The repository has no `origin` remote  |
 
 The `light` and `minimal` themes render the branch name in blue in both Bash
@@ -205,6 +228,11 @@ check mark, while the other themes retain their existing clean-state behavior.
 Counter labels and emoji remain theme-specific inside the common frame.
 The remote frame touches the preceding Git marker, as in `↦[⣦]`,
 with a space after the frame before the branch name.
+
+`` marks a background refresh in Git and machine resources. `⟳` is a
+placeholder for the first pending values in machine resources and Codex quota.
+Resource refresh icons and initial placeholders are gray; Git refresh icons
+retain their existing warning colors.
 
 Remote and staged banners remain aligned with their corresponding indicators,
 including when other counters appear before the staged count.
@@ -254,13 +282,13 @@ The diagnostic line uses the same fields on both shells:
 | `Error`   | Previous command status calculation time     |
 | `Timer`   | Remaining timer and orchestration overhead   |
 
-The output maps those fields to `Total ms | ⚙️General 🌱Git 🐍Venv ❌Error
-⚡Timer`.
+The output maps those fields to `Total ms | General Git Venv Error
+Timer`.
 
-Totals below 50 ms use `🚀` in green, totals from 50 through 199 ms use
-`⏱️` with black text on an intense yellow background, and totals of 200 ms or
+Totals below 50 ms use `` in green, totals from 50 through 199 ms use
+`` with black text on an intense yellow background, and totals of 200 ms or
 more use
-`🐢` with intense white text on a red background.
+`` with intense white text on a red background.
 
 ### Background resource monitoring
 
@@ -344,22 +372,45 @@ Red takes precedence over yellow. Thresholds use the actual integer percentage
 even in Braille mode; unavailable values appear in gray. The prompt omits
 sample age to keep the host block compact. `yafp-resources` still reports age:
 `17s` means seconds elapsed since sampling, rather than a countdown to the
-next update. `~` inside the frame indicates a new sample in progress and
-attaches directly to the last value, for example `↦[⣷▦⣦⡀⣿~]`.
+next update. The gray Font Awesome icon `` (`U+F021`, refresh) inside the
+frame indicates a new sample in progress. It attaches directly to the last
+value without a space, for example `↦[⣷▦⣦⡀⣿]`.
 While the first sample loads, the prompt displays `↦[⟳▦⟳⟳⟳]` in
 Unicode + symbols mode, or `↦[C⟳ R⟳ S⟳ D⟳]` with the default styles.
 Loading tokens use gray and follow the configured labels and spacing, without
-a trailing `~`. The `yafp-resources` diagnostic still reports
-`Resources: waiting for sample~`; an unavailable sample reports
-`Resources: no valid sample`. Unavailable
-metrics appear as `N/A`, never as an invented zero. A swap total of zero means
+a trailing ``. Unavailable prompt metrics appear as `N/A`, never as an
+invented zero. A swap total of zero means
 no swap/pagefile is allocated: this appears as `S0%` or `0%`, or the
 minimum cell in symbolic mode.
 
-`yafp-resources` shows a plain summary with sample age, used/total RAM and swap
-in MiB, and disk usage in KiB. During refresh, its age and marker are adjacent,
-for example `⣷▦⣦⡀⣿ 17s~`. The space before sample age remains.
-It does not wait for a pending sample to finish.
+`yafp-resources` usa el mismo cuadro gris y ajuste de ancho que `yafp-demo` y
+`yafp-codex`. Muestra el estado de la muestra, su edad en segundos y los cuatro
+recursos, con porcentajes numéricos incluso si el prompt usa Braille:
+
+```text
+┌─────────────────────────────────────────────────┐
+│         State:  refreshing                    │
+│    Sample age: 30s                             │
+│           CPU: 25%                             │
+│           RAM: 75% · 12320/16384 MiB           │
+│          SWAP: 47% · 1444/3072 MiB             │
+│   Disk (HOME): 80% · 777110816/971350180 KiB   │
+└─────────────────────────────────────────────────┘
+```
+
+CPU, RAM, SWAP y disco conservan los colores y umbrales del prompt. Los detalles
+usados/totales siguen en MiB para RAM/SWAP y KiB para el volumen de `HOME`.
+Los datos ausentes aparecen como `` en gris, también dentro de un par
+usado/total parcialmente disponible. Un swap sin capacidad asignada conserva
+`0% · 0/0 MiB`.
+
+` State` describe la disponibilidad de la muestra: ` ok`, ` refreshing`
+en gris si una muestra anterior sigue disponible, ` pending` mientras llega
+la primera, ` unavailable` si no existe una muestra válida y ` disabled`.
+` Sample age` mide el tiempo desde la toma de la muestra; usa `` si no hay
+una válida. Cuando está desactivado, el comando conserva la indicación de
+configuración debajo del cuadro. El informe no espera al trabajador ni
+reutiliza detalles antiguos tras una lectura de caché inválida.
 A worker starts during prompt rendering when the interval expires; a later
 prompt reads its result. There is no persistent timer, and the line is not
 redrawn while you type. The sample age identifies older data when a probe is
@@ -367,6 +418,9 @@ slow or fails. Each session has at most one resource worker; two terminals
 keep independent samples. Reloading does not duplicate workers. In zsh, the
 worker launches disowned with `&!`, so starting or finishing it does not emit
 job notifications such as `[3] + done`.
+If a session's temporary resource directory disappears, the next scheduled
+refresh creates a new private directory and resumes sampling automatically.
+An already running worker finishes before a replacement is started.
 
 macOS uses `sysctl`, `vm_stat`, two `top` samples one second apart, and `df`.
 RAM is an estimate of occupied physical memory that excludes free, inactive,
@@ -389,7 +443,8 @@ wired memory, and file cache:
 [Apple memory guide](https://support.apple.com/guide/activity-monitor/view-memory-usage-actmntr1004/mac).
 
 All prompt, diagnostic, and test messages are in English. Unavailable values
-use `N/A` consistently in resource and Codex indicators.
+use `N/A` in resource and Codex prompt indicators. Los cuadros de
+`yafp-resources` y `yafp-codex` usan `` en gris para los datos no disponibles.
 
 ### Background Codex quota
 
@@ -463,17 +518,43 @@ or invalid reset timestamp omits the countdown while preserving the quota.
 
 Requests have a ten-second deadline in the worker. Rendering reads the cached
 result without waiting or accessing the network. The initial prompt can show
-`֍⟳` in gray until the first result is collected at a later prompt. Each session
-keeps at most one quota worker, and reloads reuse it. In zsh, the worker is
-disowned
+`֍⟳d⟳h` in gray until the first result is collected at a later prompt. The
+`d`/`h` structure anticipates the reset countdown without inventing a duration.
+Once available, the real countdown uses the units appropriate to its duration.
+Each session keeps at most one quota worker, and reloads reuse it. In zsh, the
+worker is disowned
 at launch to suppress job notifications. There is no persistent polling timer
 or redraw while typing. The last sample remains visible during a refresh;
 a failed refresh replaces it with `֍N/A`.
+On Unix, a missing temporary quota directory is recreated on the next
+scheduled refresh, after any active worker finishes.
 
-Run `yafp-codex` for the cached state, remaining percentages per window, and
-sample age in seconds. It does not wait for the pending request. Only numeric
-quota values, reset timing, and a fixed status are cached. Account identifiers
-and credentials are never stored in the sample or printed by YAFP.
+`yafp-codex` muestra un cuadro con el mismo estilo de `yafp-demo`, sin esperar
+a que termine una actualización pendiente:
+
+```text
+┌─────────────────────────────────┐
+│         Reset: 1d8h            │
+│         State:  ok            │
+│     Remaining: 74%             │
+└─────────────────────────────────┘
+```
+
+`Reset` muestra días y horas restantes hasta el restablecimiento de la ventana
+que limita la cuota. `Remaining` siempre usa un porcentaje numérico y coincide
+con el valor agregado del prompt, aunque este use Braille. Se toma el menor
+porcentaje disponible entre las ventanas primaria y secundaria. `` indica
+que no hay un dato válido; un plazo vencido aparece como `0d0h`.
+
+` State` distingue el estado de la consulta de la cantidad de cuota: ` ok`,
+` pending`, ` disabled`, ` logged-out`, ` unsupported-auth`, ` missing-cli`
+o ` missing-python`, ` timeout` y ` unavailable`. El porcentaje conserva los
+umbrales verde/amarillo/rojo del prompt. Cuando la monitorización está
+desactivada, se conserva también la indicación para habilitarla. Los detalles
+por ventana y la edad de la muestra ya no se imprimen en este resumen.
+
+Solo se almacenan porcentajes numéricos, plazos de restablecimiento y estados
+fijos. YAFP nunca guarda ni imprime identificadores de cuenta o credenciales.
 
 ### Remote repository checks
 
@@ -515,7 +596,7 @@ The symbolic sequence is `⣿`, `⣷`, `⣶`, `⣦`, `⣤`, `⣄`, `⣀`, and `�
 Each shape progresses through intense white, normal white, and dark gray before
 repeating the cycle. The shape follows the remaining time, while the color
 advances once whenever a new prompt is rendered. It does not update while the
-prompt is idle. At zero, the countdown cell disappears and the existing `⟳`
+prompt is idle. At zero, the countdown cell disappears and the existing ``
 refresh indicator communicates that the background check is running. The color
 cycle uses only an integer increment and selection during rendering; it does not
 start another timer or process.
@@ -524,8 +605,8 @@ When the cached result expires, YAFP starts a non-interactive `git fetch` in
 the background. A later prompt render reads the result. Repositories without
 an upstream do not produce a false outdated warning. If a branch has a
 configured remote but no upstream reference, all themes show the yellow `⇡?`
-indicator with `( ⚠ NO UPSTREAM: configure tracking before pushing )`.
-On narrower terminals the banner becomes `( ⚠ NO UPSTREAM )`; if neither
+indicator with `(  NO UPSTREAM: configure tracking before pushing )`.
+On narrower terminals the banner becomes `(  NO UPSTREAM )`; if neither
 banner fits, the compact indicator remains visible. `yafp-status` reports
 `⇡? No upstream`. This local warning does not fetch, start a worker, show a
 countdown, or claim a count of unpublished commits. Local-only repositories
@@ -533,8 +614,8 @@ with commits and detached HEAD do not show it. Setting
 `YAFP_REMOTE_CHECK_INTERVAL=0` also disables this warning.
 
 After `git init`, a repository without commits shows the yellow `○0`
-indicator and `( ⚠ NO COMMITS: create the initial commit )`, or the compact
-`( ⚠ NO COMMITS )` banner when space is limited. This warning takes precedence
+indicator and `(  NO COMMITS: create the initial commit )`, or the compact
+`(  NO COMMITS )` banner when space is limited. This warning takes precedence
 over missing upstream tracking, works without a remote, and remains visible
 while files are staged. The first commit clears it; a configured remote may
 then trigger the no-upstream warning. Both warnings respect
@@ -569,13 +650,13 @@ of the branch symbol and to the left of the branch name:
 | ``       | Intense green          | Current: matches upstream              |
 | `⇡N`      | Black / intense yellow | Ahead: `N` commits ready to push       |
 | `…`       | Black / intense yellow | Checking: first check is running       |
-| `⟳`       | Black / intense yellow | Refreshing cached state                |
+| ``       | Black / intense yellow | Refreshing cached state                |
 | `⇣N`      | White / red            | Behind: `N` commits need integration   |
 | `⇡N⇣M`    | White / red            | Diverged: unique commits on both sides |
 | ``       | Intense red            | Remote check failed                    |
 
-The `⟳` indicator can precede the last known state while YAFP refreshes it,
-for example `⟳` or `⟳⇣2`. Warning expansions and compact indicators use black
+The `` indicator can precede the last known state while YAFP refreshes it,
+for example `` or `⇣2`. Warning expansions and compact indicators use black
 text on an intense yellow background. Error expansions and behind/diverged
 indicators use intense white text on a red background. The compact connectivity
 icons always use transparent backgrounds: `` (`U+F1EB`) is intense green and
@@ -591,7 +672,7 @@ space after `(` and before `)`.
 The delimiters are ordinary ASCII parentheses so terminal fonts display the
 inner spaces consistently.
 No colored padding precedes the opening delimiter. For example, the ahead
-banner starts with `( ⚠ REMOTE NOT UPDATED:`. Run `yafp-reload` in an existing
+banner starts with `(  REMOTE NOT UPDATED:`. Run `yafp-reload` in an existing
 shell to apply the current banner formatting after updating YAFP.
 Centering and terminal-edge checks include
 both delimiters and the two inner spaces. The layout uses
@@ -600,7 +681,7 @@ repository, or branch do not require estimating their display width. These
 expansions are cleared immediately when the prompt leaves the repository.
 Long remote messages are used only when the complete centered banner fits
 between the terminal edges at the compact indicator's current column. Narrow
-or crowded prompts automatically use `⚠ PUSH PENDING: N`,
+or crowded prompts automatically use ` PUSH PENDING: N`,
 `☒ PULL PENDING: N`, or
 `☒ DIVERGED: ⇡N ⇣M`; all variants retain the centered `( … )` presentation.
 Bash keeps a small right-edge safety margin for terminals that report stale
@@ -624,21 +705,22 @@ The offline compact indicator is ``.
 
 The cache tracks both the local commit and the upstream tracking commit. A
 successful push therefore invalidates an outdated `Ahead` result immediately,
-and `⟳` remains visible across prompt renders until the background refresh has
+and `` remains visible across prompt renders until the background refresh has
 finished.
 
 The detailed `yafp-status` report uses the same severity colors: current is
 intense green; ahead, checking, and refreshing are intense yellow; and behind,
 diverged, and remote-check errors are intense red.
 
-For example, ` (250) ⇡1 master` means that the local branch is one commit
+For example, `↦[(250)⇡1] master` means that the local branch is one commit
 ahead and the next remote check will run in 250 seconds. When the countdown
-reaches zero, the display can temporarily become ` (0) ⟳⇡1 master` while the
+reaches zero, the display can temporarily become `↦[(0)⇡1] master` while the
 background refresh completes.
 
 A successful `git push`, `git fetch`, or `git pull` bypasses the remaining
 countdown and requests an immediate background refresh. The prompt temporarily
-shows `(0) ⟳` with the last known state; after the worker completes, the next
+shows `` immediately before the last known state, as in `↦[(0)]` with a
+numeric countdown; after the worker completes, the next
 prompt displays the new state and restarts the configured countdown. Failed
 commands and incidental text such as `echo "git push"` do not reset it. This
 behavior is also disabled when `YAFP_REMOTE_CHECK_INTERVAL` is `0`.
@@ -649,25 +731,25 @@ YAFP distinguishes every step between editing and publishing repository work:
 
 | Indicator | Meaning                                      |
 | --------- | -------------------------------------------- |
-| `🆕+N`    | `N` untracked files                          |
-| `📝±N`    | `N` unstaged modifications                   |
-| `🗑️-N`    | `N` unstaged deletions                       |
-| `📦N`     | `N` staged files are ready to commit         |
+| `+N`     | `N` untracked files                          |
+| `±N`     | `N` unstaged modifications                   |
+| `-N`     | `N` unstaged deletions                       |
+| `N`      | `N` staged files are ready to commit         |
 | `⇡N`      | `N` committed changes are ready to push      |
 
 When the index contains staged additions, modifications, deletions, renames,
-copies, or type changes, all themes display the `📦N` indicator and this
+copies, or type changes, all themes display the `N` indicator and this
 expansion centered above it with matching singular or plural grammar. Both use
 black text on an intense yellow background:
 
 ```text
-( ⚠ COMMIT PENDING: 14 staged files are ready to commit )
+(  COMMIT PENDING: 14 staged files are ready to commit )
 ```
 
 The expansion uses the indicator's actual cursor position and keeps a separate
 row when a remote-status expansion is visible at the same time. If the long
-message cannot remain centered above `📦N` without crossing a terminal edge,
-it becomes `( ⚠ COMMIT PENDING: N )`.
+message cannot remain centered above `N` without crossing a terminal edge,
+it becomes `(  COMMIT PENDING: N )`.
 Bash excludes both Readline-wrapped and raw terminal color sequences when
 measuring that position, so colored separators cannot make an overflowing
 detailed banner appear to fit.
@@ -675,7 +757,7 @@ ANSI recognition and removal in Bash and zsh use locale-independent byte
 matching, while visible text keeps Unicode width measurement. This also applies
 with macOS UTF-8 locales.
 If even the short banner would cross the right edge, YAFP omits the expansion
-and keeps the `📦N` indicator. The same fit check applies to remote banners;
+and keeps the `N` indicator. The same fit check applies to remote banners;
 their compact status indicators remain visible.
 
 #### On-demand remote controls
@@ -684,16 +766,23 @@ Use `yafp-status` in Bash or PowerShell to inspect the exact timer independently
 of the configured countdown style:
 
 ```text
-🌐︎       Remote: ✓ Up to date
-🟡        Timer: ████░░░░░░ 42% · 125/300s elapsed · 175s remaining
-🕘 Current time: 14:32:25
-🕒   Next check: 14:35:20
+┌──────────────────────────────────────────────────────────────────────┐
+│        Remote:  Up to date                                         │
+│         Timer: ████░░░░░░ 42% · 125/300s elapsed · 175s remaining   │
+│  Current time: 14:32:25                                             │
+│    Next check: 14:35:20                                             │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
+`yafp-status` utiliza el mismo marco gris y ajuste al ancho de terminal que
+`yafp-codex` y `yafp-resources`, incluidas las salidas sin repositorio, sin
+upstream o sin Git. Conserva el estado, la barra de tiempo y ambas horas.
+`yafp-demo` muestra ese cuadro antes del cuadro independiente de vista previa.
+
 The remote state text is intense green when up to date and intense red when
-a remote check fails. The timer bar and metrics use green with `🟢` when at
-least 66% of the interval remains, yellow with `🟡` when at least 33% remains,
-and red with `🔴`
+a remote check fails. The timer bar and metrics use green with `` when at
+least 66% of the interval remains, yellow with `` when at least 33% remains,
+and red with ``
 below 33%. The current time uses intense white, and the next-check time uses
 intense yellow.
 
@@ -711,12 +800,12 @@ The default `blocks` style uses filled and shaded blocks. The `symbols` style
 uses Braille cells for elapsed progress and spaces for the remaining area:
 
 ```text
-🟡        Timer: ⣿⣿⣿⣿⣀      42% · 125/300s elapsed · 175s remaining
+        Timer: ⣿⣿⣿⣿⣀      42% · 125/300s elapsed · 175s remaining
 ```
 
 Use `yafp-refresh` to set the countdown to zero and request an immediate
-background refresh. The command remains silent; the prompt displays `(0) ⟳`
-with the last known state until the worker finishes. Outside a repository or
+background refresh. The command remains silent; the prompt displays ``
+touching the last known state until the worker finishes. Outside a repository or
 without an upstream, `yafp-status` reports that the timer is unavailable and
 `yafp-refresh` exits silently.
 
@@ -759,7 +848,7 @@ or when HEAD is detached. For example:
 
 ```text
 YAFP startup check: /home/user/yafp
-⚠ REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/master
+ REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/master
 ```
 
 When only remote commits are missing, it shows their count and asks in English:
@@ -807,16 +896,25 @@ $global:YAFP_AUTO_RELOAD = 0
 Use `yafp-help` to list the main YAFP commands with a short description:
 
 ```text
-yafp-status • Show remote status and refresh timer.
-yafp-refresh • Request an immediate remote refresh.
-yafp-ack • Acknowledge the current remote error alert.
-yafp-reload • Reload YAFP in the current shell.
-yafp-stats • Show command execution statistics.
-yafp-msgs • Show all prompt banners in severity order.
-yafp-help • Show available YAFP commands.
-yafp-codex • Show cached Codex quota and authentication status.
-yafp-resources • Show the latest RAM, swap, CPU, and disk sample.
+┌─────────────────────────────────────────────────────────────────────┐
+│ yafp-status • Show remote status and refresh timer.                 │
+│ yafp-refresh • Request an immediate remote refresh.                 │
+│ yafp-ack • Acknowledge the current remote error alert.              │
+│ yafp-reload • Reload YAFP in the current shell.                     │
+│ yafp-stats • Show command execution statistics.                     │
+│ yafp-msgs • Show all prompt banners in severity order.              │
+│ yafp-help • Show available YAFP commands.                           │
+│ yafp-codex • Show cached Codex quota and authentication status.     │
+│ yafp-resources • Show the latest RAM, swap, CPU, and disk sample.   │
+└─────────────────────────────────────────────────────────────────────┘
 ```
+
+`yafp-help` y `yafp-msgs` usan el mismo marco gris y ajuste de ancho que los
+otros informes en Bash, zsh y PowerShell. La ayuda conserva nombres amarillos,
+separadores neutros y descripciones blancas. El catálogo conserva el orden de
+éxito, advertencia y error, los paréntesis y los colores de fondo de cada aviso,
+incluidas las variantes claras/oscuras. Las líneas largas continúan dentro del
+cuadro; los márgenes y los bordes se restablecen a su propio color.
 
 Use `yafp-msgs` in Bash, zsh, or PowerShell to preview all prompt banners, including
 their detailed and compact variants. It prints green banners first, then
@@ -825,8 +923,8 @@ and `( MESSAGE )` spacing. The examples use one commit or staged file and
 `origin/main`; they do not query Git or change the remote cache, timer, or
 alert acknowledgement. Run `yafp-reload` to make the command available in an
 already open shell after updating YAFP.
-Every banner begins with `✓` for success, `⚠` for warnings, or `☒` for errors
-inside its opening parenthesis, for example `( ⚠ PUSH PENDING: 1 )`.
+Every banner begins with `✓` for success, `` for warnings, or `☒` for errors
+inside its opening parenthesis, for example `(  PUSH PENDING: 1 )`.
 One space separates the severity symbol from the message text.
 
 `yafp-stats` counts completed commands in the current shell session. Empty
@@ -835,11 +933,17 @@ counters. A zero exit status counts as succeeded; every nonzero status,
 including an interrupted command, counts as failed:
 
 ```text
-✓ Succeeded: 38 (090%)
-☒ Failed:     4 (010%)
-━━━━━━━━━━━━━━━━━━━━━━
-∑ Total:     42 (100%)
+┌──────────────────────────┐
+│ ✓ Succeeded: 38 (090%)   │
+│ ☒ Failed:     4 (010%)   │
+│ ━━━━━━━━━━━━━━━━━━━━━━   │
+│ ∑ Total:     42 (100%)   │
+└──────────────────────────┘
 ```
+
+`yafp-stats` usa el mismo cuadro gris. Las columnas, porcentajes, colores y el
+separador interior se conservan; el informe automático de salida incluye el
+mismo marco. En una terminal estrecha, las líneas continúan dentro del cuadro.
 
 The names use intense green, intense red, and intense white respectively; the
 separator uses normal white. YAFP prints the same report during a normal shell
@@ -859,12 +963,21 @@ Forced termination cannot run the exit report.
 
 Use `yafp-demo` to print a fresh `yafp-status` report and a live preview of the
 configured prompt every four seconds until you stop it with `Ctrl+C`. Each
-iteration renders the current theme and local context under `Prompt preview:`,
-then displays `Control+C to break this ♾️  loop 🔁 (4s)` as a reminder. The
+iteration renders the current theme and local context under ` Prompt preview:`,
+then displays `Control+C to break this  loop  (4s)` as a reminder. The
 preview omits OSC 133 lifecycle markers because it does not begin an interactive
 command block. In Bash, the preview expands PS1 display escapes before printing,
 so ANSI colors and the user or root prompt mark render as they do in the active
 prompt instead of appearing as literal backslash sequences.
+
+La vista previa de `yafp-demo` queda dentro de un marco Unicode `┌─┐│└─┘`,
+incluidas las líneas del prompt y su marca `$` o `#`. Conserva los colores y
+reparte las líneas largas entre filas interiores. El ancho sigue la terminal,
+con una columna libre a la derecha para evitar saltos automáticos del borde.
+Los avisos de Git y los controles de borrado se resuelven dentro del cuadro;
+no se envían movimientos de cursor que puedan alterar sus bordes. En una
+terminal de menos de siete columnas se usa la vista previa sin marco.
+El prompt interactivo, las teclas y la pausa del bucle no cambian.
 
 ---
 
@@ -1058,12 +1171,11 @@ trap, so YAFP does not replace PSReadLine key handlers merely to emit
 `OSC 133;C`. Compatible terminals can use `autoMarkPrompts` with the A, B, and D
 markers, following the documented Windows Terminal integration model.
 
-### zsh and fish
+### zsh OSC 133 support and fish
 
-The current implementation supports Bash and PowerShell. zsh and fish can use
-the same OSC 133 protocol, but they need shell-native hooks such as
-`precmd`/`preexec` in zsh or fish event handlers. A future YAFP shell module can
-add those without inventing a new protocol.
+The native zsh implementation uses `precmd`/`preexec` hooks for the same
+OSC 133 A/B/C/D lifecycle, preserving the previous command's exit status.
+YAFP does not currently implement fish support.
 
 ### Current limitations
 
@@ -1074,6 +1186,21 @@ add those without inventing a new protocol.
   coordinates.
 - Advanced actions such as copy command, copy output, or copy whole block belong
   in a terminal UI layer or a future YAFP companion renderer.
+
+### Unicode and command history
+
+Unicode display issues depend on both the terminal and its line editor:
+Readline in Bash, ZLE in zsh, and PSReadLine in PowerShell. YAFP's automatic
+history redraw mitigation applies only to zsh. A cross-shell review reproduced
+the residual-character problem in zsh, but not in the tested Bash and
+PSReadLine history transitions, with or without YAFP.
+
+PSReadLine can still misplace the cursor for combined emoji: a history redraw
+does not correct the editor's own cell-width calculation. YAFP therefore keeps
+the native Bash and PowerShell history bindings. If visual remnants occur,
+`Ctrl+L` can request a manual redraw, but may not fix a combined-emoji cursor
+offset. See the platform scope and tested versions in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#cross-shell-unicode-history-review).
 
 ### Tests
 
@@ -1262,6 +1389,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-02 02:26:53 🪟 NDEV-DPC-02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6.1 Sol High & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-11-02 23:35:53 🍎 MBP02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

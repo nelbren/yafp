@@ -27,6 +27,10 @@ YAFP_CLOCK=1
 # Set to 0 if your terminal misbehaves.
 YAFP_OSC133=1
 
+# Redraw when entering/leaving history entries with potentially wide emoji.
+# Set to 0 to disable this zsh Unicode display mitigation.
+YAFP_ZSH_HISTORY_REDRAW=1
+
 # --- Remote repository checks ---
 # Refresh the configured upstream in the background. The interval is the cache
 # lifetime in seconds; set to 0 to disable remote checks.

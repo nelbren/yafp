@@ -14,7 +14,7 @@ function script:Write-YafpTheme {
     Write-YafpStagedExpansionRow -Context $Context
     Write-YafpRemoteExpansionRow -Context $Context
 
-    $userIcon = if ($Context.IsAdmin) { '💀' } else { '👤' }
+    $userIcon = if ($Context.IsAdmin) { '' } else { '' }
     # Anterior: Write-Host "🪟 $userIcon " -ForegroundColor White -NoNewline
     Write-Host " $userIcon " -ForegroundColor White -NoNewline
     $userColor = if ($Context.IsAdmin) { $redColorForeground } else { $cyanColorForeground }
@@ -31,12 +31,12 @@ function script:Write-YafpTheme {
         -BackgroundColor $hostBackground -NoNewline
     Write-YafpResources -Context $Context
     # Anterior: Write-Host ' ← 🖥️ LOCAL ◎ 🏠 ⌂ ' -ForegroundColor White -NoNewline
-    Write-Host ' ← 🖥️ LOCAL ◎ 🏠  ' -ForegroundColor White -NoNewline
+    Write-Host ' ←  LOCAL ◎   ' -ForegroundColor White -NoNewline
     Write-YafpText -Text $Context.Path -ForegroundColor $yellowColorForeground `
         -BackgroundColor $yellowColorBackground -NoNewline
 
     if ($Context.Git) {
-        $remoteSymbol = if ($Context.Git.Remote -eq 'remote') { '⚡' } else { '⇣' }
+        $remoteSymbol = if ($Context.Git.Remote -eq 'remote') { '' } else { '⇣' }
         Write-Host ' on ' -ForegroundColor White -NoNewline
         # Anterior: Write-YafpText -Text ''
         # Anterior (cuadrado): Write-YafpText -Text ''
@@ -44,7 +44,7 @@ function script:Write-YafpTheme {
             -ForegroundColor $blueColorForeground `
             -BackgroundColor $blueColorBackground -NoNewline
         Write-YafpGitRemoteStatus -Git $Context.Git
-        Write-YafpText -Text "$($Context.Git.Branch)💻$remoteSymbol" `
+        Write-YafpText -Text "$($Context.Git.Branch)$remoteSymbol" `
             -ForegroundColor $blueColorForeground `
             -BackgroundColor $blueColorBackground -NoNewline
         $hasChanges = (
@@ -60,7 +60,7 @@ function script:Write-YafpTheme {
     }
 
     if ($Context.Venv) {
-        Write-Host ' 🐍 ' -ForegroundColor White -NoNewline
+        Write-Host '  ' -ForegroundColor White -NoNewline
         Write-YafpText -Text $Context.Venv -ForegroundColor $magentaColorForeground `
             -BackgroundColor $magentaColorBackground -NoNewline
     }
@@ -75,11 +75,11 @@ function script:Write-YafpTheme {
     if ($Context.HadError) {
         $style = Get-YafpCommandErrorStyle
         Write-Host ' → ' -ForegroundColor White -NoNewline
-        Write-YafpText -Text "❌ $($Context.ExitCode)" `
+        Write-YafpText -Text " $($Context.ExitCode)" `
             -ForegroundColor $style.Foreground -BackgroundColor $style.Background
     }
     else {
-        Write-YafpText -Text ' → ✅ 0' -ForegroundColor Green `
+        Write-YafpText -Text ' →  0' -ForegroundColor Green `
             -BackgroundColor $null
     }
 

@@ -25,6 +25,23 @@ assert_eq() {
         fail "$label: expected [$expected], got [$actual]"
 }
 
+framed_output() {
+    local output line content=''
+    output="$("$@")"
+    case "$output" in *┌*┘*) ;; *) fail 'Missing diagnostic frame' ;; esac
+    yafp_strip_terminal_styles "$output"
+    while IFS= read -r line; do
+        case "$line" in
+            '│ '*)
+                line=${line#'│ '}; line=${line%' │'}
+                while [[ "$line" == *' ' ]]; do line=${line% }; done
+                content+="$line"$'\n'
+                ;;
+        esac
+    done <<< "$yafp_plain_text"
+    printf '%s' "${content%$'\n'}"
+}
+
 assert_git_sync_command() {
     local command_text="$1"
     local expected="$2"
@@ -60,6 +77,8 @@ mkdir -p "$YAFP_RUNTIME"
 cp "$ROOT_DIR/yafp-ps1.bash" "$YAFP_RUNTIME/yafp-ps1.bash"
 cp "$ROOT_DIR/yafp-cfg.bash.example" "$YAFP_RUNTIME/yafp-cfg.bash"
 cp -R "$ROOT_DIR/themes" "$YAFP_RUNTIME/themes"
+mkdir -p "$YAFP_RUNTIME/scripts/unix/preview"
+cp -R "$ROOT_DIR/scripts/unix/preview/lib" "$YAFP_RUNTIME/scripts/unix/preview/lib"
 
 # shellcheck source=../yafp-ps1.bash
 set +u
@@ -143,7 +162,7 @@ yafp_ctx_git_change=0
 yafp_ctx_git_new=0
 yafp_ctx_git_staged_indicator_column=$yafp_indicator_column
 case "$(theme_render_staged_expansion)" in
-    *'( ⚠ COMMIT PENDING: 12 )'*) ;;
+    *'(  COMMIT PENDING: 12 )'*) ;;
     *) fail 'colored prompt selected an overflowing detailed staged banner' ;;
 esac
 yafp_ctx_git_staged_indicator_column=0
@@ -152,7 +171,7 @@ for narrow_column in 65 70; do
     assert_eq '' "$(theme_render_staged_expansion)" \
         'staged banner is hidden when even its short form overflows'
     case "$(theme_render_git_counts)" in
-        *'📦12'*) ;;
+        *'12'*) ;;
         *) fail 'hiding the staged banner removed the staged indicator' ;;
     esac
 done
@@ -162,21 +181,21 @@ assert_eq '' "$(theme_render_staged_expansion)" \
     'staged banner is hidden one column below its minimum width'
 COLUMNS=72
 theme_select_expansion_message \
-    '⚠ COMMIT PENDING: 12 staged files are ready to commit' \
-    '⚠ COMMIT PENDING: 12' 50 4
-assert_eq '⚠ COMMIT PENDING: 12' "$yafp_expansion_message" \
+    ' COMMIT PENDING: 12 staged files are ready to commit' \
+    ' COMMIT PENDING: 12' 50 4
+assert_eq ' COMMIT PENDING: 12' "$yafp_expansion_message" \
     'staged expansion accounts for its indicator column'
 theme_select_expansion_message \
-    '⚠ COMMIT PENDING: 12 staged files are ready to commit' \
-    '⚠ COMMIT PENDING: 12' 30 4
-assert_eq '⚠ COMMIT PENDING: 12 staged files are ready to commit' \
+    ' COMMIT PENDING: 12 staged files are ready to commit' \
+    ' COMMIT PENDING: 12' 30 4
+assert_eq ' COMMIT PENDING: 12 staged files are ready to commit' \
     "$yafp_expansion_message" \
     'staged expansion keeps the long message when centered text fits'
 COLUMNS=80
 theme_select_expansion_message \
-    '⚠ COMMIT PENDING: 12 staged files are ready to commit' \
-    '⚠ COMMIT PENDING: 12' 44 4
-assert_eq '⚠ COMMIT PENDING: 12' "$yafp_expansion_message" \
+    ' COMMIT PENDING: 12 staged files are ready to commit' \
+    ' COMMIT PENDING: 12' 44 4
+assert_eq ' COMMIT PENDING: 12' "$yafp_expansion_message" \
     'staged expansion protects against a stale terminal width'
 COLUMNS=200
 
@@ -191,15 +210,15 @@ git_counts="$(theme_render_git_counts)"
 staged_expansion="$(theme_render_staged_expansion)"
 set -u
 case "$git_counts" in
-    *'📦4'*) ;;
+    *'4'*) ;;
     *) fail 'staged Git indicator was not rendered' ;;
 esac
 case "$staged_expansion" in
-    *'( ⚠ COMMIT PENDING: 4 staged files are ready to commit )'*) ;;
+    *'(  COMMIT PENDING: 4 staged files are ready to commit )'*) ;;
     *) fail 'staged Git expansion was not rendered' ;;
 esac
 case "$git_counts" in
-    *"$(ps1_wrap "$cGitStaged")"'📦4'*) ;;
+    *"$(ps1_wrap "$cGitStaged")"'4'*) ;;
     *) fail 'staged Git indicator does not use the warning color scheme' ;;
 esac
 yafp_ctx_git_staged=1
@@ -207,12 +226,12 @@ set +u
 staged_expansion="$(theme_render_staged_expansion)"
 set -u
 case "$staged_expansion" in
-    *'( ⚠ COMMIT PENDING: 1 staged file is ready to commit )'*) ;;
+    *'(  COMMIT PENDING: 1 staged file is ready to commit )'*) ;;
     *) fail 'singular staged Git expansion was not rendered' ;;
 esac
 COLUMNS=23
 case "$(theme_render_staged_expansion)" in
-    *'( ⚠ COMMIT PENDING: 1 )'*) ;;
+    *'(  COMMIT PENDING: 1 )'*) ;;
     *) fail 'compact staged Git expansion was not rendered' ;;
 esac
 COLUMNS=200
@@ -226,15 +245,15 @@ yafp_ctx_git_staged=0
 
 status_report="$(yafp_remote_status_report current 0 0 0 175 300 0)"
 case "$status_report" in
-    *'🌐︎       Remote: ✓ Up to date'*) ;;
+    *'       Remote:  Up to date'*) ;;
     *) fail 'detailed status omitted the remote state' ;;
 esac
 case "$status_report" in
-    *'🟡        Timer: ████░░░░░░ 42% · 125/300s elapsed · 175s remaining'*) ;;
+    *'        Timer: ████░░░░░░ 42% · 125/300s elapsed · 175s remaining'*) ;;
     *) fail 'detailed status omitted the timer progress' ;;
 esac
 case "$status_report" in
-    *'🕘 Current time: '*) ;;
+    *' Current time: '*) ;;
     *) fail 'detailed status omitted the current time' ;;
 esac
 assert_eq GREEN "$(yafp_remote_state_tone current)" \
@@ -256,21 +275,21 @@ assert_eq WHITE "$(yafp_current_time_tone)" \
 assert_eq YELLOW "$(yafp_next_check_tone)" \
     'next check intense yellow tone'
 yafp_remote_timer_style 198 300
-assert_eq '🟢|GREEN' \
+assert_eq '|GREEN' \
     "$yafp_status_timer_emoji|$yafp_status_timer_tone" \
     'timer green threshold'
 yafp_remote_timer_style 99 300
-assert_eq '🟡|YELLOW' \
+assert_eq '|YELLOW' \
     "$yafp_status_timer_emoji|$yafp_status_timer_tone" \
     'timer yellow threshold'
 yafp_remote_timer_style 98 300
-assert_eq '🔴|RED' \
+assert_eq '|RED' \
     "$yafp_status_timer_emoji|$yafp_status_timer_tone" \
     'timer red threshold'
 YAFP_STATUS_PROGRESS_STYLE=symbols
 status_report="$(yafp_remote_status_report current 0 0 0 175 300 0)"
 case "$status_report" in
-    *'🟡        Timer: ⣿⣿⣿⣿⣀      42% · 125/300s elapsed · 175s remaining'*) ;;
+    *'        Timer: ⣿⣿⣿⣿⣀      42% · 125/300s elapsed · 175s remaining'*) ;;
     *) fail 'Braille status progress was not rendered' ;;
 esac
 YAFP_STATUS_PROGRESS_STYLE=blocks
@@ -291,19 +310,23 @@ expected_help="$(printf '%s\n' \
     'yafp-help • Show available YAFP commands.' \
     'yafp-codex • Show cached Codex quota and authentication status.' \
     'yafp-resources • Show the latest RAM, swap, CPU, and disk sample.')"
-assert_eq "$expected_help" "$(yafp-help)" 'yafp-help output'
+assert_eq "$expected_help" "$(framed_output yafp-help)" 'yafp-help output'
 
 expected_messages=''
+expected_message_text=''
 while IFS='|' read -r severity message; do
     case "$severity" in
         green) message_color="$cRemoteConnection" ;;
         yellow) message_color="$cRemotePending" ;;
         red) message_color="$cRemoteProblem" ;;
     esac
+    expected_message_text+="( ${message} )"$'\n'
     expected_messages+="${message_color}( ${message} )"$'\033[0m\n'
 done < "$ROOT_DIR/tests/prompt_messages.txt"
-assert_eq "${expected_messages%$'\n'}" "$(yafp-msgs)" \
+assert_eq "${expected_messages%$'\n'}" "$(yafp-msgs plain)" \
     'message catalog text, severity order, colors, spacing, and resets'
+assert_eq "${expected_message_text%$'\n'}" "$(framed_output yafp-msgs)" \
+    'framed message catalog text and severity order'
 
 original_remote_context="$(declare -f yafp_remote_context)"
 # shellcheck disable=SC2329
@@ -335,7 +358,7 @@ expected_stats="$(printf '%s\n' \
     '☒ Failed:    1 (050%)' \
     "$stats_separator_one_digit" \
     '∑ Total:     2 (100%)')"
-assert_eq "$expected_stats" "$(yafp-stats)" 'yafp-stats output'
+assert_eq "$expected_stats" "$(framed_output yafp-stats)" 'yafp-stats output'
 YAFP_COMMANDS_TOTAL=0
 YAFP_COMMANDS_SUCCEEDED=0
 YAFP_COMMANDS_FAILED=0
@@ -344,7 +367,7 @@ expected_empty_stats="$(printf '%s\n' \
     '☒ Failed:    0 (000%)' \
     "$stats_separator_one_digit" \
     '∑ Total:     0 (100%)')"
-assert_eq "$expected_empty_stats" "$(yafp-stats)" 'empty yafp-stats output'
+assert_eq "$expected_empty_stats" "$(framed_output yafp-stats)" 'empty yafp-stats output'
 YAFP_COMMANDS_TOTAL=13
 YAFP_COMMANDS_SUCCEEDED=11
 YAFP_COMMANDS_FAILED=2
@@ -355,7 +378,7 @@ expected_aligned_stats="$(printf '%s\n' \
     '☒ Failed:     2 (015%)' \
     "$stats_separator_two_digits" \
     '∑ Total:     13 (100%)')"
-assert_eq "$expected_aligned_stats" "$(yafp-stats)" \
+assert_eq "$expected_aligned_stats" "$(framed_output yafp-stats)" \
     'aligned yafp-stats output'
 YAFP_COMMANDS_TOTAL=2
 YAFP_COMMANDS_SUCCEEDED=1
@@ -367,7 +390,7 @@ yafp_exit_trap
 assert_eq 1 "$YAFP_TEST_PREVIOUS_EXIT" 'previous EXIT trap command'
 YAFP_PREVIOUS_EXIT_TRAP_COMMAND=''
 YAFP_STATS_ON_EXIT=1
-assert_eq "$expected_stats" "$(yafp_exit_trap)" 'exit statistics output'
+assert_eq "$expected_stats" "$(framed_output yafp_exit_trap)" 'exit statistics output'
 set +u
 # Loaded from yafp-ps1.bash above; a later definition is an intentional test double.
 # shellcheck disable=SC2218
@@ -377,7 +400,7 @@ assert_eq 2 "$YAFP_COMMANDS_TOTAL" 'total preserved after reload'
 assert_eq 1 "$YAFP_COMMANDS_SUCCEEDED" 'succeeded preserved after reload'
 assert_eq 1 "$YAFP_COMMANDS_FAILED" 'failed preserved after reload'
 case "$(declare -f yafp-demo)" in
-    *'Control+C to break this ♾️  loop 🔁 (%ss)'*) ;;
+    *'Control+C to break this  loop  (%ss)'*) ;;
     *) fail 'yafp-demo interruption hint is unavailable' ;;
 esac
 case "$(declare -f yafp-demo)" in
@@ -735,7 +758,7 @@ case "$warning" in
 esac
 assert_eq '\n' "${warning: -2}" 'ahead warning line break'
 case "$indicator" in
-    *'( ⚠ REMOTE NOT UPDATED: 2 local commits have not been pushed to origin/main )'*) ;;
+    *'(  REMOTE NOT UPDATED: 2 local commits have not been pushed to origin/main )'*) ;;
     *) fail 'ahead expansion was not rendered' ;;
 esac
 for ahead_count in 1 2; do
@@ -744,14 +767,14 @@ for ahead_count in 1 2; do
     [ "$ahead_count" -ne 1 ] || ahead_unit='commit has'
     expansion="$(theme_render_remote_expansion)"
     case "$expansion" in
-        *"${cRemotePending}( ⚠ REMOTE NOT UPDATED: ${ahead_count} local ${ahead_unit} not been pushed to origin/main )$(theme_reset)"*) ;;
+        *"${cRemotePending}(  REMOTE NOT UPDATED: ${ahead_count} local ${ahead_unit} not been pushed to origin/main )$(theme_reset)"*) ;;
         *) fail 'ahead banner must start at its delimiter with exactly one inner space' ;;
     esac
 done
 yafp_ctx_git_ahead=2
 COLUMNS=22
 case "$(theme_render_git_remote_status)" in
-    *'( ⚠ PUSH PENDING: 2 )'*) ;;
+    *'(  PUSH PENDING: 2 )'*) ;;
     *) fail 'compact ahead expansion was not rendered' ;;
 esac
 COLUMNS=200
@@ -921,7 +944,7 @@ for theme in default minimal light; do
     load_theme
     indicator="$(theme_render_git_remote_status)"
     case "$indicator" in
-        *'○0'*'⚠ NO COMMITS'*|*'⚠ NO COMMITS'*'○0'*) ;;
+        *'○0'*' NO COMMITS'*|*' NO COMMITS'*'○0'*) ;;
         *) fail "$theme missing initial commit warning" ;;
     esac
 done
@@ -958,7 +981,7 @@ for theme in default minimal light; do
         *) fail "$theme missing no-upstream indicator" ;;
     esac
     case "$indicator" in
-        *'⚠ NO UPSTREAM'*) ;;
+        *' NO UPSTREAM'*) ;;
         *) fail "$theme missing no-upstream banner" ;;
     esac
 done

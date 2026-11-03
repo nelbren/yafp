@@ -96,7 +96,7 @@ try {
     if ($timer.ElapsedMilliseconds -ge 500) { throw 'The worker blocked context collection' }
     $job = $script:YafpResourceJob
     if ($context.Text -notmatch 'waiting for sample') { throw 'Missing pending state' }
-    if ($context.Text -ne 'Resources: waiting for sample~') { throw 'Pending message must be English and compact' }
+    if ($context.Text -ne 'Resources: waiting for sample') { throw 'Pending message must be English and compact' }
     foreach ($labels in @('letters', 'unicode')) {
         foreach ($values in @('percent', 'symbols')) {
             $global:YAFP_RESOURCE_LABEL_STYLE = $labels
@@ -129,13 +129,64 @@ try {
     }
     if ($null -ne $script:YafpResourceJob) { throw 'Completed job was not removed' }
     if ((Get-Job -Id $job.Id -ErrorAction Ignore)) { throw 'Completed job remains registered' }
-    if ((Show-YafpResources | Out-String) -notmatch '2048/4096 MiB') { throw 'Missing details' }
+    if ((Show-YafpResources 6>&1 | Out-String) -notmatch '2048/4096 MiB') { throw 'Missing details' }
+
+    $savedSample = $script:YafpResourceSample; $savedAttempt = $script:YafpResourceAttempt
+    $savedLabels = $global:YAFP_RESOURCE_LABEL_STYLE; $savedValues = $global:YAFP_RESOURCE_VALUE_STYLE
+    try {
+        $script:YafpResourceAttempt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        $global:YAFP_RESOURCE_LABEL_STYLE = 'unicode'; $global:YAFP_RESOURCE_VALUE_STYLE = 'symbols'
+        foreach ($line in Get-Content (Join-Path $PSScriptRoot 'resource_report_cases.txt')) {
+            $state, $icon, $color = $line.Split('|')
+            $global:YAFP_RESOURCE_CHECK_INTERVAL = 30; $script:YafpResourceJob = $null
+            $script:YafpResourceSample = [pscustomobject]@{
+                CheckedAt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+                RamUsed = 8192; RamTotal = 16384; SwapUsed = 2048; SwapTotal = 4096
+                Cpu = 25; DiskUsed = 750; DiskTotal = 1000
+            }
+            if ($state -in @('refreshing', 'pending')) { $script:YafpResourceJob = [pscustomobject]@{ State = 'Running' } }
+            if ($state -in @('pending', 'unavailable')) { $script:YafpResourceSample = $null }
+            if ($state -eq 'disabled') { $global:YAFP_RESOURCE_CHECK_INTERVAL = 0 }
+            $out = (@(Show-YafpResources 6>&1) | ForEach-Object { "$_" }) -join "`n"
+            if (-not $out.Contains("$([char]27)[$($color)m$icon $state")) { throw "Resource report state severity: $state" }
+            $plain = $out -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
+            if (-not $plain.Contains('┌') -or -not $plain.Contains('┘') -or
+                -not $plain.Contains("        State: $icon $state")) { throw "Resource report framing/state: $state" }
+            if ($state -in @('ok', 'refreshing')) {
+                foreach ($text in @('          CPU: 25%', '          RAM: 50% · 8192/16384 MiB',
+                    '         SWAP: 50% · 2048/4096 MiB', '  Disk (HOME): 75% · 750/1000 KiB')) {
+                    if (-not $plain.Contains($text)) { throw "Resource report details missing: $text" }
+                }
+                if (-not $out.Contains("$([char]27)[91m50% · 2048/4096 MiB")) { throw 'Swap critical color changed' }
+            }
+            elseif (-not $plain.Contains('   Sample age: ') -or -not $plain.Contains('          RAM: ') -or $plain.Contains('8192')) {
+                throw 'Unavailable resource report reused old data'
+            }
+        }
+        $global:YAFP_RESOURCE_CHECK_INTERVAL = 30; $script:YafpResourceJob = $null
+        $script:YafpResourceSample = [pscustomobject]@{
+            CheckedAt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+            RamUsed = $null; RamTotal = 16384; SwapUsed = 0; SwapTotal = 0
+            Cpu = $null; DiskUsed = $null; DiskTotal = 1000
+        }
+        $out = (@(Show-YafpResources 6>&1) | ForEach-Object { "$_" }) -join "`n"
+        $plain = $out -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
+        foreach ($text in @('          CPU: ', '          RAM:  · /16384 MiB',
+            '         SWAP: 0% · 0/0 MiB', '  Disk (HOME):  · /1000 KiB')) {
+            if (-not $plain.Contains($text)) { throw "Partial resource report missing: $text" }
+        }
+    }
+    finally {
+        $script:YafpResourceSample = $savedSample; $script:YafpResourceAttempt = $savedAttempt
+        $global:YAFP_RESOURCE_LABEL_STYLE = $savedLabels; $global:YAFP_RESOURCE_VALUE_STYLE = $savedValues
+        $script:YafpResourceJob = $null; $global:YAFP_RESOURCE_CHECK_INTERVAL = 30
+    }
 
     $script:YafpResourceJob = Start-ThreadJob -ScriptBlock { Start-Sleep -Seconds 1 }
     $refreshJob = $script:YafpResourceJob
     $context = Get-YafpResourceContext
-    if ($context.Text -notmatch 's~$' -or $context.Text.Contains(' ~') -or $context.Suffix.Contains(' ~')) {
-        throw 'Cached refresh must attach the tilde to sample age'
+    if ($context.Text -notmatch 's$' -or $context.Text.Contains(' ') -or $context.Suffix.Contains(' ')) {
+        throw 'Cached refresh must attach the refresh icon to sample age'
     }
     $null = Wait-Job $refreshJob -Timeout 5
     $null = Get-YafpResourceContext
@@ -218,12 +269,17 @@ try {
                                 throw 'Resources must use foreground color only and stay on the same line'
                             }
                         }
-                        $resource.Suffix += '~'
-                        $resource.Text += '~'
+                        $resource.Suffix += ''
+                        $resource.Text += ''
                         $script:resourceWrites.Clear()
                         Write-YafpResources -Context ([pscustomobject]@{ Resources = $resource })
-                        if (($script:resourceWrites.Text -join '') -ne "↦[${tokens}~]") {
+                        if (($script:resourceWrites.Text -join '') -ne "↦[${tokens}]") {
                             throw "Space before refresh marker: $theme/$labels/$values"
+                        }
+                        $marker = $script:resourceWrites[5]
+                        if ($marker.Text -ne '' -or $marker.Color -ne 'DarkGray' -or
+                            $null -ne $marker.Background -or -not $marker.NoNewline) {
+                            throw 'Refresh icon must stay gray, transparent, and on the same line'
                         }
                     }
                 }
@@ -233,7 +289,7 @@ try {
         $script:resourceWrites.Clear()
         Write-YafpResources -Context ([pscustomobject]@{ Resources = (Get-YafpResourceContext) })
         if ($script:resourceWrites.Count -ne 0) { throw 'Empty frame while monitoring is disabled' }
-        if ((Show-YafpResources) -ne 'Resources disabled. Set $global:YAFP_RESOURCE_CHECK_INTERVAL=30.') {
+        if ((Show-YafpResources 6>&1 | Out-String) -notmatch [regex]::Escape('Resources disabled. Set $global:YAFP_RESOURCE_CHECK_INTERVAL=30.')) {
             throw 'Disabled message must be English'
         }
         $global:YAFP_RESOURCE_CHECK_INTERVAL = 30

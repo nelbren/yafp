@@ -6,10 +6,12 @@ from pathlib import Path
 import pty
 import re
 import select
+import struct
 import subprocess
 import tempfile
 import termios
 import time
+import unicodedata
 
 ROOT = Path(__file__).resolve().parent.parent
 OSC = re.compile(rb"\x1b\]133;([^\x07]+)\x07")
@@ -28,6 +30,7 @@ def main():
             "YAFP_RESOURCE_LABEL_STYLE=letters\nYAFP_RESOURCE_VALUE_STYLE=percent\n"
         )
         master, slave = pty.openpty()
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', 24, 240, 0, 0))
         environment = dict(
             os.environ,
             ZDOTDIR=directory,
@@ -86,6 +89,9 @@ def main():
                 "autoload -Uz add-zsh-hook\n"
                 "existing_hook() { print -r -- EXISTING:$?; return 0; }\n"
                 "add-zsh-hook precmd existing_hook\n"
+                "autoload -Uz add-zle-hook-widget\n"
+                f"existing_history_hook() {{ print -r -- HISTORY >> '{workspace / 'history-hooks.txt'}'; }}\n"
+                "add-zle-hook-widget history-line-set existing_history_hook\n"
                 f"source '{ROOT / 'yafp-ps1.zsh'}'\n"
                 f"source '{ROOT / 'yafp-ps1.zsh'}'\n"
                 "print -r -- HOOKS:${#precmd_functions}:${#preexec_functions}:${#zshexit_functions}\n"
@@ -190,6 +196,83 @@ def main():
             run("true")
             print("ok - zsh interactive hooks, OSC 133, pipelines, reload, and interruption")
             print("ok - zsh resource worker is disowned without job notifications")
+
+            # Recalled emoji entries and the following plain entry need a full
+            # redraw. Verify the physical reset as well as untouched input.
+            run("YAFP_RESOURCE_CHECK_INTERVAL=0; YAFP_CODEX_CHECK_INTERVAL=0; bindkey -e")
+            output = run("zstyle -L zle-history-line-set widgets")
+            assert output.count(b"yafp_zsh_history_line_set") == 1, output
+            assert output.count(b"existing_history_hook") == 1, output
+            captured = workspace / "history-buffer.txt"
+            run(
+                f"capture_history() {{ print -rn -- \"$BUFFER\" > '{captured}'; }}; "
+                "zle -N capture_history; bindkey '^O' capture_history"
+            )
+            executed = workspace / "emoji-executed.txt"
+            emoji_command = f"print -r -- '⚠️' >> '{executed}'"
+            run(emoji_command)
+            run(": plain")
+
+            def recall(key, redraw):
+                os.write(master, key)
+                result = read_output(False)
+                events = OSC.findall(result)
+                assert b"C" not in events, result
+                assert not any(event.startswith(b"D;") for event in events), result
+                assert (b"\x1b[J" in result) == redraw, result
+                if redraw:
+                    assert b"\r" in result, result
+                return result
+
+            recall(b"\x1b[A", False)  # plain
+            recall(b"\x1b[A", True)   # emoji
+            os.write(master, b"\x0f")
+            output = read_output(False)
+            assert captured.exists(), output
+            assert captured.read_text() == emoji_command
+            recall(b"\x1b[B", True)   # leave the emoji entry
+            recall(b"\x1b[A", True)
+            run("")
+            assert executed.read_text().splitlines() == ["⚠️", "⚠️"]
+            assert (workspace / "history-hooks.txt").read_text().splitlines() == ["HISTORY"] * 4
+
+            run("YAFP_ZSH_HISTORY_REDRAW=0")
+            run(emoji_command)
+            run(": plain")
+            recall(b"\x1b[A", False)
+            recall(b"\x1b[A", False)
+            os.write(master, b"\x0f")
+            read_output(False)
+            assert captured.read_text() == emoji_command
+            os.write(master, b"\x03")
+            read_output()
+            assert executed.read_text().splitlines() == ["⚠️"] * 3
+            print("ok - zsh Unicode history redraw, existing hooks, reload, opt-out, and exact command execution")
+            for columns in (240, 60):
+                fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack('HHHH', 24, columns, 0, 0))
+                read_output(False)
+                os.write(master, b"yafp-demo\n")
+                output = b""
+                deadline = time.monotonic() + 3
+                while b"Control+C to break" not in output and time.monotonic() < deadline:
+                    output += read_output(False)
+                assert "┌".encode() in output and "┘".encode() in output, output
+                assert b"Control+C to break" in output, output
+                assert OSC.findall(output) == [b"C"], output
+                lines = ANSI.sub(b"", output).decode().splitlines()
+                framed = [line for line in lines if line.startswith(("┌", "│", "└"))]
+                assert len(framed) >= 4, output
+                for line in framed:
+                    width = sum(
+                        0 if unicodedata.combining(char) else
+                        2 if unicodedata.east_asian_width(char) in ("W", "F") else 1
+                        for char in line
+                    )
+                    assert width == columns - 1, (columns, width, line)
+                os.write(master, b"\x03")
+                output = read_output()
+                assert b"D;130" in OSC.findall(output), output
+            print("ok - zsh framed demo, narrow-terminal wrapping, OSC 133, and Ctrl+C")
         finally:
             os.close(master)
             try:

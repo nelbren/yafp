@@ -125,10 +125,20 @@ try {
     $global:YAFP_CODEX_CHECK_INTERVAL = 300
     $timer.Restart()
     $context = Get-YafpCodexContext
-    if ($context.Text -ne '֍⟳' -or $context.Foreground -ne 'DarkGray') {
+    if ($context.Text -ne '֍⟳d⟳h' -or $context.Foreground -ne 'DarkGray') {
         throw 'Pending quota must show the loading symbol in gray'
     }
     if ($timer.ElapsedMilliseconds -gt 500) { throw 'Context blocked on quota request' }
+    foreach ($theme in @('default', 'minimal', 'light')) {
+        $global:YAFP_THEME = $theme
+        Import-YafpTheme
+        foreach ($style in @('percent', 'symbols')) {
+            $global:YAFP_CODEX_VALUE_STYLE = $style
+            $output = (@(Write-YafpCodex -Context ([pscustomobject]@{ Codex = $context }) 6>&1) |
+                ForEach-Object { "$_" }) -join ''
+            if ($output -ne '↤[֍⟳d⟳h]') { throw "Pending quota reset placeholders: $theme/$style/$output" }
+        }
+    }
     $job = $script:YafpCodexJob
     $null = Get-YafpCodexContext
     . (Join-Path $PSScriptRoot '../scripts/windows/codex/context.ps1')
@@ -137,6 +147,53 @@ try {
     $null = Wait-Job $job -Timeout 15
     $context = Get-YafpCodexContext
     if ($null -ne $script:YafpCodexJob -or $context.Sample.Remaining -ne 59) { throw 'Worker not collected' }
+
+    $savedSample = $script:YafpCodexSample
+    $savedAttempt = $script:YafpCodexAttempt
+    try {
+        $script:YafpCodexAttempt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        $global:YAFP_CODEX_VALUE_STYLE = 'symbols'
+        foreach ($line in Get-Content (Join-Path $PSScriptRoot 'codex_report_cases.txt')) {
+            $state, $icon, $color = $line.Split('|')
+            $global:YAFP_CODEX_CHECK_INTERVAL = 300
+            $script:YafpCodexJob = $null
+            $script:YafpCodexSample = [pscustomobject]@{
+                State = $state; Remaining = 74; Primary = 74; Secondary = $null
+                CheckedAt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+                ResetsAt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + 115230
+            }
+            if ($state -eq 'pending') {
+                $script:YafpCodexSample = $null
+                $script:YafpCodexJob = [pscustomobject]@{ State = 'Running' }
+            }
+            elseif ($state -eq 'disabled') { $global:YAFP_CODEX_CHECK_INTERVAL = 0 }
+            $out = (@(Show-YafpCodex 6>&1) | ForEach-Object { "$_" }) -join "`n"
+            if (-not $out.Contains("$([char]27)[$($color)m$icon $state")) { throw "Report state color/icon: $state" }
+            $plain = $out -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
+            if (-not $plain.Contains('┌') -or -not $plain.Contains('┘') -or
+                -not $plain.Contains("        State: $icon $state")) { throw "Diagnostic framing/state: $state" }
+            $remaining = if ($state -eq 'ok') { '74%' } else { '' }
+            $reset = if ($state -eq 'ok') { '1d8h' } else { '' }
+            if (-not $plain.Contains("    Remaining: $remaining") -or
+                -not $plain.Contains("        Reset: $reset")) { throw "Diagnostic values: $state" }
+        }
+        $script:YafpCodexJob = $null
+        $global:YAFP_CODEX_CHECK_INTERVAL = 300
+        $script:YafpCodexSample = $savedSample
+        $savedReportReset = $savedSample.ResetsAt
+        foreach ($reset in @($null, 0)) {
+            $script:YafpCodexSample.ResetsAt = $reset
+            $out = (@(Show-YafpCodex 6>&1) | ForEach-Object { "$_" }) -join "`n"
+            $plain = $out -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
+            $expected = if ($null -eq $reset) { '' } else { '0d0h' }
+            if (-not $plain.Contains("        Reset: $expected")) { throw 'Missing/expired diagnostic reset' }
+        }
+        $script:YafpCodexSample.ResetsAt = $savedReportReset
+    }
+    finally {
+        $script:YafpCodexSample = $savedSample; $script:YafpCodexAttempt = $savedAttempt
+        $script:YafpCodexJob = $null; $global:YAFP_CODEX_CHECK_INTERVAL = 300
+    }
 
     $global:YAFP_REPOS = 0; $global:YAFP_CLOCK = 0; $global:YAFP_RESOURCE_CHECK_INTERVAL = 0
     $global:YAFP_OSC133 = 0; $global:YAFP_ERROR = 0; $global:YAFP_TITLE = 0

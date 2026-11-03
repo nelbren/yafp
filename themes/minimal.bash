@@ -30,12 +30,12 @@ theme_render_general_block() {
     cTimestampPS1="$(ps1_wrap "$cTimestamp")"
 
     if [ -n "$SSH_CLIENT" ]; then
-        emojiClient="💻 ${cClientPS1}${CLIENT_OS_EMOJI}"
+        emojiClient=" ${cClientPS1}${CLIENT_OS_EMOJI}"
     else
-        emojiClient="🖥️ ${cClientPS1}LOCAL"
+        emojiClient=" ${cClientPS1}LOCAL"
     fi
 
-    country_text="${OMP_GEOIP_COUNTRY:-🏠}"
+    country_text="${OMP_GEOIP_COUNTRY:-}"
 
     local parts=(
         "$SERVER_OS_EMOJI $YAFP_USER_ICON "

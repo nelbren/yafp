@@ -44,7 +44,21 @@ yafp_now_ms end
 [ "$((end - begin))" -lt 500 ] || fail 'Quota worker blocked context'
 # shellcheck disable=SC2153
 pid=$YAFP_CODEX_PID
-[ "$yafp_ctx_codex" = '֍⟳' ] || fail 'Pending quota must show the loading symbol'
+[ "$yafp_ctx_codex" = '֍⟳d⟳h' ] || fail 'Pending quota must show the loading symbol'
+for theme in default minimal light; do
+    YAFP_THEME=$theme
+    load_theme
+    theme_build
+    for style in percent symbols; do
+        YAFP_CODEX_VALUE_STYLE=$style
+        yafp_codex_context
+        [ "$yafp_ctx_codex_color" = 90 ] || fail 'Pending quota must remain gray'
+        out="$(theme_render_codex)"
+        plain_prompt
+        [ "$out" = '↤[֍⟳d⟳h]' ] || fail "Pending quota reset placeholders: $theme/$style/$out"
+    done
+done
+YAFP_CODEX_VALUE_STYLE=percent
 for iteration in 1 2 3; do yafp_codex_context; done
 [ "$YAFP_CODEX_PID" = "$pid" ] || fail 'Duplicate workers'
 yafp-reload
@@ -58,7 +72,52 @@ for iteration in {1..60}; do
 done
 yafp_codex_context
 [ "$yafp_ctx_codex" = '֍60%5d9h' ] || fail 'Remaining quota was not read'
-contains "$(yafp-codex)" 'primary 75%; secondary 60%' 'Diagnostic window availability'
+out="$(yafp-codex)"
+yafp_strip_terminal_styles "$out"
+contains "$yafp_plain_text" '    Remaining: 60%' 'Diagnostic uses the limiting window'
+contains "$yafp_plain_text" '        Reset: 5d9h' 'Diagnostic reset duration'
+check_codex_report() {
+    local original_sample state icon color out expected reset
+    local YAFP_CODEX_PID='' YAFP_CODEX_ATTEMPT=$SECONDS
+    local YAFP_CODEX_VALUE_STYLE=symbols YAFP_CODEX_CHECK_INTERVAL=300
+    original_sample=$(< "$YAFP_CODEX_DIR/sample")
+    while IFS='|' read -r state icon color; do
+        YAFP_CODEX_CHECK_INTERVAL=300 YAFP_CODEX_PID=''
+        printf '%s %s 74 74 - %s\n' "$SECONDS" "$state" "$((SECONDS + 115230))" > "$YAFP_CODEX_DIR/sample"
+        case "$state" in
+            pending) rm "$YAFP_CODEX_DIR/sample"; YAFP_CODEX_PID=$$ ;;
+            disabled) YAFP_CODEX_CHECK_INTERVAL=0 ;;
+        esac
+        out="$(yafp-codex)"
+        contains "$out" "$(printf '\033[%sm' "$color")$icon $state" 'Report state color/icon'
+        yafp_strip_terminal_styles "$out"
+        contains "$yafp_plain_text" '┌' 'Diagnostic opening frame'
+        contains "$yafp_plain_text" '┘' 'Diagnostic closing frame'
+        contains "$yafp_plain_text" "        State: $icon $state" 'Semantic report state'
+        if [ "$state" = ok ]; then
+            contains "$yafp_plain_text" '    Remaining: 74%' 'Numeric availability in symbol mode'
+            contains "$yafp_plain_text" '        Reset: 1d8h' 'Days/hours report reset'
+        else
+            contains "$yafp_plain_text" '    Remaining: ' 'Unavailable quota is not a stale percentage'
+            contains "$yafp_plain_text" '        Reset: ' 'Unavailable reset is not invented'
+        fi
+    done < "$ROOT_DIR/tests/codex_report_cases.txt"
+    YAFP_CODEX_PID='' YAFP_CODEX_CHECK_INTERVAL=300
+    for reset in - 0; do
+        printf '%s ok 74 74 - %s\n' "$SECONDS" "$reset" > "$YAFP_CODEX_DIR/sample"
+        out="$(yafp-codex)"
+        yafp_strip_terminal_styles "$out"
+        expected='0d0h'; [ "$reset" != - ] || expected=''
+        contains "$yafp_plain_text" "        Reset: $expected" 'Missing/expired report reset'
+    done
+    printf 'invalid\n' > "$YAFP_CODEX_DIR/sample"
+    out="$(yafp-codex)"
+    yafp_strip_terminal_styles "$out"
+    contains "$yafp_plain_text" 'State:  unavailable' 'Invalid cache must not reuse an old state'
+    contains "$yafp_plain_text" 'Remaining: ' 'Invalid cache must not reuse an old percentage'
+    printf '%s\n' "$original_sample" > "$YAFP_CODEX_DIR/sample"
+}
+check_codex_report
 saved_path=$PATH
 # shellcheck disable=SC2123
 PATH=/nonexistent
@@ -172,3 +231,22 @@ done
 yafp_err_context 7
 [ "$yafp_ctx_exit" = 7 ] || fail 'Previous command status changed'
 printf 'ok - Codex percent/Braille, inclusive color boundaries, user placement, and silent errors\n'
+
+# The quota cache has the same per-session temporary-directory lifecycle.
+old_dir=$YAFP_CODEX_DIR
+rm -f -- "$old_dir/sample"
+rmdir -- "$old_dir"
+YAFP_CODEX_ATTEMPT=$((SECONDS - 301))
+yafp_codex_context
+[ "$YAFP_CODEX_DIR" != "$old_dir" ] || fail 'Missing quota directory was reused'
+[ -d "$YAFP_CODEX_DIR" ] || fail 'Quota cache directory was not recreated'
+pid=$YAFP_CODEX_PID
+yafp_codex_context
+[ "$YAFP_CODEX_PID" = "$pid" ] || fail 'Cache recovery duplicated the quota worker'
+for iteration in {1..60}; do
+    [ ! -f "$YAFP_CODEX_DIR/sample" ] || break
+    sleep 0.05
+done
+yafp_codex_context
+[ "$yafp_ctx_codex" = '֍60%5d9h' ] || fail 'Quota sample did not recover after cache removal'
+printf 'ok - Codex quota recovers after its temporary directory disappears\n'

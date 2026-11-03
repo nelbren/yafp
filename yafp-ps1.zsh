@@ -129,10 +129,10 @@ YAFP_SYMBOL_END="🔚"
 # YAFP_SYMBOL_SOON="🔜"
 YAFP_SYMBOL_SOON=""
 
-YAFP_SYMBOL_CMD="🚀"
-YAFP_SYMBOL_OK="✅"
-YAFP_SYMBOL_WARN="⚠️"
-YAFP_SYMBOL_ERROR="❌"
+YAFP_SYMBOL_CMD=""
+YAFP_SYMBOL_OK=""
+YAFP_SYMBOL_WARN=""
+YAFP_SYMBOL_ERROR=""
 YAFP_SYMBOL_ARROW="→"
 YAFP_SYMBOL_MORNING="🌅"
 YAFP_SYMBOL_AFTERNOON="🌇"
@@ -144,20 +144,20 @@ YAFP_SYMBOL_GIT_EMOJI=""
 # YAFP_SYMBOL_GIT_REPO="💾"
 # Anterior (cuadrado): YAFP_SYMBOL_GIT_REPO=""
 YAFP_SYMBOL_GIT_REPO=""
-YAFP_SYMBOL_GIT_DIR="💻"
+YAFP_SYMBOL_GIT_DIR=""
 YAFP_SYMBOL_GIT_SEP="ᚼ"
-YAFP_SYMBOL_REMOTE="⚡"
+YAFP_SYMBOL_REMOTE=""
 YAFP_SYMBOL_LOCAL="⇣"
-YAFP_SYMBOL_GIT_DELETE_EMOJI="🗑️"
+YAFP_SYMBOL_GIT_DELETE_EMOJI=""
 YAFP_SYMBOL_GIT_DELETE="-"
-YAFP_SYMBOL_GIT_CHANGE_EMOJI="📝"
+YAFP_SYMBOL_GIT_CHANGE_EMOJI=""
 YAFP_SYMBOL_GIT_CHANGE="±"
-YAFP_SYMBOL_GIT_NEW_EMOJI="🆕"
+YAFP_SYMBOL_GIT_NEW_EMOJI=""
 YAFP_SYMBOL_GIT_NEW="+"
-YAFP_SYMBOL_GIT_STAGED_EMOJI="📦"
+YAFP_SYMBOL_GIT_STAGED_EMOJI=""
 
 
-YAFP_SYMBOL_VENV_EMOJI="🐍"
+YAFP_SYMBOL_VENV_EMOJI=""
 
 
 # Semantic command blocks / OSC 133
@@ -649,8 +649,8 @@ theme_render_staged_expansion() {
 
     indicator_width=$((2 + ${#count}))
     theme_select_expansion_message \
-        "⚠ COMMIT PENDING: ${count} staged ${unit} ${verb} ready to commit" \
-        "⚠ COMMIT PENDING: ${count}" \
+        " COMMIT PENDING: ${count} staged ${unit} ${verb} ready to commit" \
+        " COMMIT PENDING: ${count}" \
         "${yafp_ctx_git_staged_indicator_column:-0}" \
         "$indicator_width"
     [ -n "$yafp_expansion_message" ] || return 0
@@ -709,8 +709,8 @@ theme_render_remote_expansion() {
         no-commits)
             indicator_width=2
             theme_select_expansion_message \
-                "⚠ NO COMMITS: create the initial commit" \
-                "⚠ NO COMMITS" \
+                " NO COMMITS: create the initial commit" \
+                " NO COMMITS" \
                 "${yafp_ctx_git_remote_indicator_column:-0}" \
                 "$indicator_width"
             message="$yafp_expansion_message"
@@ -719,8 +719,8 @@ theme_render_remote_expansion() {
         no-upstream)
             indicator_width=2
             theme_select_expansion_message \
-                "⚠ NO UPSTREAM: configure tracking before pushing" \
-                "⚠ NO UPSTREAM" \
+                " NO UPSTREAM: configure tracking before pushing" \
+                " NO UPSTREAM" \
                 "${yafp_ctx_git_remote_indicator_column:-0}" \
                 "$indicator_width"
             message="$yafp_expansion_message"
@@ -735,8 +735,8 @@ theme_render_remote_expansion() {
             fi
             indicator_width=$((1 + ${#yafp_ctx_git_ahead}))
             theme_select_expansion_message \
-                "⚠ REMOTE NOT UPDATED: ${yafp_ctx_git_ahead} local ${unit} ${verb} not been pushed to ${yafp_ctx_git_upstream//\%/%%}" \
-                "⚠ PUSH PENDING: ${yafp_ctx_git_ahead}" \
+                " REMOTE NOT UPDATED: ${yafp_ctx_git_ahead} local ${unit} ${verb} not been pushed to ${yafp_ctx_git_upstream//\%/%%}" \
+                " PUSH PENDING: ${yafp_ctx_git_ahead}" \
                 "${yafp_ctx_git_remote_indicator_column:-0}" \
                 "$indicator_width"
             message="$yafp_expansion_message"
@@ -824,7 +824,7 @@ theme_render_git_remote_status() {
     fi
 
     if [ "${yafp_ctx_git_remote_refreshing:-0}" -eq 1 ]; then
-        out+="$(ps1_wrap "$cRemotePending")⟳"
+        out+="$(ps1_wrap "$cRemotePending")"
     fi
 
     out+="$(theme_render_remote_expansion)"
@@ -982,7 +982,7 @@ theme_render_main_block() {
 
 yafp_timer_backend_emoji() {
     emulate -L zsh -o KSH_ARRAYS
-    printf '⚡'
+    printf ''
 }
 
 
@@ -1390,11 +1390,11 @@ set_YAFP_USER() {
     emulate -L zsh -o KSH_ARRAYS
     if [ "${EUID:-$(id -u)}" -eq 0 ]; then
         YAFP_USER_TYPE="root"
-        YAFP_USER_ICON="💀"
+        YAFP_USER_ICON=""
         YAFP_USER_PROMPT_SYMBOL="#"
     else
         YAFP_USER_TYPE="user"
-        YAFP_USER_ICON="👤"
+        YAFP_USER_ICON=""
         YAFP_USER_PROMPT_SYMBOL="$"
     fi
 }
@@ -1940,7 +1940,7 @@ yafp_remote_state_label() {
     case "$state" in
         no-commits) printf '%s' '○0 No commits' ;;
         no-upstream) printf '%s' '⇡? No upstream' ;;
-        current) printf '%s' '✓ Up to date' ;;
+        current) printf '%s' ' Up to date' ;;
         ahead) printf '⇡%s Ahead' "$ahead" ;;
         behind) printf '⇣%s Behind' "$behind" ;;
         diverged) printf '⇡%s⇣%s Diverged' "$ahead" "$behind" ;;
@@ -1974,13 +1974,13 @@ yafp_remote_timer_style() {
     local interval="$2"
 
     if [ $((remaining * 100)) -ge $((interval * 66)) ]; then
-        yafp_status_timer_emoji="🟢"
+        yafp_status_timer_emoji=""
         yafp_status_timer_tone="GREEN"
     elif [ $((remaining * 100)) -ge $((interval * 33)) ]; then
-        yafp_status_timer_emoji="🟡"
+        yafp_status_timer_emoji=""
         yafp_status_timer_tone="YELLOW"
     else
-        yafp_status_timer_emoji="🔴"
+        yafp_status_timer_emoji=""
         yafp_status_timer_tone="RED"
     fi
 }
@@ -2005,14 +2005,16 @@ yafp_status_start_color() {
     emulate -L zsh -o KSH_ARRAYS
     local tone="$1"
 
-    [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ -n "$tone" ] || return
+    [ -t 1 ] || [ "${YAFP_DIAGNOSTIC_COLOR:-0}" = 1 ] || return
+    [ -z "${NO_COLOR:-}" ] && [ -n "$tone" ] || return
     themeColor transparent "$tone"
 }
 
 
 yafp_status_reset_color() {
     emulate -L zsh -o KSH_ARRAYS
-    [ -t 1 ] && [ -z "${NO_COLOR:-}" ] || return
+    [ -t 1 ] || [ "${YAFP_DIAGNOSTIC_COLOR:-0}" = 1 ] || return
+    [ -z "${NO_COLOR:-}" ] || return
     tput sgr0
 }
 
@@ -2037,6 +2039,13 @@ yafp_format_local_time() {
 
 yafp_remote_status_report() {
     emulate -L zsh -o KSH_ARRAYS
+    if [ "${8:-}" = frame ]; then
+        local report
+        . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
+        report="$(YAFP_DIAGNOSTIC_COLOR=1 yafp_remote_status_report "$1" "${2:-0}" "${3:-0}" "${4:-0}" "${5:-}" "${6:-0}" "${7:-0}")"
+        yafp_preview_frame "$report"
+        return
+    fi
     local state="$1"
     local ahead="${2:-0}"
     local behind="${3:-0}"
@@ -2057,10 +2066,10 @@ yafp_remote_status_report() {
 
     state_label="$(yafp_remote_state_label "$state" "$ahead" "$behind")"
     if [ "$refreshing" -eq 1 ]; then
-        state_label="⟳ Refreshing · last: ${state_label}"
+        state_label=" Refreshing · last: ${state_label}"
     fi
     state_tone="$(yafp_remote_state_tone "$state" "$refreshing")"
-    printf '%s' '🌐︎       Remote: '
+    printf '%s' '       Remote: '
     yafp_status_start_color "$state_tone"
     printf '%s' "$state_label"
     yafp_status_reset_color
@@ -2068,9 +2077,9 @@ yafp_remote_status_report() {
 
     if ! [[ "$interval" =~ ^[1-9][0-9]*$ &&
             "$remaining" =~ ^[0-9]+$ && "$now" =~ ^[0-9]+$ ]]; then
-        printf '%s\n' '⏱        Timer: unavailable'
-        printf '%s\n' '🕘 Current time: unavailable'
-        printf '%s\n' '🕒   Next check: unavailable'
+        printf '%s\n' '        Timer: unavailable'
+        printf '%s\n' ' Current time: unavailable'
+        printf '%s\n' '   Next check: unavailable'
         return
     fi
 
@@ -2112,12 +2121,12 @@ yafp_remote_status_report() {
         "$progress" "$percent" "$elapsed" "$interval" "$remaining"
     yafp_status_reset_color
     printf '\n'
-    printf '%s' '🕘 Current time: '
+    printf '%s' ' Current time: '
     yafp_status_start_color "$(yafp_current_time_tone)"
     printf '%s' "$(yafp_format_local_time "$now")"
     yafp_status_reset_color
     printf '\n'
-    printf '%s' '🕒   Next check: '
+    printf '%s' '   Next check: '
     yafp_status_start_color "$(yafp_next_check_tone)"
     printf '%s' "$next_check"
     yafp_status_reset_color
@@ -2133,13 +2142,13 @@ yafp-status() {
     local repo_root
 
     command -v git >/dev/null 2>&1 || {
-        yafp_remote_status_report "" 0 0 0 "" "$interval" 0
+        yafp_remote_status_report "" 0 0 0 "" "$interval" 0 frame
         return 0
     }
     repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || repo_root=""
     branch="$(git symbolic-ref --short HEAD 2>/dev/null)" || branch=""
     if [ -z "$repo_root" ] || [ -z "$branch" ]; then
-        yafp_remote_status_report "" 0 0 0 "" "$interval" 0
+        yafp_remote_status_report "" 0 0 0 "" "$interval" 0 frame
         return 0
     fi
 
@@ -2151,7 +2160,7 @@ yafp-status() {
         "${yafp_ctx_git_behind:-0}" \
         "${yafp_ctx_git_remote_refreshing:-0}" \
         "${yafp_ctx_git_remote_refresh_in:-}" \
-        "$interval" "$now"
+        "$interval" "$now" frame
 }
 
 
@@ -2196,6 +2205,13 @@ yafp-ack() {
 
 yafp-msgs() {
     emulate -L zsh -o KSH_ARRAYS
+    if [ "${1:-}" != plain ]; then
+        local report
+        . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
+        report="$(YAFP_DIAGNOSTIC_COLOR=1 yafp-msgs plain)"
+        yafp_preview_frame "$report"
+        return
+    fi
     local color
     local message
     local severity
@@ -2209,10 +2225,10 @@ yafp-msgs() {
         printf '%s%s%s\n' "$color" "( ${message} )" $'\033[0m'
     done <<'EOF'
 green|✓ INTERNET CONNECTION
-yellow|⚠ REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/main
-yellow|⚠ PUSH PENDING: 1
-yellow|⚠ COMMIT PENDING: 1 staged file is ready to commit
-yellow|⚠ COMMIT PENDING: 1
+yellow| REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/main
+yellow| PUSH PENDING: 1
+yellow| COMMIT PENDING: 1 staged file is ready to commit
+yellow| COMMIT PENDING: 1
 red|☒ OUTDATED REPOSITORY: 1 commit is missing from origin/main
 red|☒ PULL PENDING: 1
 red|☒ DIVERGED REPOSITORY: local +1 / remote +1 relative to origin/main
@@ -2224,6 +2240,13 @@ EOF
 
 yafp-help() {
     emulate -L zsh -o KSH_ARRAYS
+    if [ "${1:-}" != plain ]; then
+        local report
+        . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
+        report="$(YAFP_DIAGNOSTIC_COLOR=1 yafp-help plain)"
+        yafp_preview_frame "$report"
+        return
+    fi
     local description
     local name
 
@@ -2271,25 +2294,18 @@ yafp-stats() {
         failed_percent=$((100 - succeeded_percent))
     fi
 
-    yafp_status_start_color GREEN
-    printf '✓ %-10s %*d (%03d%%)' 'Succeeded:' "$count_width" \
-        "$YAFP_COMMANDS_SUCCEEDED" "$succeeded_percent"
-    yafp_status_reset_color
-    printf '\n'
-    yafp_status_start_color RED
-    printf '☒ %-10s %*d (%03d%%)' 'Failed:' "$count_width" \
-        "$YAFP_COMMANDS_FAILED" "$failed_percent"
-    yafp_status_reset_color
-    printf '\n'
-    yafp_status_start_color white
-    printf '%s' "$separator"
-    yafp_status_reset_color
-    printf '\n'
-    yafp_status_start_color WHITE
-    printf '∑ %-10s %*d (100%%)' 'Total:' "$count_width" \
-        "$YAFP_COMMANDS_TOTAL"
-    yafp_status_reset_color
-    printf '\n'
+    local report reset=$'\033[0m' succeeded_color=$'\033[92m' failed_color=$'\033[91m'
+    local separator_color=$'\033[37m' total_color=$'\033[97m'
+    if [ -n "${NO_COLOR:-}" ]; then
+        reset='' succeeded_color='' failed_color='' separator_color='' total_color=''
+    fi
+    printf -v report '%s✓ %-10s %*d (%03d%%)%s\n%s☒ %-10s %*d (%03d%%)%s\n%s%s%s\n%s∑ %-10s %*d (100%%)%s' \
+        "$succeeded_color" 'Succeeded:' "$count_width" "$YAFP_COMMANDS_SUCCEEDED" "$succeeded_percent" "$reset" \
+        "$failed_color" 'Failed:' "$count_width" "$YAFP_COMMANDS_FAILED" "$failed_percent" "$reset" \
+        "$separator_color" "$separator" "$reset" \
+        "$total_color" 'Total:' "$count_width" "$YAFP_COMMANDS_TOTAL" "$reset"
+    . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
+    yafp_preview_frame "$report"
 }
 
 
@@ -2300,11 +2316,12 @@ yafp-stats() {
 yafp-demo() {
     emulate -L zsh -o KSH_ARRAYS
     local sleep_segs=4
+    . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
     while true; do
         yafp-status
-        printf '\nPrompt preview:\n'
-        yafp_prompt_preview
-        printf '\nControl+C to break this ♾️  loop 🔁 (%ss)\n\n' \
+        printf '\n Prompt preview:\n'
+        yafp_prompt_preview frame
+        printf '\nControl+C to break this  loop  (%ss)\n\n' \
             "$sleep_segs"
         sleep "$sleep_segs"
     done
@@ -2479,13 +2496,13 @@ yafp_dev_segment() {
 
     # t_all=100
     if (( t_all < 50 )); then
-        icon="🚀"
+        icon=""
         cSpeed="$(ps1_wrap "$cStatusOk")"
     elif (( t_all < 200 )); then
-        icon="⏱️"
+        icon=""
         cSpeed="$(ps1_wrap "$cStatusWarning")"
     else
-        icon="🐢"
+        icon=""
         cSpeed="$(ps1_wrap "$cStatusError")"
     fi
 
@@ -2493,10 +2510,10 @@ yafp_dev_segment() {
         "${cSpeed}$icon"
         "${t_all}ms"
         "$cSeparator | "
-        "${cSpeed}⚙️$t_general "
-        "🌱$t_git "
-        "🐍$t_venv "
-        "❌$t_err "
+        "${cSpeed}$t_general "
+        "$t_git "
+        "$t_venv "
+        "$t_err "
         "$YAFP_TIMER_BACKEND_EMOJI"
         "$t_timer"
         "$(ps1_wrap $'\033[0m\033[K')"$'\n'
@@ -2510,6 +2527,11 @@ yafp_dev_segment() {
 
 yafp_prompt_preview() {
     emulate -L zsh -o KSH_ARRAYS
+    local preview_columns="${COLUMNS:-80}"
+    local COLUMNS="$preview_columns"
+    if [[ "${1:-}" = frame ]] && (( COLUMNS >= 7 )); then
+        COLUMNS=$((COLUMNS - 5))
+    fi
     local last_exit="${yafp_ctx_exit:-0}" preview
     local this_command='' previous_timestamp="${previous_timestamp:-}"
     local YAFP_PROMPT_RENDERING=1
@@ -2522,7 +2544,11 @@ yafp_prompt_preview() {
     yafp_err_context "$last_exit"
     yafp_now_ms t_all_end
     preview="$(yafp_zsh_wrap_styles "$(theme_render_ps1)")"
-    print -r -- "${(%)preview}"
+    if [ "${1:-}" = frame ]; then
+        yafp_preview_frame "${(%)preview}" "$preview_columns"
+    else
+        print -r -- "${(%)preview}"
+    fi
 }
 
 
@@ -2661,6 +2687,9 @@ yafp_zshexit() {
     if [[ -r "$YAFP_ROOT/scripts/unix/codex/context.bash" ]]; then
         . "$YAFP_ROOT/scripts/unix/codex/context.bash"
     fi
+    if [[ -r "$YAFP_ROOT/scripts/unix/history/context.zsh" ]]; then
+        . "$YAFP_ROOT/scripts/unix/history/context.zsh"
+    fi
     load_theme || return 1
     theme_build
     previous_command=${previous_command:-}
@@ -2678,6 +2707,9 @@ yafp_zshexit() {
         add-zsh-hook preexec yafp_preexec
         add-zsh-hook precmd yafp_prompt_command
         add-zsh-hook zshexit yafp_zshexit
+        if (( ${+functions[yafp_zsh_install_history_redraw]} )); then
+            yafp_zsh_install_history_redraw
+        fi
     fi
     return 0
 } || return 1

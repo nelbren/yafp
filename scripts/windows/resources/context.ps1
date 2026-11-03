@@ -124,7 +124,10 @@ function global:Get-YafpResourceContext {
         $separator = ''
     }
     $sample = $script:YafpResourceSample
+    $percentages = @($null, $null, $null, $null)
+    $state = 'unavailable'
     if ($null -ne $sample) {
+        $state = 'ok'
         $ram = if ($sample.RamTotal -gt 0 -and $null -ne $sample.RamUsed) {
             [long][Math]::Floor(100 * $sample.RamUsed / $sample.RamTotal)
         } else { $null }
@@ -138,6 +141,7 @@ function global:Get-YafpResourceContext {
             [long][Math]::Floor(100 * $sample.DiskUsed / $sample.DiskTotal)
         } else { $null }
         $age = [Math]::Max(0, $now - $sample.CheckedAt)
+        $percentages = @($sample.Cpu, $ram, $swap, $disk)
         $segments = @(
             Format-YafpResourceSegment -Kind C -Value $sample.Cpu
             Format-YafpResourceSegment -Kind R -Value $ram
@@ -147,7 +151,10 @@ function global:Get-YafpResourceContext {
         $suffix = "$($age)s"
         $text = ($segments.Text -join $separator) + " $suffix"
     }
-    if ($null -ne $script:YafpResourceJob) { $text += '~'; $suffix += '~' }
+    if ($null -ne $script:YafpResourceJob) {
+        $text += ''; $suffix += ''
+        $state = if ($null -eq $sample) { 'pending' } else { 'refreshing' }
+    }
     elseif ($null -eq $sample) { $text = 'Resources: no valid sample' }
     if ($null -eq $sample -and $null -ne $script:YafpResourceJob) {
         $segments = @(foreach ($kind in @('C', 'R', 'S', 'D')) {
@@ -159,6 +166,7 @@ function global:Get-YafpResourceContext {
     }
     return [pscustomobject]@{
         Text = $text; Sample = $sample; Segments = $segments; Suffix = $suffix; Separator = $separator
+        State = $state; Percentages = $percentages
     }
 }
 
@@ -182,8 +190,8 @@ function global:Write-YafpResources {
                     -BackgroundColor $null -NoNewline
                 $separator = $resource.Separator
             }
-            if ($resource.Suffix.EndsWith('~')) {
-                Write-YafpText -Text '~' -ForegroundColor DarkGray `
+            if ($resource.Suffix.EndsWith('')) {
+                Write-YafpText -Text '' -ForegroundColor DarkGray `
                     -BackgroundColor $null -NoNewline
             }
         }
@@ -198,14 +206,47 @@ function global:Write-YafpResources {
 
 function global:Show-YafpResources {
     $resource = Get-YafpResourceContext
-    if ($null -eq $resource) {
-        Write-Output 'Resources disabled. Set $global:YAFP_RESOURCE_CHECK_INTERVAL=30.'
-        return
+    $state = 'disabled'; $age = ''; $ageColor = 90
+    $labels = @('          CPU:', '          RAM:', '         SWAP:', '  Disk (HOME):')
+    $used = @($null, $null, $null); $totals = @($null, $null, $null)
+    if ($null -ne $resource) {
+        $state = $resource.State
+        if ($null -ne $resource.Sample) {
+            $sample = $resource.Sample
+            $age = "$([Math]::Max(0, [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - $sample.CheckedAt))s"
+            $ageColor = 37
+            $used = @($sample.RamUsed, $sample.SwapUsed, $sample.DiskUsed)
+            $totals = @($sample.RamTotal, $sample.SwapTotal, $sample.DiskTotal)
+        }
     }
-    Write-Output $resource.Text
-    $sample = $resource.Sample
-    if ($null -ne $sample) {
-        Write-Output "RAM: $($sample.RamUsed)/$($sample.RamTotal) MiB  SWAP: $($sample.SwapUsed)/$($sample.SwapTotal) MiB"
-        Write-Output "Disk (HOME volume): $($sample.DiskUsed)/$($sample.DiskTotal) KiB"
+    $stateIcon = ''; $stateColor = 91
+    switch ($state) {
+        ok { $stateIcon = ''; $stateColor = 92 }
+        refreshing { $stateIcon = ''; $stateColor = 90 }
+        pending { $stateIcon = ''; $stateColor = 93 }
+        disabled { $stateIcon = ''; $stateColor = 90 }
+    }
+    $escape = [char]27
+    $report = "        State: $escape[$($stateColor)m$stateIcon $state$escape[0m`n" +
+        "   Sample age: $escape[$($ageColor)m$age$escape[0m"
+    for ($index = 0; $index -lt 4; $index++) {
+        $value = ''; $color = 90; $detail = ''
+        if ($null -ne $resource -and $null -ne $resource.Sample -and
+            $resource.Segments[$index].Foreground -ne 'DarkGray') {
+            $value = "$($resource.Percentages[$index])%"
+            $color = switch ($resource.Segments[$index].Foreground) { Green { 92 }; Yellow { 93 }; Red { 91 }; default { 90 } }
+        }
+        if ($index -gt 0 -and ($null -ne $used[$index - 1] -or $null -ne $totals[$index - 1])) {
+            $usedText = if ($null -eq $used[$index - 1]) { '' } else { "$($used[$index - 1])" }
+            $totalText = if ($null -eq $totals[$index - 1]) { '' } else { "$($totals[$index - 1])" }
+            $unit = if ($index -eq 3) { 'KiB' } else { 'MiB' }
+            $detail = " · $usedText/$totalText $unit"
+        }
+        $report += "`n$($labels[$index]) $escape[$($color)m$value$detail$escape[0m"
+    }
+    . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
+    Write-YafpPreviewFrame -Text $report
+    if ($state -eq 'disabled') {
+        Write-Output 'Resources disabled. Set $global:YAFP_RESOURCE_CHECK_INTERVAL=30.'
     }
 }

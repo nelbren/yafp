@@ -59,24 +59,24 @@ function script:Write-YafpGitCounts {
     Write-YafpText -Text '↦[' -ForegroundColor $frameForeground `
         -BackgroundColor $frameBackground -NoNewline
     if ($Git.DeleteCount -gt 0) {
-        $prefix = if ($Plain) { '' } else { '🗑️' }
+        $prefix = if ($Plain) { '' } else { '' }
         Write-YafpText -Text "$prefix-$($Git.DeleteCount)" `
             -ForegroundColor Red -BackgroundColor $null -NoNewline
     }
     if ($Git.ChangeCount -gt 0) {
-        $prefix = if ($Plain) { '' } else { '📝' }
+        $prefix = if ($Plain) { '' } else { '' }
         Write-YafpText -Text "$prefix±$($Git.ChangeCount)" `
             -ForegroundColor Yellow -BackgroundColor $null -NoNewline
     }
     if ($Git.NewCount -gt 0) {
-        $prefix = if ($Plain) { '' } else { '🆕' }
+        $prefix = if ($Plain) { '' } else { '' }
         Write-YafpText -Text "$prefix+$($Git.NewCount)" `
             -ForegroundColor Cyan -BackgroundColor $null -NoNewline
     }
     if ($Git.StagedCount -gt 0) {
         Write-YafpStagedExpansion -Git $Git
         $style = Get-YafpSeverityStyle -Severity warning
-        Write-YafpText -Text "📦$($Git.StagedCount)" `
+        Write-YafpText -Text "$($Git.StagedCount)" `
             -ForegroundColor $style.Foreground `
             -BackgroundColor $style.Background -NoNewline
     }
@@ -94,14 +94,14 @@ function script:Write-YafpTheme {
     Write-YafpRemoteExpansionRow -Context $Context
 
     if ($Context.Git) {
-        $remoteSymbol = if ($Context.Git.Remote -eq 'remote') { '⚡' } else { '⇣' }
+        $remoteSymbol = if ($Context.Git.Remote -eq 'remote') { '' } else { '⇣' }
         # Anterior: Write-YafpText -Text "[🔛$($Context.Git.LastTimestamp)💾$($Context.Git.Repository)ᚼ"
         # Anterior (cuadrado): Write-YafpText -Text "[🔛$($Context.Git.LastTimestamp)$($Context.Git.Repository)ᚼ"
         Write-YafpText -Text "[🔛$($Context.Git.LastTimestamp)$($Context.Git.Repository)ᚼ" `
             -ForegroundColor $grayColorForeground `
             -BackgroundColor $grayColorBackground -NoNewline
         Write-YafpGitRemoteStatus -Git $Context.Git
-        Write-YafpText -Text "$($Context.Git.Branch)💻$remoteSymbol" `
+        Write-YafpText -Text "$($Context.Git.Branch)$remoteSymbol" `
             -ForegroundColor $grayColorForeground `
             -BackgroundColor $grayColorBackground -NoNewline
         Write-YafpGitCounts -Git $Context.Git
@@ -109,7 +109,7 @@ function script:Write-YafpTheme {
             -BackgroundColor $grayColorBackground -NoNewline
     }
     if ($Context.Venv) {
-        Write-YafpText -Text "[🐍$($Context.Venv)]" `
+        Write-YafpText -Text "[$($Context.Venv)]" `
             -ForegroundColor $blueColorForeground `
             -BackgroundColor $blueColorBackground -NoNewline
     }
@@ -118,10 +118,10 @@ function script:Write-YafpTheme {
     }
 
     if ($global:YAFP_ERROR -eq 1) {
-        $statusSymbol = if ($Context.HadError) { '⚠️' } else { '✅' }
+        $statusSymbol = if ($Context.HadError) { '' } else { '' }
         if ($Context.HadError) {
             $statusStyle = Get-YafpCommandErrorStyle
-            Write-YafpText -Text "[🔚$($Context.PreviousTimestamp)🚀$($Context.PreviousCommand)→" `
+            Write-YafpText -Text "[🔚$($Context.PreviousTimestamp)$($Context.PreviousCommand)→" `
                 -ForegroundColor White -BackgroundColor $null -NoNewline
             Write-YafpText -Text "$statusSymbol$($Context.ExitCode)" `
                 -ForegroundColor $statusStyle.Foreground `
@@ -130,7 +130,7 @@ function script:Write-YafpTheme {
                 -BackgroundColor $null -NoNewline
         }
         else {
-            Write-YafpText -Text "[🔚$($Context.PreviousTimestamp)🚀$($Context.PreviousCommand)→$statusSymbol$($Context.ExitCode)]" `
+            Write-YafpText -Text "[🔚$($Context.PreviousTimestamp)$($Context.PreviousCommand)→$statusSymbol$($Context.ExitCode)]" `
                 -ForegroundColor $greenColorForeground `
                 -BackgroundColor $greenColorBackground -NoNewline
         }

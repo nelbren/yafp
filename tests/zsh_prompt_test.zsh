@@ -52,7 +52,7 @@ for theme in default minimal light; do
     [[ "$cCmdError" != *$'\033[4'* ]] || fail 'error background must be transparent'
     YAFP_DEVEL=0
     yafp_prompt_command
-    [[ "$YAFP_ZSH_PROMPT" != *'⚙️'* ]] || fail 'metrics disabled'
+    [[ "$YAFP_ZSH_PROMPT" != *''* ]] || fail 'metrics disabled'
 done
 YAFP_THEME='does-not-exist'
 load_theme || fail 'fallback loading'
@@ -115,15 +115,15 @@ yafp_ctx_git_upstream=origin/main yafp_ctx_git_remote_refresh_in=200
 yafp_ctx_git_remote_refreshing=0 yafp_ctx_git_remote_connection_announcement=0
 COLUMNS=200
 out="$(theme_render_ps1)"
-assert_contains "$out" '📦4' 'staged indicator'
-assert_contains "$out" '( ⚠ COMMIT PENDING:' 'staged banner'
+assert_contains "$out" '4' 'staged indicator'
+assert_contains "$out" '(  COMMIT PENDING:' 'staged banner'
 assert_contains "$out" '⇡2' 'ahead indicator'
-assert_contains "$out" '( ⚠ REMOTE NOT UPDATED:' 'remote banner'
+assert_contains "$out" '(  REMOTE NOT UPDATED:' 'remote banner'
 assert_contains "$out" 'branch%%F{red}' 'branch percent escaped'
 COLUMNS=12
 out="$(theme_render_ps1)"
-[[ "$out" != *'( ⚠'* ]] || fail 'banner must fit narrow terminal'
-assert_contains "$out" '📦4' 'narrow compact indicator retained'
+[[ "$out" != *'( '* ]] || fail 'banner must fit narrow terminal'
+assert_contains "$out" '4' 'narrow compact indicator retained'
 yafp_ctx_git_remote_state=error
 YAFP_REMOTE_OFFLINE_ACKNOWLEDGED=1
 out="$(theme_render_git_remote_status)"

@@ -128,7 +128,7 @@ theme_render_general_block() {
         emojiClient="${cClientPS1}LOCAL"
     fi
 
-    country_text="${OMP_GEOIP_COUNTRY:-🏠}"
+    country_text="${OMP_GEOIP_COUNTRY:-}"
 
     local parts=(
         "$SERVER_OS_EMOJI "

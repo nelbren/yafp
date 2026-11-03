@@ -9,9 +9,12 @@ yafp_resources_context() {
     local checked ram_used ram_total swap_used swap_total cpu disk_used disk_total extra
     yafp_ctx_resources=''
     yafp_ctx_resource_tokens=() yafp_ctx_resource_colors=()
+    yafp_ctx_resource_values=() yafp_ctx_resource_has_sample=0
+    yafp_ctx_resource_state=disabled yafp_ctx_resource_age=''
     yafp_ctx_resource_separator=' '
     case "$interval" in ''|*[!0-9]*|0*|??????*) return 0 ;; esac
     [ "$interval" -le 86400 ] && [ "$interval" -ge 1 ] || return 0
+    yafp_ctx_resource_state=unavailable
 
     if [ -n "${YAFP_RESOURCE_DIR:-}" ] && [ -r "$YAFP_RESOURCE_DIR/sample" ]; then
         IFS=' ' read -r checked ram_used ram_total swap_used swap_total cpu \
@@ -25,6 +28,7 @@ yafp_resources_context() {
         [ -z "$extra" ] || valid=0
         if [ "$valid" = 1 ] && [ "$cpu" != - ] && [ "$cpu" -gt 100 ]; then valid=0; fi
         if [ "$valid" = 1 ] && [ "$checked" -le "$SECONDS" ]; then
+            yafp_ctx_resource_has_sample=1 yafp_ctx_resource_state=ok
             YAFP_RESOURCE_SAMPLE_AT=$checked
             YAFP_RESOURCE_RAM_USED=$ram_used YAFP_RESOURCE_RAM_TOTAL=$ram_total
             YAFP_RESOURCE_SWAP_USED=$swap_used YAFP_RESOURCE_SWAP_TOTAL=$swap_total
@@ -35,7 +39,9 @@ yafp_resources_context() {
     fi
 
     if [ -n "${YAFP_RESOURCE_PID:-}" ] && kill -0 "$YAFP_RESOURCE_PID" 2>/dev/null; then
-        yafp_ctx_resources="${yafp_ctx_resources:-Resources: waiting for sample}~"
+        yafp_ctx_resource_state=pending
+        [ "$yafp_ctx_resource_has_sample" != 1 ] || yafp_ctx_resource_state=refreshing
+        yafp_ctx_resources="${yafp_ctx_resources:-Resources: waiting for sample}"
         yafp_resources_pending
         return 0
     fi
@@ -43,7 +49,8 @@ yafp_resources_context() {
     if [ -z "${YAFP_RESOURCE_ATTEMPT:-}" ] ||
        [ "$((SECONDS - YAFP_RESOURCE_ATTEMPT))" -ge "$interval" ]; then
         YAFP_RESOURCE_ATTEMPT=$SECONDS
-        if [ -z "${YAFP_RESOURCE_DIR:-}" ]; then
+        # An open session can outlive its temporary directory.
+        if [ -z "${YAFP_RESOURCE_DIR:-}" ] || [ ! -d "$YAFP_RESOURCE_DIR" ]; then
             YAFP_RESOURCE_DIR=$(mktemp -d "${TMPDIR:-/tmp}/yafp-resources.XXXXXXXX") || return 0
         fi
         # One worker per session, with stdin/stdout/stderr disconnected.
@@ -57,7 +64,9 @@ yafp_resources_context() {
                 disown "$YAFP_RESOURCE_PID" 2>/dev/null || true
             fi
         } >/dev/null 2>&1
-        yafp_ctx_resources="${yafp_ctx_resources:-Resources: waiting for sample}~"
+        yafp_ctx_resources="${yafp_ctx_resources:-Resources: waiting for sample}"
+        yafp_ctx_resource_state=pending
+        [ "$yafp_ctx_resource_has_sample" != 1 ] || yafp_ctx_resource_state=refreshing
     fi
     yafp_ctx_resources=${yafp_ctx_resources:-Resources: no valid sample}
     yafp_resources_pending
@@ -66,7 +75,7 @@ yafp_resources_context() {
 
 yafp_resources_pending() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
-    [ "$yafp_ctx_resources" = 'Resources: waiting for sample~' ] || return 0
+    [ "$yafp_ctx_resources" = 'Resources: waiting for sample' ] || return 0
     local index
     yafp_ctx_resource_separator=' '
     if [ "${YAFP_RESOURCE_LABEL_STYLE:-letters}" = unicode ] &&
@@ -129,12 +138,14 @@ yafp_resources_summary() {
     age=$((SECONDS - YAFP_RESOURCE_SAMPLE_AT))
     yafp_ctx_resources=''
     yafp_ctx_resource_tokens=() yafp_ctx_resource_colors=()
+    yafp_ctx_resource_values=()
     yafp_ctx_resource_separator=' '
     if [ "${YAFP_RESOURCE_LABEL_STYLE:-letters}" = unicode ] &&
        [ "${YAFP_RESOURCE_VALUE_STYLE:-percent}" = symbols ]; then
         yafp_ctx_resource_separator=''
     fi
     for value in "${cpu%\%}" "${ram%\%}" "${swap%\%}" "${disk%\%}"; do
+        yafp_ctx_resource_values+=("$value")
         yafp_resource_segment "$index" "$value"
         yafp_ctx_resource_tokens+=("$yafp_resource_token")
         yafp_ctx_resource_colors+=("$yafp_resource_color")
@@ -164,8 +175,8 @@ theme_render_resources() {
             index=$((index + 1))
         done
         case "$yafp_ctx_resources" in
-            'Resources: waiting for sample~') ;;
-            *'~') printf '%s%s%s~' "$open" $'\033[0;90m' "$close" ;;
+            'Resources: waiting for sample') ;;
+            *'') printf '%s%s%s' "$open" $'\033[0;90m' "$close" ;;
         esac
     else
         printf '%s%s%s%s' "$open" $'\033[0;90m' "$close" "$text"
@@ -176,18 +187,48 @@ theme_render_resources() {
 
 yafp-resources() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
+    local report line state_icon state_color age='' age_color=90
+    local index value color detail item used_text total_text unit
+    local labels=('          CPU:' '          RAM:' '         SWAP:' '  Disk (HOME):')
+    local used=('-' '-' '-') totals=('-' '-' '-')
     yafp_resources_context
-    if [ -z "$yafp_ctx_resources" ]; then
-        printf '%s\n' 'Resources disabled. Set YAFP_RESOURCE_CHECK_INTERVAL=30.'
-        return 0
+    case "$yafp_ctx_resource_state" in
+        ok) state_icon=''; state_color=92 ;;
+        refreshing) state_icon=''; state_color=90 ;;
+        pending) state_icon=''; state_color=93 ;;
+        disabled) state_icon=''; state_color=90 ;;
+        *) state_icon=''; state_color=91 ;;
+    esac
+    if [ "$yafp_ctx_resource_has_sample" = 1 ]; then
+        age="${yafp_ctx_resource_age}s" age_color=37
+        used=("$YAFP_RESOURCE_RAM_USED" "$YAFP_RESOURCE_SWAP_USED" "$YAFP_RESOURCE_DISK_USED")
+        totals=("$YAFP_RESOURCE_RAM_TOTAL" "$YAFP_RESOURCE_SWAP_TOTAL" "$YAFP_RESOURCE_DISK_TOTAL")
     fi
-    printf '%s\n' "$yafp_ctx_resources"
-    if [ -n "${YAFP_RESOURCE_SAMPLE_AT:-}" ]; then
-        printf 'RAM: %s/%s MiB  SWAP: %s/%s MiB\n' \
-            "$YAFP_RESOURCE_RAM_USED" "$YAFP_RESOURCE_RAM_TOTAL" \
-            "$YAFP_RESOURCE_SWAP_USED" "$YAFP_RESOURCE_SWAP_TOTAL"
-        printf 'Disk (HOME volume): %s/%s KiB\n' \
-            "$YAFP_RESOURCE_DISK_USED" "$YAFP_RESOURCE_DISK_TOTAL"
+    printf -v report '        State: \033[%sm%s %s\033[0m\n   Sample age: \033[%sm%s\033[0m' \
+        "$state_color" "$state_icon" "$yafp_ctx_resource_state" "$age_color" "$age"
+    for index in 0 1 2 3; do
+        value='' color=90 detail=''
+        item="${yafp_ctx_resource_values[$index]:-}"
+        case "$item" in
+            ''|*[!0-9]*) ;;
+            *) if [ "$item" -le 100 ]; then value="${item}%"; color=${yafp_ctx_resource_colors[$index]}; fi ;;
+        esac
+        if [ "$index" -gt 0 ]; then
+            used_text=${used[$((index - 1))]} total_text=${totals[$((index - 1))]}
+            if [ "$used_text" != - ] || [ "$total_text" != - ]; then
+                [ "$used_text" != - ] || used_text=''
+                [ "$total_text" != - ] || total_text=''
+                unit=MiB; [ "$index" -ne 3 ] || unit=KiB
+                detail=" · ${used_text}/${total_text} ${unit}"
+            fi
+        fi
+        printf -v line '%s \033[%sm%s%s\033[0m' "${labels[$index]}" "$color" "$value" "$detail"
+        report+=$'\n'"$line"
+    done
+    . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
+    yafp_preview_frame "$report"
+    if [ "$yafp_ctx_resource_state" = disabled ]; then
+        printf '%s\n' 'Resources disabled. Set YAFP_RESOURCE_CHECK_INTERVAL=30.'
     fi
 }
 

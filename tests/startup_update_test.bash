@@ -79,13 +79,13 @@ git -C "$YAFP_ROOT" add local.txt
 git -C "$YAFP_ROOT" commit --quiet -m local
 start_check
 yafp_update_notice > "$TEST_ROOT/output" <<< y
-grep -q '⚠ REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/' "$TEST_ROOT/output" || fail 'Missing ahead warning'
-grep -q '^⚠ REMOTE NOT UPDATED:.*[^)]$' "$TEST_ROOT/output" || fail 'Startup warning must not have enclosing parentheses'
+grep -q ' REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/' "$TEST_ROOT/output" || fail 'Missing ahead warning'
+grep -q '^ REMOTE NOT UPDATED:.*[^)]$' "$TEST_ROOT/output" || fail 'Startup warning must not have enclosing parentheses'
 [ "$reloads" = 1 ] || fail 'Ahead checkout reloaded'
 printf 'dirty\n' > "$YAFP_ROOT/dirty.tmp"
 start_check
 yafp_update_notice > "$TEST_ROOT/output" <<< y
-grep -q '^⚠ REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/' "$TEST_ROOT/output" || fail 'Local changes obscured remote status'
+grep -q '^ REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/' "$TEST_ROOT/output" || fail 'Local changes obscured remote status'
 if grep -q 'UNCOMMITTED CHANGES' "$TEST_ROOT/output"; then fail 'Startup must report remote state independently of local changes'; fi
 rm -f "$YAFP_ROOT/dirty.tmp"
 printf 'three\n' >> "$TEST_ROOT/seed/file.txt"

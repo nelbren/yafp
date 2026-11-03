@@ -73,7 +73,7 @@ function script:Write-YafpTheme {
     }
 
     if ($Context.Venv) {
-        Write-Host ' 🐍 ' -ForegroundColor White -NoNewline
+        Write-Host '  ' -ForegroundColor White -NoNewline
         Write-YafpText -Text $Context.Venv -ForegroundColor Magenta `
             -BackgroundColor $null -NoNewline
     }

@@ -32,12 +32,12 @@ yafp_update_notice() {
             yafp_update_message info "YAFP startup check: $root" ;;
     esac
     case "$state" in
-        missing-git) yafp_update_message warning '⚠ GIT NOT AVAILABLE: YAFP startup check skipped'; return 0 ;;
-        not-git) yafp_update_message warning '⚠ NOT A GIT REPOSITORY: YAFP installation'; return 0 ;;
-        unborn) yafp_update_message warning '⚠ NO COMMITS: YAFP installation'; return 0 ;;
-        detached) yafp_update_message warning '⚠ DETACHED HEAD: YAFP startup update unavailable'; return 0 ;;
-        no-upstream) yafp_update_message warning '⚠ NO UPSTREAM: YAFP startup update unavailable'; return 0 ;;
-        no-remote) yafp_update_message warning '⚠ NO REMOTE: YAFP startup update unavailable'; return 0 ;;
+        missing-git) yafp_update_message warning ' GIT NOT AVAILABLE: YAFP startup check skipped'; return 0 ;;
+        not-git) yafp_update_message warning ' NOT A GIT REPOSITORY: YAFP installation'; return 0 ;;
+        unborn) yafp_update_message warning ' NO COMMITS: YAFP installation'; return 0 ;;
+        detached) yafp_update_message warning ' DETACHED HEAD: YAFP startup update unavailable'; return 0 ;;
+        no-upstream) yafp_update_message warning ' NO UPSTREAM: YAFP startup update unavailable'; return 0 ;;
+        no-remote) yafp_update_message warning ' NO REMOTE: YAFP startup update unavailable'; return 0 ;;
     esac
     case "$behind/$ahead" in *[!0-9/]*|/|/*|*/) state=error ;; esac
     if [ "$state" != ok ] || [ -n "$extra" ]; then
@@ -58,7 +58,7 @@ yafp_update_notice() {
     fi
     if [ "$ahead" -gt 0 ]; then
         [ "$ahead" -ne 1 ] || { unit=commit; verb=has; }
-        yafp_update_message warning "⚠ REMOTE NOT UPDATED: $ahead local $unit $verb not been pushed to $target"
+        yafp_update_message warning " REMOTE NOT UPDATED: $ahead local $unit $verb not been pushed to $target"
         return 0
     fi
     yafp_update_message error "☒ OUTDATED REPOSITORY: YAFP is $behind commit(s) behind its upstream."

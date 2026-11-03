@@ -58,7 +58,7 @@ yafp_now_ms end
 [ "$((end - begin))" -lt 500 ] || fail 'worker blocked context collection'
 pid=$YAFP_RESOURCE_PID
 assert_contains "$yafp_ctx_resources" 'waiting for sample' 'first sample is pending'
-[ "$yafp_ctx_resources" = 'Resources: waiting for sample~' ] || fail 'Pending message must be English and compact'
+[ "$yafp_ctx_resources" = 'Resources: waiting for sample' ] || fail 'Pending message must be English and compact'
 for iteration in 1 2 3; do yafp_resources_context; done
 [ "$YAFP_RESOURCE_PID" = "$pid" ] || fail 'duplicate workers'
 yafp-reload
@@ -74,9 +74,56 @@ yafp_resources_context
 assert_contains "$yafp_ctx_resources" 'C25% R50% S50% D75% ' 'CPU first and swap between RAM and disk'
 case "$yafp_ctx_resources" in *'|'*) fail 'unexpected separator in compact summary' ;; esac
 assert_contains "$(yafp-resources)" '2048/4096 MiB' 'swap details'
+check_resource_report() {
+    local original_sample state icon color out
+    local YAFP_RESOURCE_PID='' YAFP_RESOURCE_ATTEMPT=$SECONDS
+    local YAFP_RESOURCE_CHECK_INTERVAL=30 YAFP_RESOURCE_LABEL_STYLE=unicode YAFP_RESOURCE_VALUE_STYLE=symbols
+    local COLUMNS=80
+    original_sample=$(< "$YAFP_RESOURCE_DIR/sample")
+    while IFS='|' read -r state icon color; do
+        YAFP_RESOURCE_CHECK_INTERVAL=30 YAFP_RESOURCE_PID=''
+        printf '%s 8192 16384 2048 4096 25 750 1000\n' "$SECONDS" > "$YAFP_RESOURCE_DIR/sample"
+        case "$state" in
+            refreshing) YAFP_RESOURCE_PID=$$ ;;
+            pending) rm "$YAFP_RESOURCE_DIR/sample"; YAFP_RESOURCE_PID=$$ ;;
+            disabled) YAFP_RESOURCE_CHECK_INTERVAL=0 ;;
+            unavailable) printf 'invalid\n' > "$YAFP_RESOURCE_DIR/sample" ;;
+        esac
+        out="$(yafp-resources)"
+        assert_contains "$out" "$(printf '\033[%sm' "$color")$icon $state" 'Report state severity'
+        yafp_strip_terminal_styles "$out"
+        assert_contains "$yafp_plain_text" '┌' 'Resource report opening frame'
+        assert_contains "$yafp_plain_text" '┘' 'Resource report closing frame'
+        assert_contains "$yafp_plain_text" "        State: $icon $state" 'Resource report state'
+        case "$state" in
+            ok|refreshing)
+                assert_contains "$yafp_plain_text" '          CPU: 25%' 'CPU report is numeric in symbol mode'
+                assert_contains "$yafp_plain_text" '          RAM: 50% · 8192/16384 MiB' 'RAM details'
+                assert_contains "$yafp_plain_text" '         SWAP: 50% · 2048/4096 MiB' 'Swap details'
+                assert_contains "$yafp_plain_text" '  Disk (HOME): 75% · 750/1000 KiB' 'HOME disk details'
+                assert_contains "$out" $'\033[91m50% · 2048/4096 MiB' 'Swap keeps its critical color'
+                ;;
+            *)
+                assert_contains "$yafp_plain_text" '   Sample age: ' 'Unknown sample age'
+                assert_contains "$yafp_plain_text" '          RAM: ' 'Missing cache does not reuse old measurements'
+                case "$yafp_plain_text" in *8192*) fail 'Stale resource details in report' ;; esac
+                ;;
+        esac
+    done < "$ROOT_DIR/tests/resource_report_cases.txt"
+    YAFP_RESOURCE_PID='' YAFP_RESOURCE_CHECK_INTERVAL=30
+    printf '%s - 16384 0 0 - - 1000\n' "$SECONDS" > "$YAFP_RESOURCE_DIR/sample"
+    out="$(yafp-resources)"
+    yafp_strip_terminal_styles "$out"
+    assert_contains "$yafp_plain_text" '          CPU: ' 'Unavailable CPU'
+    assert_contains "$yafp_plain_text" '          RAM:  · /16384 MiB' 'Partially known RAM'
+    assert_contains "$yafp_plain_text" '         SWAP: 0% · 0/0 MiB' 'Unallocated swap remains zero'
+    assert_contains "$yafp_plain_text" '  Disk (HOME):  · /1000 KiB' 'Partially known disk'
+    printf '%s\n' "$original_sample" > "$YAFP_RESOURCE_DIR/sample"
+}
+check_resource_report
 
 # Exercise pending rendering without delaying the live worker/reload checks.
-yafp_ctx_resources='Resources: waiting for sample~'
+yafp_ctx_resources='Resources: waiting for sample'
 for labels in letters unicode; do
     for values in percent symbols; do
         YAFP_RESOURCE_LABEL_STYLE=$labels YAFP_RESOURCE_VALUE_STYLE=$values
@@ -144,19 +191,20 @@ for theme in default minimal light; do
             [ "$out" = "$block" ] || fail "frame or sample age in $theme/$labels/$values: $out"
             assert_contains "$yafp_ctx_resources" "$expected " 'summary and space before sample age'
             saved_summary=$yafp_ctx_resources
-            yafp_ctx_resources+="~"
-            case "$yafp_ctx_resources" in *' ~'*) fail 'Space before refresh marker in timed summary' ;; esac
-            case "$yafp_ctx_resources" in *s~) ;; *) fail 'Refresh marker must touch sample age' ;; esac
+            yafp_ctx_resources+=""
+            case "$yafp_ctx_resources" in *' '*) fail 'Space before refresh marker in timed summary' ;; esac
+            case "$yafp_ctx_resources" in *s) ;; *) fail 'Refresh marker must touch sample age' ;; esac
             out="$(theme_render_resources)"
+            assert_contains "$out" "$(ps1_wrap $'\033[0;90m')" 'gray refresh icon'
             plain_prompt
-            [ "$out" = "↦[${expected}~]" ] || fail "Refresh marker spacing: $theme/$labels/$values/$out"
+            [ "$out" = "↦[${expected}]" ] || fail "Refresh marker spacing: $theme/$labels/$values/$out"
             yafp_ctx_resources=$saved_summary
         done
     done
     YAFP_RESOURCE_CHECK_INTERVAL=0
     yafp_resources_context
     [ -z "$(theme_render_resources)" ] || fail 'empty frame while disabled'
-    [ "$(yafp-resources)" = 'Resources disabled. Set YAFP_RESOURCE_CHECK_INTERVAL=30.' ] || fail 'Disabled message must be English'
+    assert_contains "$(yafp-resources)" 'Resources disabled. Set YAFP_RESOURCE_CHECK_INTERVAL=30.' 'Disabled configuration guidance'
     YAFP_RESOURCE_CHECK_INTERVAL=30
     yafp_resources_context
 
@@ -188,8 +236,8 @@ for theme in default minimal light; do
 done
 YAFP_RESOURCE_ATTEMPT=$((SECONDS - 31))
 yafp_resources_context
-case "$yafp_ctx_resources" in *' ~'*) fail 'Refresh context inserted a space before the marker' ;; esac
-case "$yafp_ctx_resources" in *s~) ;; *) fail 'Cached refresh must show age followed by tilde' ;; esac
+case "$yafp_ctx_resources" in *' '*) fail 'Refresh context inserted a space before the marker' ;; esac
+case "$yafp_ctx_resources" in *s) ;; *) fail 'Cached refresh must show age followed by refresh icon' ;; esac
 for iteration in {1..60}; do
     kill -0 "$YAFP_RESOURCE_PID" 2>/dev/null || break
     sleep 0.05
@@ -246,3 +294,30 @@ YAFP_RESOURCE_ATTEMPT=$((SECONDS - 31))
 yafp_resources_context
 [ "$YAFP_RESOURCE_PID" != 99999999 ] || fail 'dead worker did not recover'
 printf 'ok - three themes, previous status, invalid cache, and worker recovery\n'
+
+# Temporary-file cleanup must not permanently strand an open shell.
+yafp_resources_cleanup
+yafp_resources_context
+pid=$YAFP_RESOURCE_PID
+for iteration in {1..60}; do
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 0.05
+done
+yafp_resources_context
+old_dir=$YAFP_RESOURCE_DIR
+rm -f -- "$old_dir/sample"
+rmdir -- "$old_dir"
+YAFP_RESOURCE_ATTEMPT=$((SECONDS - 31))
+yafp_resources_context
+[ "$YAFP_RESOURCE_DIR" != "$old_dir" ] || fail 'missing resource directory was reused'
+[ -d "$YAFP_RESOURCE_DIR" ] || fail 'resource cache directory was not recreated'
+pid=$YAFP_RESOURCE_PID
+yafp_resources_context
+[ "$YAFP_RESOURCE_PID" = "$pid" ] || fail 'cache recovery duplicated the resource worker'
+for iteration in {1..60}; do
+    [ ! -f "$YAFP_RESOURCE_DIR/sample" ] || break
+    sleep 0.05
+done
+yafp_resources_context
+assert_contains "$yafp_ctx_resources" 'C25% R50% S50% D75% ' 'resource sample after cache removal'
+printf 'ok - resource monitoring recovers after its temporary directory disappears\n'

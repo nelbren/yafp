@@ -98,7 +98,7 @@ function global:Get-YafpCodexContext {
     }
     $segment = Format-YafpCodexSegment -Value $value
     if ($null -eq $script:YafpCodexSample -and $null -ne $script:YafpCodexJob) {
-        $segment.Text = '֍⟳'
+        $segment.Text = '֍⟳d⟳h'
     }
     if ($null -ne $value -and $script:YafpCodexSample.PSObject.Properties['ResetsAt'] -and
         $null -ne $script:YafpCodexSample.ResetsAt) {
@@ -125,16 +125,38 @@ function global:Write-YafpCodex {
 
 function global:Show-YafpCodex {
     $quota = Get-YafpCodexContext
-    if ($null -eq $quota) {
-        Write-Output 'Codex quota disabled. Set $global:YAFP_CODEX_CHECK_INTERVAL=300.'
-        return
+    $state = 'disabled'; $resetText = ''; $remainingText = ''
+    $resetColor = 90; $remainingColor = 90
+    if ($null -ne $quota) {
+        $state = if ($null -ne $quota.Sample) { $quota.Sample.State }
+        elseif ($null -ne $script:YafpCodexJob) { 'pending' } else { 'unavailable' }
+        if ($state -eq 'ok' -and $quota.Foreground -ne 'DarkGray') {
+            $remainingText = "$($quota.Sample.Remaining)%"
+            $remainingColor = switch ($quota.Foreground) { Green { 92 }; Yellow { 93 }; Red { 91 }; default { 90 } }
+            if ($quota.Sample.PSObject.Properties['ResetsAt'] -and $null -ne $quota.Sample.ResetsAt) {
+                $seconds = [Math]::Max(0, $quota.Sample.ResetsAt - [DateTimeOffset]::UtcNow.ToUnixTimeSeconds())
+                $resetText = "$([Math]::Floor($seconds / 86400))d$([Math]::Floor($seconds % 86400 / 3600))h"
+                $resetColor = 93
+            }
+        }
     }
-    Write-Output $quota.Text
-    if ($null -eq $quota.Sample) { Write-Output 'State: pending'; return }
-    $sample = $quota.Sample
-    Write-Output "State: $($sample.State)"
-    $age = [Math]::Max(0, [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - $sample.CheckedAt)
-    $primary = if ($null -eq $sample.Primary) { 'N/A' } else { "$($sample.Primary)%" }
-    $secondary = if ($null -eq $sample.Secondary) { 'N/A' } else { "$($sample.Secondary)%" }
-    Write-Output "Remaining: primary $primary; secondary $secondary; sample age $($age)s"
+    $stateIcon = ''; $stateColor = 91
+    switch ($state) {
+        ok { $stateIcon = ''; $stateColor = 92 }
+        pending { $stateIcon = ''; $stateColor = 93 }
+        disabled { $stateIcon = ''; $stateColor = 90 }
+        'logged-out' { $stateIcon = ''; $stateColor = 91 }
+        'unsupported-auth' { $stateIcon = ''; $stateColor = 93 }
+        { $_ -in @('missing-cli', 'missing-python') } { $stateIcon = ''; $stateColor = 93 }
+        timeout { $stateIcon = ''; $stateColor = 91 }
+    }
+    $escape = [char]27
+    $report = "        Reset: $escape[$($resetColor)m$resetText$escape[0m`n" +
+        "        State: $escape[$($stateColor)m$stateIcon $state$escape[0m`n" +
+        "    Remaining: $escape[$($remainingColor)m$remainingText$escape[0m"
+    . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
+    Write-YafpPreviewFrame -Text $report
+    if ($state -eq 'disabled') {
+        Write-Output 'Codex quota disabled. Set $global:YAFP_CODEX_CHECK_INTERVAL=300.'
+    }
 }

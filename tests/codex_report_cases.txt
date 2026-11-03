@@ -1,0 +1,9 @@
+ok||92
+pending||93
+disabled||90
+logged-out||91
+unsupported-auth||93
+missing-cli||93
+missing-python||93
+timeout||91
+unavailable||91

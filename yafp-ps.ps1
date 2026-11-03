@@ -241,27 +241,27 @@ function Write-YafpDevelopmentMetrics {
     )
 
     if ($Development.Total -lt 50) {
-        $icon = '🚀'
+        $icon = ''
         $style = [pscustomobject]@{
             Foreground = 'Green'
             Background = $null
         }
     }
     elseif ($Development.Total -lt 200) {
-        $icon = '⏱️'
+        $icon = ''
         $style = Get-YafpSeverityStyle -Severity warning
     }
     else {
-        $icon = '🐢'
+        $icon = ''
         $style = Get-YafpSeverityStyle -Severity error
     }
 
     $text = "$icon$($Development.Total)ms | " +
-        "⚙️$($Development.General) " +
-        "🌱$($Development.Git) " +
-        "🐍$($Development.Venv) " +
-        "❌$($Development.Error) " +
-        "⚡$($Development.Timer)"
+        "$($Development.General) " +
+        "$($Development.Git) " +
+        "$($Development.Venv) " +
+        "$($Development.Error) " +
+        "$($Development.Timer)"
     Write-YafpText -Text $text -ForegroundColor $style.Foreground `
         -BackgroundColor $style.Background
 }
@@ -802,7 +802,7 @@ function Format-YafpRemoteStateLabel {
     switch ($State) {
         'no-commits' { '○0 No commits' }
         'no-upstream' { '⇡? No upstream' }
-        'current' { '✓ Up to date' }
+        'current' { ' Up to date' }
         'ahead' { "⇡$Ahead Ahead" }
         'behind' { "⇣$Behind Behind" }
         'diverged' { "⇡$Ahead⇣$Behind Diverged" }
@@ -839,12 +839,12 @@ function Get-YafpRemoteTimerStyle {
 
     $remainingPercent = ([double]$Remaining * 100) / $Interval
     if ($remainingPercent -ge 66) {
-        return [pscustomobject]@{ Emoji = '🟢'; Color = 'Green' }
+        return [pscustomobject]@{ Emoji = ''; Color = 'Green' }
     }
     if ($remainingPercent -ge 33) {
-        return [pscustomobject]@{ Emoji = '🟡'; Color = 'Yellow' }
+        return [pscustomobject]@{ Emoji = ''; Color = 'Yellow' }
     }
-    return [pscustomobject]@{ Emoji = '🔴'; Color = 'Red' }
+    return [pscustomobject]@{ Emoji = ''; Color = 'Red' }
 }
 
 function Get-YafpBrailleProgressSymbol {
@@ -875,18 +875,18 @@ function Format-YafpRemoteStatusReport {
     $stateLabel = Format-YafpRemoteStateLabel -State $State `
         -Ahead $Ahead -Behind $Behind
     if ($Refreshing) {
-        $stateLabel = "⟳ Refreshing · last: $stateLabel"
+        $stateLabel = " Refreshing · last: $stateLabel"
     }
     $lines = [Collections.Generic.List[string]]::new()
-    $lines.Add("🌐︎       Remote: $stateLabel")
+    $lines.Add("       Remote: $stateLabel")
 
     $remainingSeconds = 0L
     if ($Interval -le 0 -or $null -eq $Remaining -or
         -not [long]::TryParse("$Remaining", [ref]$remainingSeconds) -or
         $remainingSeconds -lt 0 -or $Now -lt 0) {
-        $lines.Add('⏱        Timer: unavailable')
-        $lines.Add('🕘 Current time: unavailable')
-        $lines.Add('🕒   Next check: unavailable')
+        $lines.Add('        Timer: unavailable')
+        $lines.Add(' Current time: unavailable')
+        $lines.Add('   Next check: unavailable')
         return $lines.ToArray()
     }
 
@@ -930,8 +930,8 @@ function Format-YafpRemoteStatusReport {
         "$elapsed/$($Interval)s elapsed · " +
         "$($remainingSeconds)s remaining"
     )
-    $lines.Add("🕘 Current time: $currentTime")
-    $lines.Add("🕒   Next check: $nextCheck")
+    $lines.Add(" Current time: $currentTime")
+    $lines.Add("   Next check: $nextCheck")
     return $lines.ToArray()
 }
 
@@ -943,8 +943,18 @@ function Write-YafpStatusReport {
         [bool]$Refreshing = $false,
         [AllowNull()][object]$Remaining,
         [int]$Interval,
-        [long]$Now
+        [long]$Now,
+        [switch]$Framed
     )
+
+    if ($Framed) {
+        . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
+        $plainParameters = @{} + $PSBoundParameters
+        $null = $plainParameters.Remove('Framed')
+        $records = @(Write-YafpStatusReport @plainParameters 6>&1)
+        Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $records)
+        return
+    }
 
     $report = @(Format-YafpRemoteStatusReport -State $State `
         -Ahead $Ahead -Behind $Behind -Refreshing $Refreshing `
@@ -952,12 +962,12 @@ function Write-YafpStatusReport {
     $stateLabel = Format-YafpRemoteStateLabel -State $State `
         -Ahead $Ahead -Behind $Behind
     if ($Refreshing) {
-        $stateLabel = "⟳ Refreshing · last: $stateLabel"
+        $stateLabel = " Refreshing · last: $stateLabel"
     }
     $stateColor = Get-YafpRemoteStateColor -State $State `
         -Refreshing $Refreshing
 
-    Write-Host '🌐︎       Remote: ' -NoNewline
+    Write-Host '       Remote: ' -NoNewline
     if ($stateColor) {
         Write-Host $stateLabel -ForegroundColor $stateColor
     }
@@ -985,14 +995,14 @@ function Write-YafpStatusReport {
     else {
         Write-Host $timerDetails
     }
-    if ($report[2] -match '^(🕘 Current time: )(\d{2}:\d{2}:\d{2})$') {
+    if ($report[2] -match '^( Current time: )(\d{2}:\d{2}:\d{2})$') {
         Write-Host $Matches[1] -NoNewline
         Write-Host $Matches[2] -ForegroundColor (Get-YafpCurrentTimeColor)
     }
     else {
         Write-Host $report[2]
     }
-    if ($report[3] -match '^(🕒   Next check: )(\d{2}:\d{2}:\d{2})$') {
+    if ($report[3] -match '^(   Next check: )(\d{2}:\d{2}:\d{2})$') {
         Write-Host $Matches[1] -NoNewline
         Write-Host $Matches[2] -ForegroundColor (Get-YafpNextCheckColor)
     }
@@ -1009,7 +1019,7 @@ function Show-YafpStatus {
     )
     if (-not (Get-Command git -ErrorAction Ignore)) {
         Write-YafpStatusReport -State '' -Remaining $null `
-            -Interval $interval -Now 0
+            -Interval $interval -Now 0 -Framed
         return
     }
 
@@ -1017,14 +1027,14 @@ function Show-YafpStatus {
     $branch = git symbolic-ref --short HEAD 2>$null
     if (-not $top -or -not $branch) {
         Write-YafpStatusReport -State '' -Remaining $null `
-            -Interval $interval -Now 0
+            -Interval $interval -Now 0 -Framed
         return
     }
 
     $remote = Get-YafpRemoteContext -RepoRoot "$top" -Branch "$branch"
     if (-not $remote) {
         Write-YafpStatusReport -State '' -Remaining $null `
-            -Interval $interval -Now 0
+            -Interval $interval -Now 0 -Framed
         return
     }
 
@@ -1032,7 +1042,7 @@ function Show-YafpStatus {
         -Ahead $remote.Ahead -Behind $remote.Behind `
         -Refreshing $remote.Refreshing -Remaining $remote.RefreshIn `
         -Interval $interval `
-        -Now ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())
+        -Now ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) -Framed
 }
 
 function Invoke-YafpRefresh {
@@ -1074,15 +1084,23 @@ function Confirm-YafpRemoteAlert {
 }
 
 function Show-YafpMessages {
+    param([switch]$Plain)
+
+    if (-not $Plain) {
+        . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
+        $records = @(Show-YafpMessages -Plain 6>&1)
+        Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $records)
+        return
+    }
     foreach ($group in @(
         @{ Foreground = 'White'; Background = 'DarkGreen'; Messages = @(
             '✓ INTERNET CONNECTION'
         ) }
         @{ Foreground = 'Black'; Background = 'Yellow'; Messages = @(
-            '⚠ REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/main'
-            '⚠ PUSH PENDING: 1'
-            '⚠ COMMIT PENDING: 1 staged file is ready to commit'
-            '⚠ COMMIT PENDING: 1'
+            ' REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/main'
+            ' PUSH PENDING: 1'
+            ' COMMIT PENDING: 1 staged file is ready to commit'
+            ' COMMIT PENDING: 1'
         ) }
         @{ Foreground = 'White'; Background = (Get-YafpSeverityStyle -Severity error).Background; Messages = @(
             '☒ OUTDATED REPOSITORY: 1 commit is missing from origin/main'
@@ -1101,6 +1119,14 @@ function Show-YafpMessages {
 }
 
 function Show-YafpHelp {
+    param([switch]$Plain)
+
+    if (-not $Plain) {
+        . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
+        $records = @(Show-YafpHelp -Plain 6>&1)
+        Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $records)
+        return
+    }
     foreach ($entry in @(
         @{ Name = 'yafp-status'; Description = 'Show remote status and refresh timer.' }
         @{ Name = 'yafp-refresh'; Description = 'Request an immediate remote refresh.' }
@@ -1145,33 +1171,35 @@ function Show-YafpStats {
     $failedText = "☒ $('Failed:'.PadRight(10)) " +
         "$failedCount ($failedRate%)"
     $totalText = "∑ $('Total:'.PadRight(10)) $totalCount (100%)"
+    . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
 
     if ($DirectConsole) {
         $originalColor = [Console]::ForegroundColor
+        $originalBackground = [Console]::BackgroundColor
         try {
-            [Console]::ForegroundColor = [ConsoleColor]::Green
-            [Console]::WriteLine($succeededText)
-            [Console]::ForegroundColor = [ConsoleColor]::Red
-            [Console]::WriteLine($failedText)
-            [Console]::ForegroundColor = [ConsoleColor]::Gray
-            [Console]::WriteLine($separator)
-            [Console]::ForegroundColor = [ConsoleColor]::White
-            [Console]::WriteLine($totalText)
+            $escape = [char]27
+            $report = "$escape[92m$succeededText$escape[0m`n$escape[91m$failedText$escape[0m`n" +
+                "$escape[37m$separator$escape[0m`n$escape[97m$totalText$escape[0m"
+            Write-YafpPreviewFrame -Text $report -DirectConsole
         }
         finally {
-            [Console]::ForegroundColor = $originalColor
+            if ([int]$originalColor -ge 0) { [Console]::ForegroundColor = $originalColor }
+            if ([int]$originalBackground -ge 0) { [Console]::BackgroundColor = $originalBackground }
         }
         return
     }
 
-    Write-YafpText -Text $succeededText `
-        -ForegroundColor Green -BackgroundColor $null
-    Write-YafpText -Text $failedText `
-        -ForegroundColor Red -BackgroundColor $null
-    Write-YafpText -Text $separator -ForegroundColor Gray `
-        -BackgroundColor $null
-    Write-YafpText -Text $totalText `
-        -ForegroundColor White -BackgroundColor $null
+    $records = @(& {
+        Write-YafpText -Text $succeededText `
+            -ForegroundColor Green -BackgroundColor $null
+        Write-YafpText -Text $failedText `
+            -ForegroundColor Red -BackgroundColor $null
+        Write-YafpText -Text $separator -ForegroundColor Gray `
+            -BackgroundColor $null
+        Write-YafpText -Text $totalText `
+            -ForegroundColor White -BackgroundColor $null
+    } 6>&1)
+    Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $records)
 }
 
 function Install-YafpExitEvent {
@@ -1194,11 +1222,13 @@ function Install-YafpExitEvent {
 
 function Show-YafpDemo {
     $sleepSecs = 4
+    . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
     while ($true) {
         Show-YafpStatus
-        Write-Host "`nPrompt preview:"
-        Show-YafpPromptPreview
-        Write-Host "`nControl+C to break this ♾️  loop 🔁 ($($sleepSecs)s)`n"
+        Write-Host "`n Prompt preview:"
+        $previewRecords = @(Show-YafpPromptPreview 6>&1)
+        Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $previewRecords)
+        Write-Host "`nControl+C to break this  loop  ($($sleepSecs)s)`n"
         Start-Sleep -Seconds $sleepSecs
     }
 }
@@ -1287,7 +1317,7 @@ function Write-YafpGitRemoteStatus {
 
     if ($remote.Refreshing) {
         $warningStyle = Get-YafpSeverityStyle -Severity warning
-        Write-YafpText -Text '⟳' `
+        Write-YafpText -Text '' `
             -ForegroundColor $warningStyle.Foreground `
             -BackgroundColor $warningStyle.Background -NoNewline
     }
@@ -1452,15 +1482,15 @@ function Write-YafpRemoteExpansion {
     }
     elseif ($Remote.State -eq 'no-commits') {
         $message = Get-YafpExpansionMessage `
-            -LongMessage '⚠ NO COMMITS: create the initial commit' `
-            -ShortMessage '⚠ NO COMMITS' `
+            -LongMessage ' NO COMMITS: create the initial commit' `
+            -ShortMessage ' NO COMMITS' `
             -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
         $style = Get-YafpSeverityStyle -Severity warning
     }
     elseif ($Remote.State -eq 'no-upstream') {
         $message = Get-YafpExpansionMessage `
-            -LongMessage '⚠ NO UPSTREAM: configure tracking before pushing' `
-            -ShortMessage '⚠ NO UPSTREAM' `
+            -LongMessage ' NO UPSTREAM: configure tracking before pushing' `
+            -ShortMessage ' NO UPSTREAM' `
             -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
         $style = Get-YafpSeverityStyle -Severity warning
     }
@@ -1468,8 +1498,8 @@ function Write-YafpRemoteExpansion {
         $unit = if ($Remote.Ahead -eq 1) { 'commit' } else { 'commits' }
         $verb = if ($Remote.Ahead -eq 1) { 'has' } else { 'have' }
         $message = Get-YafpExpansionMessage `
-            -LongMessage "⚠ REMOTE NOT UPDATED: $($Remote.Ahead) local $unit $verb not been pushed to $($Remote.Upstream)" `
-            -ShortMessage "⚠ PUSH PENDING: $($Remote.Ahead)" `
+            -LongMessage " REMOTE NOT UPDATED: $($Remote.Ahead) local $unit $verb not been pushed to $($Remote.Upstream)" `
+            -ShortMessage " PUSH PENDING: $($Remote.Ahead)" `
             -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
         $style = Get-YafpSeverityStyle -Severity warning
     }
@@ -1562,8 +1592,8 @@ function Write-YafpStagedExpansion {
     $indicatorColumn = Get-YafpCursorColumn
     $indicatorWidth = 2 + "$count".Length
     $message = Get-YafpExpansionMessage `
-        -LongMessage "⚠ COMMIT PENDING: $count staged $unit $verb ready to commit" `
-        -ShortMessage "⚠ COMMIT PENDING: $count" `
+        -LongMessage " COMMIT PENDING: $count staged $unit $verb ready to commit" `
+        -ShortMessage " COMMIT PENDING: $count" `
         -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
     if ([string]::IsNullOrEmpty($message)) { return }
     $message = Get-YafpExpansionMessage `

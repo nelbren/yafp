@@ -9,14 +9,17 @@ suites:
   entrypoint: scripts/unix/quality/project-test.sh
   paths:
   - tests/zsh_interactive_test.py
+  - tests/zsh_history_test.zsh
   - tests/resources_test.bash
   - tests/codex_test.bash
   - tests/startup_update_test.bash
   - tests/block_frames_test.bash
   - tests/codex_display_cases.txt
   - tests/codex_reset_cases.txt
+  - tests/codex_report_cases.txt
   - tests/resource_collectors_test.bash
   - tests/resource_display_cases.txt
+  - tests/resource_report_cases.txt
   profiles:
   - quick
   - review

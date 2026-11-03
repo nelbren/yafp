@@ -24,7 +24,7 @@ try {
         foreach ($theme in 'default', 'minimal', 'light') {
             . (Join-Path $rootDir "themes/$theme.ps1")
             $indicator = Write-YafpGitRemoteStatus -Git $context 6>&1 | Out-String
-            if ($indicator -notmatch '○0' -or $indicator -notmatch '⚠ NO COMMITS') {
+            if ($indicator -notmatch '○0' -or $indicator -notmatch ' NO COMMITS') {
                 throw "$theme missing initial commit warning"
             }
         }
@@ -53,7 +53,7 @@ try {
         $indicator = Write-YafpGitRemoteStatus -Git ([pscustomobject]@{
             RemoteStatus = $remote
         }) 6>&1 | Out-String
-        if ($indicator -notmatch '⇡\?' -or $indicator -notmatch '⚠ NO UPSTREAM') {
+        if ($indicator -notmatch '⇡\?' -or $indicator -notmatch ' NO UPSTREAM') {
             throw "$theme missing tracking warning"
         }
     }
