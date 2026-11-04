@@ -1280,6 +1280,10 @@ installation commands without changing the system with `--dry-run` on Unix or
 `-DryRun` on Windows. Use `-PackageManager scoop`, `winget`, or `choco` to
 override automatic selection.
 
+Usa `-SkipShellCheck` para preparar solo la validación de PowerShell.
+El job de Windows en CI usa esta opción e instala PSScriptAnalyzer y
+markdownlint. El job de Linux ejecuta ShellCheck.
+
 <!-- markdownlint-disable MD013 -->
 
 | Platform | Package managers                            | Installed tools                            |
@@ -1421,6 +1425,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-03 19:39:00 🍎 MBP02 |
+📆 2026-11-03 20:12:02 🍎 MBP02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

@@ -753,6 +753,10 @@ pwsh -NoProfile -File scripts/windows/setup/quality.ps1
 Both installers support a non-mutating setup-plan mode through `--dry-run` on
 Unix and `-DryRun` on Windows.
 
+El instalador de CI en Windows y la vista previa del validador de PowerShell
+usan `-SkipShellCheck`. La instalación completa incluye ShellCheck para
+Git Bash. El job de Linux valida Bash con ShellCheck.
+
 The standalone `scripts/windows/setup/psscriptanalyzer.ps1` installer shares
 its cross-platform module installation logic with the Windows quality setup
 and `scripts/unix/setup/psscriptanalyzer.bash`. It pins PSScriptAnalyzer to
@@ -813,6 +817,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-03 19:39:00 🍎 MBP02 |
+📆 2026-11-03 20:12:02 🍎 MBP02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

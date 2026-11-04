@@ -1,9 +1,15 @@
 [CmdletBinding()]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+    'PSReviewUnusedParameter', 'PackageManager',
+    Justification = 'Get-SetupPackageManager reads the script parameter.'
+)]
 param(
     [switch]$DryRun,
 
     [ValidateSet('auto', 'scoop', 'winget', 'choco')]
-    [string]$PackageManager = 'auto'
+    [string]$PackageManager = 'auto',
+
+    [switch]$SkipShellCheck
 )
 
 $ErrorActionPreference = 'Stop'
@@ -93,8 +99,12 @@ function Update-ProcessPath {
 
 Write-Output '🔧 Preparing Windows quality tools'
 
-if (-not (Get-Command shellcheck -ErrorAction Ignore)) {
-    Install-SetupPackage shellcheck
+$requiredCommands = @('markdownlint')
+if (-not $SkipShellCheck) {
+    $requiredCommands += 'shellcheck'
+    if (-not (Get-Command shellcheck -ErrorAction Ignore)) {
+        Install-SetupPackage shellcheck
+    }
 }
 if (-not (Get-Command npm -ErrorAction Ignore)) {
     Install-SetupPackage node
@@ -116,7 +126,7 @@ else {
 & (Join-Path $PSScriptRoot 'psscriptanalyzer.ps1') -DryRun:$DryRun
 
 if (-not $DryRun) {
-    foreach ($command in @('shellcheck', 'markdownlint')) {
+    foreach ($command in $requiredCommands) {
         if (-not (Get-Command $command -ErrorAction Ignore)) {
             throw "Required command not found after installation: $command"
         }

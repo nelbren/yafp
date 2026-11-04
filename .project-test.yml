@@ -124,6 +124,17 @@ suites:
   requires:
   - powershell
   timeout_seconds: 600
+- id: windows-quality-setup-test
+  kind: contract
+  stage: test
+  runner: repository-script
+  entrypoint: scripts/windows/quality/setup-test.cmd
+  paths: [tests/windows_quality_setup_test.ps1]
+  profiles: [review, ci, full]
+  os: [windows]
+  side_effects: local
+  requires: [pwsh]
+  timeout_seconds: 60
 - id: remote-status-test
   kind: integration
   stage: test

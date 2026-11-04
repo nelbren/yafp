@@ -39,7 +39,7 @@ function Write-QualityError {
 
 Push-Location $rootDir
 try {
-    & pwsh -NoProfile -File scripts/windows/setup/quality.ps1 -DryRun |
+    & pwsh -NoProfile -File scripts/windows/setup/quality.ps1 -DryRun -SkipShellCheck |
         Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw 'Windows quality setup plan failed'
@@ -73,6 +73,7 @@ try {
     Write-QualityLine "ok - parsed $($files.Count) PowerShell files"
 
     foreach ($test in @(
+        'tests/windows_quality_setup_test.ps1'
         'tests/psscriptanalyzer_setup_test.ps1'
         'tests/powershell_status_test.ps1'
         'tests/powershell_devel_test.ps1'

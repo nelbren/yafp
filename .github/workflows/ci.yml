@@ -46,7 +46,7 @@ jobs:
         shell: pwsh
         run: >-
           pwsh -NoProfile -File scripts/windows/setup/quality.ps1
-          -PackageManager choco
+          -PackageManager choco -SkipShellCheck
       - name: Run Windows checks
         shell: pwsh
         env:

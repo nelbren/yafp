@@ -6,6 +6,8 @@ ROOT_DIR="$(cd -- "$(dirname -- "$0")/.." && pwd)"
 TEST_ROOT=$(mktemp -d)
 export TERM=xterm-256color YAFP_NO_INSTALL_HOOKS=1 YAFP_METRICS_DISABLED=1
 cleanup() {
+    # A pending-state fixture uses this shell as a stand-in for a worker.
+    if [ "${YAFP_RESOURCE_PID:-}" = "$$" ]; then YAFP_RESOURCE_PID=''; fi
     yafp_resources_cleanup
     rm -rf -- "$TEST_ROOT"
 }
@@ -174,7 +176,7 @@ check_absent_resources() {
                     expected="C$marker R$marker S$marker D$marker"
                     if [ "$labels" = unicode ]; then
                         expected="$marker ▦$marker $marker $marker"
-                        [ "$values" != symbols ] || expected="$marker▦$marker$marker$marker"
+                        [ "$values" != symbols ] || expected="${marker}▦${marker}${marker}${marker}"
                     fi
                     out="$(theme_render_resources)"
                     assert_contains "$out" "$(printf '\033[0;%sm' "$color")" 'Absent resource color'
