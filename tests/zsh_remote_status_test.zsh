@@ -106,9 +106,11 @@ cd "$TEST_ROOT/local" || exit 1
 yafp-ack >/dev/null
 assert_eq 1 "$YAFP_REMOTE_OFFLINE_ACKNOWLEDGED" 'acknowledgement'
 git remote set-url origin "$TEST_ROOT/origin.git"
+YAFP_CODEX_ATTEMPT=123
 refresh_context
 assert_eq 0 "$YAFP_REMOTE_OFFLINE_ACKNOWLEDGED" 'recovery clears acknowledgement'
 assert_eq 1 "$yafp_ctx_git_remote_connection_announcement" 'offline recovery announcement'
+assert_eq '' "$YAFP_CODEX_ATTEMPT" 'connection makes Codex due'
 
 COLUMNS=200
 # Detect git init in the same directory after caching a non-repository.

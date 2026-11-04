@@ -12,6 +12,48 @@ foreach ($interval in @('0', '-1', 'bad', '9999999999999999999')) {
 }
 Write-Output 'ok - disabled or invalid PowerShell resource monitoring starts no workers'
 
+$global:YAFP_RESOURCE_LABEL_STYLE = 'letters'
+$global:YAFP_RESOURCE_VALUE_STYLE = 'percent'
+$expectedGroups = @()
+foreach ($case in @(
+    @{ Resource = 'CPU'; Expected = 'C98% R40% S5% D50%' }
+    @{ Resource = 'MEMORY'; Expected = 'C20% R98% S5% D50%' }
+    @{ Resource = 'SWAP'; Expected = 'C20% R40% S40% D50%' }
+    @{ Resource = 'DISK'; Expected = 'C20% R40% S5% D98%' }
+)) {
+    $demo = @(yafp-demo-resources $case.Resource 6>&1)
+    $iconColors = @(foreach ($record in $demo) {
+        if ($record.MessageData.Message -eq '') { $record.MessageData.ForegroundColor }
+    })
+    $text = ($demo | ForEach-Object {
+        if ($_.MessageData.NoNewLine) { "$_" } else { "$_`n" }
+    }) -join ''
+    $expectedGroups += $text
+    if (($iconColors -join ',') -ne 'White,Yellow,Red' -or -not $text.Contains("↦[$($case.Expected)]")) {
+        throw "Incorrect demo output: $($case.Resource)"
+    }
+}
+$demoAll = @(yafp-demo-resources ALL 6>&1)
+$allText = ($demoAll | ForEach-Object {
+    if ($_.MessageData.NoNewLine) { "$_" } else { "$_`n" }
+}) -join ''
+$allColors = @(foreach ($record in $demoAll) {
+    if ($record.MessageData.Message -eq '') { $record.MessageData.ForegroundColor }
+})
+if ($allText -ne ($expectedGroups -join "`n") -or ($allColors -join ',') -ne ('White,Yellow,Red,' * 4).TrimEnd(',')) {
+    throw 'Resource demo ALL must separate all four sets of colors in order'
+}
+$prefixes = @(foreach ($record in $demoAll) {
+    if ($record.MessageData.Message -match '^(CPU|MEMORY|SWAP|DISK) \d+% +$') { $record.MessageData.Message }
+})
+if ($prefixes.Count -ne 12 -or @($prefixes | Where-Object Length -NE 12).Count -ne 0) {
+    throw 'Resource demo prompt is not aligned'
+}
+if ($null -ne $script:YafpResourceJob -or $null -ne $script:YafpResourceSample) {
+    throw 'Resource demo changed the live sample'
+}
+Write-Output 'ok - PowerShell resource demo shows three colors without sampling'
+
 function Get-CimInstance {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSAvoidOverwritingBuiltInCmdlets', '',
@@ -236,6 +278,32 @@ try {
         })
     }
     try {
+        foreach ($theme in @('minimal', 'light')) {
+            $global:YAFP_THEME = $theme
+            Import-YafpTheme
+            $script:resourceWrites.Clear()
+            $null = prompt 6>$null
+            $icon = $script:resourceWrites | Where-Object Text -EQ '' | Select-Object -First 1
+            if ($null -eq $icon -or $icon.Color -ne 'Red' -or $null -ne $icon.Background) {
+                throw "OS icon did not reflect the red swap sample: $theme"
+            }
+        }
+        foreach ($case in @(
+            @{ Colors = @('Red', 'Green', 'Yellow', 'Green'); Expected = 'Red' }
+            @{ Colors = @('Green', 'Yellow', 'Green', 'Green'); Expected = 'Yellow' }
+            @{ Colors = @('Green', 'Green', 'Green', 'Green'); Expected = 'White' }
+            @{ Colors = @('DarkGray', 'DarkGray', 'DarkGray', 'DarkGray'); Expected = 'White' }
+            @{ Colors = @(); Expected = 'White' }
+        )) {
+            $segments = @(foreach ($color in $case.Colors) { [pscustomobject]@{ Foreground = $color } })
+            $resource = if ($segments.Count -gt 0) { [pscustomobject]@{ Segments = $segments } }
+            $script:resourceWrites.Clear()
+            Write-YafpOsIcon -Context ([pscustomobject]@{ Resources = $resource })
+            $icon = $script:resourceWrites[0]
+            if ($icon.Text -ne '' -or $icon.Color -ne $case.Expected -or $null -ne $icon.Background) {
+                throw "Incorrect OS icon severity: $($case.Colors -join ',')"
+            }
+        }
         foreach ($dark in @(0, 1)) {
             $global:YAFP_DARKC = $dark
             foreach ($theme in @('default', 'minimal', 'light')) {
@@ -295,6 +363,27 @@ try {
         $global:YAFP_RESOURCE_CHECK_INTERVAL = 30
     }
     finally { Set-Item Function:Write-YafpText -Value $originalWriter }
+    $script:YafpResourceSample = $null
+    $script:YafpResourceAttempt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    foreach ($theme in @('default', 'minimal', 'light')) {
+        $global:YAFP_THEME = $theme
+        Import-YafpTheme
+        foreach ($labels in @('letters', 'unicode')) {
+            foreach ($values in @('percent', 'symbols')) {
+                $global:YAFP_RESOURCE_LABEL_STYLE = $labels
+                $global:YAFP_RESOURCE_VALUE_STYLE = $values
+                $context = Get-YafpResourceContext
+                $expected = if ($labels -eq 'letters') { 'C R S D' }
+                    elseif ($values -eq 'symbols') { '▦' } else { ' ▦  ' }
+                $output = (@(Write-YafpResources -Context ([pscustomobject]@{ Resources = $context }) 6>&1) |
+                    ForEach-Object { "$_" }) -join ''
+                if ($output -ne "↦[$expected]" -or $context.State -ne 'unavailable' -or
+                    $context.Suffix -ne '' -or @($context.Segments | Where-Object Foreground -NE 'Red').Count -ne 0) {
+                    throw "Incorrect unavailable resource frame: $theme/$labels/$values/$output"
+                }
+            }
+        }
+    }
     $global:YAFP_RESOURCE_LABEL_STYLE = 'letters'
     $global:YAFP_RESOURCE_VALUE_STYLE = 'percent'
     $script:YafpResourceSample = [pscustomobject]@{
@@ -303,7 +392,7 @@ try {
         Cpu = $null; DiskUsed = $null; DiskTotal = $null
     }
     $context = Get-YafpResourceContext
-    if ($context.Text -notmatch '^CN/A RN/A S0% DN/A 60s$') {
+    if ($context.Text -notmatch '^C R S0% D 60s$') {
         throw 'Incorrect missing-metric fallback or sample age'
     }
     $script:YafpResourceSample.SwapUsed = 1552
@@ -312,8 +401,8 @@ try {
         throw 'Incorrect integer swap percentage'
     }
     $script:YafpResourceSample.SwapTotal = $null
-    if ((Get-YafpResourceContext).Text -notmatch ' SN/A ') {
-        throw 'Missing swap capacity must display N/A'
+    if ((Get-YafpResourceContext).Text -notmatch ' S ') {
+        throw 'Missing swap capacity must display '
     }
     Write-Output 'ok - single nonblocking PowerShell worker, reload, three themes, and previous status'
 }

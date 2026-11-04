@@ -126,12 +126,12 @@ for dark in 0 1; do
             YAFP_REMOTE_COUNTDOWN_STYLE=$style
             yafp_ctx_git_remote_state=current yafp_ctx_git_remote_refresh_in=175
             out="$(theme_render_git_remote_status)"
-            contains "$out" "$(ps1_wrap "$frame")↦[" 'Git frame opening style'
+            contains "$out" "$(ps1_wrap "$frame")[" 'Git frame opening style'
             contains "$out" "$(ps1_wrap "$frame")]" 'Git frame closing style'
             contains "$out" "$(ps1_wrap "$cRemoteOk")" 'Existing success color'
             plain
-            expected='↦[⣦]'
-            [ "$style" != numeric ] || expected='↦[(175)]'
+            expected='[⣦]↤'
+            [ "$style" != numeric ] || expected='[(175)]↤'
             [ "$out" = "$expected" ] || fail "Compact remote block: $theme/$style/$out"
         done
         # Narrow terminals suppress banners while retaining every compact state.
@@ -141,25 +141,28 @@ for dark in 0 1; do
         out="$(theme_render_git_remote_status)"
         contains "$out" "$(ps1_wrap "$cRemotePending")" 'Existing refresh color'
         plain
-        [ "$out" = '↦[]' ] || fail "Refresh icon must touch the cached state: $theme/$out"
+        [ "$out" = '[]↤' ] || fail "Refresh icon must touch the cached state: $theme/$out"
         yafp_ctx_git_remote_refreshing=0
         for state in no-commits no-upstream checking ahead behind diverged error; do
             yafp_ctx_git_remote_state=$state
             case "$state" in
                 no-commits) indicator='○0' ;; no-upstream) indicator='⇡?' ;;
-                checking) indicator='…' ;; ahead) indicator='⇡2' ;;
+                checking) indicator='⟳' ;; ahead) indicator='⇡2' ;;
                 behind) indicator='⇣3' ;; diverged) indicator='⇡2⇣3' ;; error) indicator='' ;;
             esac
             out="$(theme_render_git_remote_status)"
+            if [ "$state" = checking ]; then
+                contains "$out" "$(ps1_wrap $'\033[0;90m')⟳" 'Pending remote color'
+            fi
             plain
-            [ "$out" = "↦[$indicator]" ] || fail "Remote state framing: $theme/$state/$out"
+            [ "$out" = "[$indicator]↤" ] || fail "Remote state framing: $theme/$state/$out"
         done
         # The failure highlight is independent of theme darkness; acknowledgement clears it.
         yafp_ctx_git_remote_state=error
         for acknowledged in 0 1; do
             YAFP_REMOTE_OFFLINE_ACKNOWLEDGED=$acknowledged
             out="$(theme_render_git_remote_status)"
-            expected_color=$'\033[0;101;97m'
+            expected_color=$cRemoteProblem
             [ "$acknowledged" -eq 0 ] || expected_color=$cRemoteAcknowledged
             contains "$out" "$(ps1_wrap "$expected_color")" "Offline highlight: $theme/$dark/$acknowledged"
         done
@@ -173,34 +176,53 @@ for dark in 0 1; do
         out="$(YAFP_MEASURE_EXPANSIONS=1 theme_render_git_counts)"
         contains "$out" "$(ps1_wrap "$frame")↦[" 'Counter frame opening style'
         contains "$out" "$(ps1_wrap "$frame")]" 'Counter frame closing style'
+        contains "$out" "$(ps1_wrap "$(theme_color transparent RED)")1" 'Deleted counter color'
+        contains "$out" "$(ps1_wrap "$(theme_color transparent YELLOW)")2" 'Modified counter color'
+        contains "$out" "$(ps1_wrap "$(theme_color transparent CYAN)")3" 'New counter color'
         plain
-        if [ "$theme" = light ]; then
-            contains "$out" '↦[-1±2+3' 'Light counters retain their compact labels'
-        else
-            contains "$out" '↦[-1±2+3' 'Font Awesome Git counter labels'
-        fi
-        contains "$out" '4' 'Staged glyph in every theme'
-        prefix="↦[${YAFP_SYMBOL_GIT_DELETE_EMOJI}${YAFP_SYMBOL_GIT_DELETE}1"
-        prefix+="${YAFP_SYMBOL_GIT_CHANGE_EMOJI}${YAFP_SYMBOL_GIT_CHANGE}2"
-        prefix+="${YAFP_SYMBOL_GIT_NEW_EMOJI}${YAFP_SYMBOL_GIT_NEW}3"
+        prefix='↦[123'
         expected="${prefix}${YAFP_STAGED_EXPANSION_MARKER}${YAFP_SYMBOL_GIT_STAGED_EMOJI}4]"
         [ "$out" = "$expected" ] || fail "Staged anchor must follow preceding counters: $theme/$out"
         yafp_ctx_git_remote_state=behind yafp_ctx_git_remote_refresh_in=175
         YAFP_REMOTE_COUNTDOWN_STYLE=symbols
         out="$(YAFP_MEASURE_EXPANSIONS=1 theme_render_git_remote_status)"
         plain
-        [ "$out" = "↦[⣦${YAFP_REMOTE_EXPANSION_MARKER}⇣3]" ] || fail 'Remote anchor must include the new frame'
+        [ "$out" = "[⣦${YAFP_REMOTE_EXPANSION_MARKER}⇣3]↤" ] || fail 'Remote anchor must include the new frame'
         out="$(YAFP_MEASURE_EXPANSIONS=1 theme_render_git_block)"
         contains "$out" '' "Git logo in $theme"
         plain
-        count=0 rest=$out
-        while :; do
-            case "$rest" in *'↦['*) rest=${rest#*'↦['}; count=$((count + 1)) ;; *) break ;; esac
+        contains "$out" ']↤main↦[' "Remote, branch, and counters touch: $theme"
+        yafp_ctx_git_remote=local yafp_ctx_git_remote_state='' yafp_ctx_git_remote_refresh_in=''
+        out="$(theme_render_git_block)"
+        plain
+        contains "$out" 'main↦[' "Local branch and counters touch: $theme"
+        case "$out" in *']↤'*|*↯*) fail "Unexpected remote marker: $out" ;; esac
+        for state in current checking error local; do
+            yafp_ctx_git_remote=remote yafp_ctx_git_remote_state=$state
+            case "$state" in
+                current) color=92; icon='' ;;
+                checking) color=93; icon='' ;;
+                error) color=91; icon='' ;;
+                local) color=93; icon=''; yafp_ctx_git_remote=local ;;
+            esac
+            out="$(theme_render_git_branch_icon)"
+            contains "$out" "$(ps1_wrap "$(printf '\033[0;%sm' "$color")")$icon" "Branch icon color: $state"
         done
-        [ "$count" -eq 2 ] || fail "Missing or nested Git frames: $theme/$out"
-        git_indicator=$YAFP_SYMBOL_GIT_EMOJI
-        [ "$theme" != default ] || git_indicator=$YAFP_SYMBOL_GIT_SEP
-        contains "$out" "${git_indicator}↦[" "Git marker must touch its remote frame: $theme"
+        COLUMNS=80 yafp_ctx_git_remote_indicator_column=78 yafp_ctx_git_remote_indicator_rows=1
+        yafp_ctx_git_remote_state=error
+        out="$(theme_render_remote_expansion)"
+        contains "$out" $'\033[2A' 'Offline banner returns to the reserved row'
+        contains "$out" '(  REMOTE CHECK FAILED )' 'Offline banner fits at the right edge'
+        yafp_ctx_git_remote_state=current yafp_ctx_git_remote_connection_announcement=1
+        out="$(theme_render_remote_expansion)"
+        contains "$out" $'\033[2A' 'Recovery banner returns to the reserved row'
+        contains "$out" '(  INTERNET CONNECTION )' 'Recovery banner fits at the right edge'
+        out="$(theme_render_git_remote_status)"
+        contains "$out" "$(ps1_wrap "$cRemoteConnection")" 'Recovery icon shares the banner style'
+        COLUMNS=12
+        out="$(theme_render_git_remote_status)"
+        contains "$out" "$(ps1_wrap "$cRemoteOk")" 'Suppressed banner keeps the steady icon color'
+
     ) done
 done
 out="$(yafp_remote_status_report current 0 0 1 0 300 0)"

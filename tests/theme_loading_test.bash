@@ -83,7 +83,7 @@ yafp_ctx_git_staged=0
 set +u
 git_block="$(theme_render_git_block)"
 set -u
-expected_repo_segment="${YAFP_SYMBOL_GIT_REPO}<repo>yafp<git>${YAFP_SYMBOL_GIT_SEP}"
+expected_repo_segment=" <repo>yafp<git>${YAFP_SYMBOL_GIT_SEP}"
 [[ "$git_block" == *"$expected_repo_segment"* ]] ||
     fail 'default theme does not color only the repository name'
 
@@ -116,14 +116,14 @@ yafp_ctx_git_remote_state=current
 set +u
 git_block="$(theme_render_git_block)"
 set -u
-timer_start="${YAFP_SYMBOL_GIT_EMOJI}$(ps1_wrap "$cSeparator")↦[$(ps1_wrap "$cRemoteNeutral")(42)"
+timer_start="$(ps1_wrap "$cSeparator")[$(ps1_wrap "$cRemoteNeutral")(42)"
 [[ "$git_block" == *"$timer_start"* ]] ||
     fail 'light theme remote timer spacing or color differs from PowerShell'
 branch_start="$(ps1_wrap "$cGitBranch")$yafp_ctx_git_branch"
 [[ "$git_block" == *"$branch_start"* ]] ||
     fail 'light theme did not restore the blue branch color after the timer'
-remote_start="${branch_start}${cSeparator}${YAFP_SYMBOL_REMOTE}"
+remote_start="$(ps1_wrap $'\033[0;92m')${branch_start}"
 [[ "$git_block" == *"$remote_start"* ]] ||
-    fail 'light theme applied the blue branch color to the remote symbol'
+    fail 'light theme must place the green Git icon directly before the blue branch'
 
 printf 'ok - Bash theme loading, Git colors, and remote timer spacing\n'

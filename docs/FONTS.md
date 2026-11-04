@@ -31,15 +31,16 @@ code points.
 
 The catalog lists the approved replacements; each theme keeps the labels it
 already displayed. For example, the Bash/zsh `default` environment keeps its
-name in brackets, and `light` keeps `↯` and its numeric counters. Success and
+name in brackets. All themes pair the Git change icons directly with their
+counts, as in `↦[123]`. Success and
 error markers use `` and `` throughout YAFP's prompt, banners, message
 catalog, statistics, and startup update messages, including `light`. The timer
 circle keeps its green, yellow, and red colors alongside the percentage and
 seconds. Thresholds and logic remain unchanged.
 
-The compact remote failure icon `` (`U+F072`) uses intense white text on an
-intense red background while the `(  REMOTE CHECK FAILED )` alert is active,
-independently of `YAFP_DARKC`. After `yafp-ack`, the banner is hidden and the
+The compact remote failure icon `` (`U+F072`) shares the white text and
+red background of the active `(  REMOTE CHECK FAILED )` alert.
+After `yafp-ack`, the banner is hidden and the
 icon uses intense red text on a transparent background.
 
 Braille indicators, `֍`, `` for background refresh, `⟳` for initial pending
@@ -54,6 +55,13 @@ symbols.
 colors and `unavailable` output. The preview is introduced by `` (`U+F120`);
 the `Ctrl+C` reminder uses `` (`U+EDFE`, infinity remapped by Nerd Fonts) and
 `` (`U+F021`, refresh). The loop interval remains four seconds.
+
+Los valores ausentes del prompt usan `` (`U+F12A`, exclamation) en rojo
+en Bash, zsh y PowerShell, en los tres temas. Codex muestra `֍dh`;
+recursos sin muestra válida muestran `▦` en Unicode + símbolos.
+Las métricas parciales usan el mismo icono y respetan las etiquetas y espacios
+configurados. `⟳` conserva la espera inicial y `` la actualización activa.
+Los informes de diagnóstico conservan `` para los datos ausentes.
 
 The `yafp-codex` frame uses `` (`U+F274`) for the reset, `` (`U+F21E`,
 heartbeat) for the state, and `` (`U+F200`, chart-pie) for the remaining quota.
@@ -409,6 +417,6 @@ $
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-03 00:16:15 🍎 MBP02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-11-03 19:12:30 🍎 MBP02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

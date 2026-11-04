@@ -43,6 +43,36 @@ for interval in 0 -1 bad 0008 999999999999999999999; do
 done
 printf 'ok - disabled or invalid resource monitoring starts no workers\n'
 
+expected_all=''
+for resource in CPU MEMORY SWAP DISK; do
+    out="$(YAFP_RESOURCE_LABEL_STYLE=letters YAFP_RESOURCE_VALUE_STYLE=percent yafp-demo-resources "$resource")"
+    [ -z "$expected_all" ] || expected_all+=$'\n\n'
+    expected_all+="$out"
+    for color in 97 93 91; do
+        assert_contains "$out" "$(printf '\033[0;%sm' "$color")$SERVER_OS_EMOJI" "Demo icon color: $resource"
+    done
+    yafp_strip_terminal_styles "$out"
+    case "$resource" in
+        CPU) expected='C98% R40% S5% D50%' ;;
+        MEMORY) expected='C20% R98% S5% D50%' ;;
+        SWAP) expected='C20% R40% S40% D50%' ;;
+        DISK) expected='C20% R40% S5% D98%' ;;
+    esac
+    assert_contains "$yafp_plain_text" "↦[$expected]" "Demo varies only the selected resource"
+done
+out="$(YAFP_RESOURCE_LABEL_STYLE=letters YAFP_RESOURCE_VALUE_STYLE=percent yafp-demo-resources ALL)"
+[ "$out" = "$expected_all" ] || fail 'Demo ALL must separate the four resource groups'
+yafp_strip_terminal_styles "$out"
+while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    prefix=${line%%"$SERVER_OS_EMOJI ↦["*}
+    [ "${#prefix}" -eq 12 ] || fail "Demo prompt is not aligned: $line"
+done <<< "$yafp_plain_text"
+if yafp-demo-resources invalid >/dev/null 2>&1; then fail 'Invalid demo resource accepted'; fi
+yafp-demo-resources ALL >/dev/null
+[ -z "${YAFP_RESOURCE_DIR:-}${YAFP_RESOURCE_PID:-}$yafp_ctx_resources" ] || fail 'Demo changed the live sample'
+printf 'ok - resource demo simulates three colors without a worker or cache\n'
+
 export YAFP_TEST_RESOURCE_READY="$TEST_ROOT/resource-ready"
 cat > "$TEST_ROOT/scripts/unix/resources/collect.bash" <<'EOF'
 #!/usr/bin/env bash
@@ -122,23 +152,41 @@ check_resource_report() {
 }
 check_resource_report
 
-# Exercise pending rendering without delaying the live worker/reload checks.
-yafp_ctx_resources='Resources: waiting for sample'
-for labels in letters unicode; do
-    for values in percent symbols; do
-        YAFP_RESOURCE_LABEL_STYLE=$labels YAFP_RESOURCE_VALUE_STYLE=$values
-        yafp_ctx_resource_tokens=() yafp_ctx_resource_colors=()
-        yafp_resources_pending
-        expected='C⟳ R⟳ S⟳ D⟳'
-        if [ "$labels" = unicode ]; then
-            expected='⟳ ▦⟳ ⟳ ⟳'
-            [ "$values" != symbols ] || expected='⟳▦⟳⟳⟳'
-        fi
-        out="$(theme_render_resources)"
-        plain_prompt
-        [ "$out" = "↦[$expected]" ] || fail "Pending resource frame: $labels/$values/$out"
+# Exercise absent samples across themes without starting another worker.
+check_absent_resources() {
+    local YAFP_RESOURCE_PID='' YAFP_RESOURCE_ATTEMPT=$SECONDS
+    local original_sample theme labels values state marker expected out color
+    original_sample=$(< "$YAFP_RESOURCE_DIR/sample")
+    printf 'invalid\n' > "$YAFP_RESOURCE_DIR/sample"
+    for theme in default minimal light; do
+        YAFP_THEME=$theme
+        load_theme
+        theme_build
+        for state in pending unavailable; do
+            YAFP_RESOURCE_PID=''
+            marker='' color=91
+            if [ "$state" = pending ]; then YAFP_RESOURCE_PID=$$; marker='⟳'; color=90; fi
+            for labels in letters unicode; do
+                for values in percent symbols; do
+                    YAFP_RESOURCE_LABEL_STYLE=$labels YAFP_RESOURCE_VALUE_STYLE=$values
+                    yafp_resources_context
+                    [ "$yafp_ctx_resource_state" = "$state" ] || fail 'Absent resource state'
+                    expected="C$marker R$marker S$marker D$marker"
+                    if [ "$labels" = unicode ]; then
+                        expected="$marker ▦$marker $marker $marker"
+                        [ "$values" != symbols ] || expected="$marker▦$marker$marker$marker"
+                    fi
+                    out="$(theme_render_resources)"
+                    assert_contains "$out" "$(printf '\033[0;%sm' "$color")" 'Absent resource color'
+                    plain_prompt
+                    [ "$out" = "↦[$expected]" ] || fail "Absent resource frame: $theme/$state/$labels/$values/$out"
+                done
+            done
+        done
     done
-done
+    printf '%s\n' "$original_sample" > "$YAFP_RESOURCE_DIR/sample"
+}
+check_absent_resources
 YAFP_RESOURCE_LABEL_STYLE=letters YAFP_RESOURCE_VALUE_STYLE=percent
 yafp_resources_context
 
@@ -154,6 +202,24 @@ git init --quiet "$TEST_ROOT/repo"
 printf 'staged\n' > "$TEST_ROOT/repo/file.txt"
 git -C "$TEST_ROOT/repo" add file.txt
 original_pwd=$PWD
+
+check_os_icon_colors() {
+    local severity expected_color out icon
+    local yafp_ctx_resources=$yafp_ctx_resources
+    local yafp_ctx_resource_colors=()
+    for severity in red yellow white pending disabled; do
+        case "$severity" in
+            red) yafp_ctx_resource_colors=(91 92 93 92); expected_color=91 ;;
+            yellow) yafp_ctx_resource_colors=(92 93 92 92); expected_color=93 ;;
+            white) yafp_ctx_resource_colors=(92 92 92 92); expected_color=97 ;;
+            pending) yafp_ctx_resource_colors=(90 90 90 90); expected_color=97 ;;
+            disabled) yafp_ctx_resources=''; yafp_ctx_resource_colors=(); expected_color=97 ;;
+        esac
+        out="$(theme_render_main_block)"
+        icon="$(ps1_wrap "$(printf '\033[0;%sm' "$expected_color")")$SERVER_OS_EMOJI$(ps1_wrap $'\033[0m')"
+        assert_contains "$out" "$icon" "OS icon color and reset: $theme/$severity"
+    done
+}
 
 for theme in default minimal light; do
     YAFP_THEME=$theme
@@ -201,6 +267,7 @@ for theme in default minimal light; do
             yafp_ctx_resources=$saved_summary
         done
     done
+    [ "$theme" = default ] || check_os_icon_colors
     YAFP_RESOURCE_CHECK_INTERVAL=0
     yafp_resources_context
     [ -z "$(theme_render_resources)" ] || fail 'empty frame while disabled'
@@ -281,7 +348,7 @@ yafp_resources_summary
 assert_contains "$yafp_ctx_resources" ' S50% ' 'integer swap percentage'
 YAFP_RESOURCE_SWAP_TOTAL=-
 yafp_resources_summary
-assert_contains "$yafp_ctx_resources" ' SN/A ' 'unknown swap capacity'
+assert_contains "$yafp_ctx_resources" ' S ' 'unknown swap capacity'
 
 # Truncated or code-shaped cache data never executes or reaches the prompt.
 # shellcheck disable=SC2016

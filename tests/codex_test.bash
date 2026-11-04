@@ -219,15 +219,29 @@ YAFP_CODEX_CHECK_INTERVAL=300
 for row in '0 ok $(touch bad) 75 60' '0 ok 101 75 60' '0 ok 75 75' '0 ok 075 75 60' '0 ok 75 75 60 extra' '0 ok 75 75 60 01' '0 ok 75 75 60 -1' '0 ok 75 75 60 99999999999'; do
     printf '%s\n' "$row" > "$YAFP_CODEX_DIR/sample"
     yafp_codex_context
-    [ "$yafp_ctx_codex" = '֍N/A' ] || fail 'Invalid quota accepted'
+    [ "$yafp_ctx_codex" = '֍dh' ] || fail 'Invalid quota accepted'
 done
 for state in missing-cli missing-python logged-out unsupported-auth timeout unavailable; do
     printf '0 %s - - -\n' "$state" > "$YAFP_CODEX_DIR/sample"
     yafp_codex_context
-    [ "$yafp_ctx_codex" = '֍N/A' ] || fail 'Unavailable quota invented a percentage'
-    [ "$yafp_ctx_codex_color" = 90 ] || fail 'Unavailable quota needs gray'
+    [ "$yafp_ctx_codex" = '֍dh' ] || fail 'Unavailable quota invented a percentage'
+    [ "$yafp_ctx_codex_color" = 91 ] || fail 'Unavailable quota needs red'
 done
 [ ! -f bad ] || fail 'Cache executed as code'
+for theme in default minimal light; do
+    YAFP_THEME=$theme
+    load_theme
+    theme_build
+    for style in percent symbols; do
+        YAFP_CODEX_VALUE_STYLE=$style
+        yafp_codex_context
+        out="$(theme_render_codex)"
+        contains "$out" $'\033[0;91m' 'Unavailable quota is red'
+        plain_prompt
+        [ "$out" = '↤[֍dh]' ] || fail "Unavailable quota frame: $theme/$style/$out"
+    done
+done
+YAFP_CODEX_VALUE_STYLE=percent
 yafp_err_context 7
 [ "$yafp_ctx_exit" = 7 ] || fail 'Previous command status changed'
 printf 'ok - Codex percent/Braille, inclusive color boundaries, user placement, and silent errors\n'

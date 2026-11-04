@@ -277,6 +277,9 @@ try {
         [pscustomobject]@{ Text = 'yafp-resources'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Show the latest RAM, swap, CPU, and disk sample.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'yafp-demo-resources'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'Simulate resource load and colors.'; Color = 'White'; NoNewline = $false }
     )
     Assert-Equal $expectedHelpWrites.Count $script:helpWrites.Count `
         'yafp-help colored write count'
@@ -502,10 +505,10 @@ try {
         # Banner text and cursor movement are emitted between these fields.
         # Their visual adjacency is not adjacency in the information stream.
         $countdownPattern = [regex]::Escape("($($remote.RefreshIn))")
-        if ($indicator -notmatch "^\s*↦\[\s*$countdownPattern\s") {
+        if ($indicator -notmatch "^\s*\[\s*$countdownPattern\s") {
             throw 'behind countdown was not rendered'
         }
-        if ($indicator -notmatch '⇣1\s*\]\s*$') {
+        if ($indicator -notmatch '⇣1\s*\]↤\s*$') {
             throw 'behind indicator was not rendered'
         }
     }
@@ -641,12 +644,16 @@ try {
     }
     $script:YafpRemoteConnectivityState = 'offline'
     $script:YafpSessionStartedAt = 0L
+    $script:YafpCodexAttempt = 123L
     $remote = Get-YafpRemoteContext -RepoRoot $local -Branch main
     Assert-Equal $true $remote.ConnectionAnnouncement `
         'first recovered remote check announces internet connection'
+    Assert-Equal $null $script:YafpCodexAttempt 'connection makes Codex due'
+    $script:YafpCodexAttempt = 124L
     $remoteAgain = Get-YafpRemoteContext -RepoRoot $local -Branch main
     Assert-Equal $false $remoteAgain.ConnectionAnnouncement `
         'internet connection is announced only once per transition'
+    Assert-Equal 124L $script:YafpCodexAttempt 'steady connection preserves Codex interval'
     $script:YafpRemoteConnectivityState = 'offline'
     $recoveredAgain = Get-YafpRemoteContext -RepoRoot $local -Branch main
     Assert-Equal $true $recoveredAgain.ConnectionAnnouncement `
@@ -704,9 +711,9 @@ try {
         'connection banner foreground'
     Assert-Equal DarkGreen $transitionBanner.Background `
         'connection banner background'
-    Assert-Equal Green $transitionIndicator.Foreground `
+    Assert-Equal $transitionBanner.Foreground $transitionIndicator.Foreground `
         'connection indicator foreground'
-    Assert-Equal $null $transitionIndicator.Background `
+    Assert-Equal $transitionBanner.Background $transitionIndicator.Background `
         'connection indicator background'
 
     $script:connectionWrites.Clear()
@@ -725,7 +732,7 @@ try {
     foreach ($indicatorCase in @(
         @{ State = 'current'; Ahead = 0; Text = '' }
         @{ State = 'ahead'; Ahead = 2; Text = '⇡2' }
-        @{ State = 'checking'; Ahead = 0; Text = '…' }
+        @{ State = 'checking'; Ahead = 0; Text = '⟳' }
         @{ State = 'error'; Ahead = 0; Text = '' }
     )) {
         $status = [pscustomobject]@{
@@ -809,7 +816,8 @@ try {
     $null = Write-YafpGitRemoteStatus -Git $offlineContext.Git 6>&1 | Out-String
     $errorIcon = $script:ackWrites | Where-Object Text -EQ '' | Select-Object -Last 1
     Assert-Equal White $errorIcon.Foreground 'unacknowledged offline indicator foreground'
-    Assert-Equal Red $errorIcon.Background 'unacknowledged offline indicator background'
+    Assert-Equal (Get-YafpSeverityStyle -Severity error).Background `
+        $errorIcon.Background 'unacknowledged offline indicator background'
     Set-Item -LiteralPath Function:Write-YafpText `
         -Value $originalWriteYafpText
     $script:YafpRemoteOfflineAcknowledged = $false

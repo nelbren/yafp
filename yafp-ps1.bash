@@ -77,17 +77,17 @@ YAFP_COLOR_WARN_ICON_BG="intense-yellow"
 YAFP_COLOR_WARN_ICON_FG="white"
 
 # Git counters
-YAFP_COLOR_GIT_DELETE_BG="RED"
-YAFP_COLOR_GIT_DELETE_FG="BLACK"
-YAFP_COLOR_GIT_DELETE_ATTRS="blink"
+YAFP_COLOR_GIT_DELETE_BG="transparent"
+YAFP_COLOR_GIT_DELETE_FG="RED"
+YAFP_COLOR_GIT_DELETE_ATTRS=""
 
-YAFP_COLOR_GIT_CHANGE_BG="YELLOW"
-YAFP_COLOR_GIT_CHANGE_FG="BLACK"
-YAFP_COLOR_GIT_CHANGE_ATTRS="blink"
+YAFP_COLOR_GIT_CHANGE_BG="transparent"
+YAFP_COLOR_GIT_CHANGE_FG="YELLOW"
+YAFP_COLOR_GIT_CHANGE_ATTRS=""
 
-YAFP_COLOR_GIT_NEW_BG="CYAN"
-YAFP_COLOR_GIT_NEW_FG="BLACK"
-YAFP_COLOR_GIT_NEW_ATTRS="blink"
+YAFP_COLOR_GIT_NEW_BG="transparent"
+YAFP_COLOR_GIT_NEW_FG="CYAN"
+YAFP_COLOR_GIT_NEW_ATTRS=""
 
 YAFP_COLOR_GIT_STAGED_BG="intense-yellow"
 YAFP_COLOR_GIT_STAGED_FG="black"
@@ -149,11 +149,8 @@ YAFP_SYMBOL_GIT_SEP="ᚼ"
 YAFP_SYMBOL_REMOTE=""
 YAFP_SYMBOL_LOCAL="⇣"
 YAFP_SYMBOL_GIT_DELETE_EMOJI=""
-YAFP_SYMBOL_GIT_DELETE="-"
 YAFP_SYMBOL_GIT_CHANGE_EMOJI=""
-YAFP_SYMBOL_GIT_CHANGE="±"
 YAFP_SYMBOL_GIT_NEW_EMOJI=""
-YAFP_SYMBOL_GIT_NEW="+"
 YAFP_SYMBOL_GIT_STAGED_EMOJI=""
 
 
@@ -279,9 +276,6 @@ theme_build() {
 
     # Exact banner colors do not depend on the terminal's ANSI palette.
     cRemoteConnection=$'\033[0;48;2;0;128;0;38;2;255;255;255m'
-
-    # Unacknowledged remote failure: bright white on bright red in every theme.
-    cRemoteFailure=$'\033[0;101;97m'
 
     cRemoteAcknowledged="$(theme_color \
         "$YAFP_COLOR_REMOTE_ACKNOWLEDGED_BG" \
@@ -426,21 +420,18 @@ theme_render_git_counts() {
     if [ "$yafp_ctx_git_delete" -gt 0 ]; then
         out+="$cGitDeletePS1"
         out+="$YAFP_SYMBOL_GIT_DELETE_EMOJI"
-        out+="$YAFP_SYMBOL_GIT_DELETE"
         out+="${yafp_ctx_git_delete}${cNormalPS1}"
     fi
 
     if [ "$yafp_ctx_git_change" -gt 0 ]; then
         out+="$cGitChangePS1"
         out+="$YAFP_SYMBOL_GIT_CHANGE_EMOJI"
-        out+="$YAFP_SYMBOL_GIT_CHANGE"
         out+="${yafp_ctx_git_change}${cNormalPS1}"
     fi
 
     if [ "$yafp_ctx_git_new" -gt 0 ]; then
         out+="$cGitNewPS1"
         out+="$YAFP_SYMBOL_GIT_NEW_EMOJI"
-        out+="$YAFP_SYMBOL_GIT_NEW"
         out+="${yafp_ctx_git_new}${cNormalPS1}"
     fi
 
@@ -458,6 +449,7 @@ theme_render_git_counts() {
 
 
 theme_remote_expansion_visible() {
+    [ "${yafp_ctx_git_remote:-}" != local ] || return 1
     if [ "${yafp_ctx_git_remote_connection_announcement:-0}" -eq 1 ]; then
         return 0
     fi
@@ -576,6 +568,7 @@ yafp_measure_indicator_column() {
     yafp_strip_terminal_styles "$prefix"
     yafp_text_display_width "$yafp_plain_text"
     yafp_expansion_terminal_columns
+    yafp_indicator_rows=$((yafp_display_width / yafp_expansion_columns))
     yafp_indicator_column=$((
         yafp_display_width % yafp_expansion_columns + 1
     ))
@@ -586,6 +579,8 @@ theme_prepare_expansion_columns() {
     local measured
 
     yafp_ctx_git_remote_indicator_column=0
+    yafp_ctx_git_remote_indicator_rows=0
+    yafp_indicator_rows=0
     yafp_ctx_git_staged_indicator_column=0
     if [ "${yafp_ctx_git_staged:-0}" -le 0 ] &&
        ! theme_remote_expansion_visible; then
@@ -595,6 +590,7 @@ theme_prepare_expansion_columns() {
     yafp_measure_indicator_column \
         "$YAFP_REMOTE_EXPANSION_MARKER" "$measured"
     yafp_ctx_git_remote_indicator_column=$yafp_indicator_column
+    yafp_ctx_git_remote_indicator_rows=$yafp_indicator_rows
     yafp_measure_indicator_column \
         "$YAFP_STAGED_EXPANSION_MARKER" "$measured"
     yafp_ctx_git_staged_indicator_column=$yafp_indicator_column
@@ -700,6 +696,9 @@ theme_render_remote_expansion() {
     local reset
     local unit
     local verb
+    local column="${yafp_ctx_git_remote_indicator_column:-0}"
+    local rows=$((1 + ${yafp_ctx_git_remote_indicator_rows:-0}))
+    local max_start
 
     if [ "${YAFP_MEASURE_EXPANSIONS:-0}" -eq 1 ]; then
         theme_remote_expansion_visible &&
@@ -794,14 +793,19 @@ theme_render_remote_expansion() {
     fi
 
     [ -n "$message" ] || return 0
-    theme_select_expansion_message "$message" "$message" \
-        "${yafp_ctx_git_remote_indicator_column:-0}" "$indicator_width"
-    [ -n "$yafp_expansion_message" ] || return 0
     banner="( ${message} )"
     yafp_text_display_width "$banner"
     left=$(((yafp_display_width - indicator_width) / 2))
     [ "$left" -ge 0 ] || left=0
-    control=$'\033[s\033[1A'
+    yafp_expansion_terminal_columns
+    [ "$yafp_display_width" -lt "$yafp_expansion_columns" ] || return 0
+    # Keep the entire banner on its reserved row when the anchor is near the edge.
+    max_start=$((yafp_expansion_columns - yafp_display_width - 7))
+    [ "$max_start" -ge 1 ] || max_start=1
+    if [ "$((column - left))" -gt "$max_start" ]; then
+        left=$((column - max_start))
+    fi
+    control=$'\033[s\033['"${rows}"'A'
     [ "$left" -eq 0 ] || control+=$'\033['"${left}"D
     reset="$(theme_reset)"
     printf '%s' \
@@ -812,6 +816,7 @@ theme_render_remote_expansion() {
 theme_render_git_remote_status() {
     local color
     local countdown
+    local expansion
     local countdown_color
     local indicator
     local out=""
@@ -841,11 +846,15 @@ theme_render_git_remote_status() {
         out+="$(ps1_wrap "$cRemotePending")"
     fi
 
-    out+="$(theme_render_remote_expansion)"
+    expansion="$(theme_render_remote_expansion)"
+    out+="$expansion"
 
     case "${yafp_ctx_git_remote_state:-}" in
         current)
             color="$cRemoteOk"
+            if [ "${yafp_ctx_git_remote_connection_announcement:-0}" -eq 1 ] && [ -n "$expansion" ]; then
+                color="$cRemoteConnection"
+            fi
             # indicator="✓🌐︎"
             indicator=""
             ;;
@@ -870,27 +879,40 @@ theme_render_git_remote_status() {
             indicator="⇡${yafp_ctx_git_ahead}⇣${yafp_ctx_git_behind}"
             ;;
         checking)
-            color="$cRemotePending"
-            indicator="…"
+            color=$'\033[0;90m'
+            indicator="⟳"
             ;;
         error)
-            color="$cRemoteFailure"
+            color="$cRemoteProblem"
             [ "${YAFP_REMOTE_OFFLINE_ACKNOWLEDGED:-0}" -eq 0 ] || color="$cRemoteAcknowledged"
             # indicator="☒🌐︎"
             indicator=""
             ;;
         *)
             if [ -n "$out" ]; then
-                printf '%s↦[%s%s]%s' "$frame_ps1" "$out" "$frame_ps1" "$reset"
+                printf '%s[%s%s]↤%s' "$frame_ps1" "$out" "$frame_ps1" "$reset"
             fi
             return 0
             ;;
     esac
 
-    printf '%s↦[%s%s%s%s]%s' "$frame_ps1" "$out" "$(ps1_wrap "$color")" \
+    printf '%s[%s%s%s%s]↤%s' "$frame_ps1" "$out" "$(ps1_wrap "$color")" \
         "$indicator" "$frame_ps1" "$reset"
 }
 
+
+theme_render_git_branch_icon() {
+    local icon='' color=93
+    if [ "${yafp_ctx_git_remote:-}" = local ]; then
+        icon=''
+    else
+        case "${yafp_ctx_git_remote_state:-}" in
+            current|ahead|behind|diverged) color=92 ;;
+            error) color=91 ;;
+        esac
+    fi
+    printf '%s%s' "$(ps1_wrap "$(printf '\033[0;%sm' "$color")")" "$icon"
+}
 
 yafp_remote_countdown_indicator() {
     local remaining="${1:-0}"
@@ -1443,6 +1465,21 @@ load_theme() {
 
 ps1_wrap() {
     printf '\\[%s\\]' "$1"
+}
+
+
+theme_render_os_icon() {
+    local color=97 resource_color style
+    for resource_color in "${yafp_ctx_resource_colors[@]+"${yafp_ctx_resource_colors[@]}"}"; do
+        case "$resource_color" in
+            91) color=91; break ;;
+            93) color=93 ;;
+        esac
+    done
+    printf -v style '\033[0;%sm' "$color"
+    ps1_wrap "$style"
+    printf '%s' "$SERVER_OS_EMOJI"
+    ps1_wrap $'\033[0m'
 }
 
 
@@ -2028,6 +2065,7 @@ yafp_remote_context() {
                [ "$checked_at" -ge "${YAFP_SESSION_STARTED_AT:-0}" ]; then
                 if [ "${YAFP_REMOTE_CONNECTIVITY_STATE:-unknown}" != online ]; then
                     yafp_ctx_git_remote_connection_announcement=1
+                    YAFP_CODEX_ATTEMPT=''
                 fi
                 YAFP_REMOTE_CONNECTIVITY_STATE=online
             fi
@@ -2366,6 +2404,7 @@ yafp-msgs|Show all prompt banners in severity order.
 yafp-help|Show available YAFP commands.
 yafp-codex|Show cached Codex quota and authentication status.
 yafp-resources|Show the latest RAM, swap, CPU, and disk sample.
+yafp-demo-resources|Simulate resource load and colors.
 EOF
 }
 
@@ -2560,6 +2599,9 @@ yafp_git_context() {
             basename "$repo_root"
         )
         yafp_ctx_git_remote="local"
+        if [ -n "$(git remote 2>/dev/null)" ]; then
+            yafp_ctx_git_remote="remote"
+        fi
     else
         yafp_ctx_git_repo=$(basename -s .git "$git_repo_url")
         yafp_ctx_git_remote="remote"
@@ -2765,10 +2807,10 @@ yafp_prompt_preview() {
     if declare -F yafp_resources_context >/dev/null; then
         yafp_resources_context
     fi
+    yafp_git_context "$last_exit"
     if declare -F yafp_codex_context >/dev/null; then
         yafp_codex_context
     fi
-    yafp_git_context "$last_exit"
     yafp_venv_context
     yafp_err_context "$last_exit"
 
@@ -2814,10 +2856,10 @@ yafp_prompt_command() {
     if declare -F yafp_resources_context >/dev/null; then
         yafp_resources_context
     fi
+    yafp_git_context "$last_exit"
     if declare -F yafp_codex_context >/dev/null; then
         yafp_codex_context
     fi
-    yafp_git_context "$last_exit"
     yafp_venv_context
     yafp_err_context "$last_exit"
 

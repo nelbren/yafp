@@ -16,7 +16,8 @@ function script:Write-YafpTheme {
 
     $userIcon = if ($Context.IsAdmin) { '' } else { '' }
     # Anterior: Write-Host "🪟 $userIcon " -ForegroundColor White -NoNewline
-    Write-Host " $userIcon " -ForegroundColor White -NoNewline
+    Write-YafpOsIcon -Context $Context
+    Write-Host " $userIcon " -ForegroundColor White -NoNewline
     $userColor = if ($Context.IsAdmin) { $redColorForeground } else { $cyanColorForeground }
     $userBackground = if ($Context.IsAdmin) { $redColorBackground } else { $cyanColorBackground }
     Write-YafpText -Text $Context.User -ForegroundColor $userColor `
@@ -36,15 +37,14 @@ function script:Write-YafpTheme {
         -BackgroundColor $yellowColorBackground -NoNewline
 
     if ($Context.Git) {
-        $remoteSymbol = if ($Context.Git.Remote -eq 'remote') { '' } else { '⇣' }
         Write-Host ' on ' -ForegroundColor White -NoNewline
         # Anterior: Write-YafpText -Text ''
         # Anterior (cuadrado): Write-YafpText -Text ''
-        Write-YafpText -Text '' `
-            -ForegroundColor $blueColorForeground `
-            -BackgroundColor $blueColorBackground -NoNewline
-        Write-YafpGitRemoteStatus -Git $Context.Git
-        Write-YafpText -Text "$($Context.Git.Branch)$remoteSymbol" `
+        if ($Context.Git.Remote -ne 'local') {
+            Write-YafpGitRemoteStatus -Git $Context.Git
+        }
+        Write-YafpGitBranchIcon -Git $Context.Git
+        Write-YafpText -Text $Context.Git.Branch `
             -ForegroundColor $blueColorForeground `
             -BackgroundColor $blueColorBackground -NoNewline
         $hasChanges = (
@@ -54,7 +54,6 @@ function script:Write-YafpTheme {
             $Context.Git.StagedCount -gt 0
         )
         if ($hasChanges) {
-            Write-Host ' with ' -ForegroundColor White -NoNewline
             Write-YafpGitCounts -Git $Context.Git
         }
     }

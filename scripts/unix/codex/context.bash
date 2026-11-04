@@ -20,7 +20,7 @@ yafp_codex_segment() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
     local value="$1" level
     local cells=('⡀' '⣀' '⣄' '⣤' '⣦' '⣶' '⣷' '⣿')
-    yafp_ctx_codex_token='֍N/A' yafp_ctx_codex_color=90
+    yafp_ctx_codex_token='֍dh' yafp_ctx_codex_color=91
     case "$value" in ''|*[!0-9]*|0?*|????*) return 0 ;; esac
     [ "$value" -le 100 ] || return 0
     yafp_ctx_codex_color=91
@@ -79,7 +79,7 @@ yafp_codex_context() {
     fi
     if [ -n "${YAFP_CODEX_PID:-}" ] && kill -0 "$YAFP_CODEX_PID" 2>/dev/null; then
         if [ "$sampled" != 1 ]; then
-            yafp_ctx_codex_token='֍⟳d⟳h' yafp_ctx_codex_state=pending
+            yafp_ctx_codex_token='֍⟳d⟳h' yafp_ctx_codex_state=pending yafp_ctx_codex_color=90
         fi
         yafp_ctx_codex=$yafp_ctx_codex_token
         return 0
@@ -103,7 +103,7 @@ yafp_codex_context() {
         } >/dev/null 2>&1
     fi
     if [ "$sampled" = 0 ] && [ -n "${YAFP_CODEX_PID:-}" ]; then
-        yafp_ctx_codex_token='֍⟳d⟳h' yafp_ctx_codex_state=pending
+        yafp_ctx_codex_token='֍⟳d⟳h' yafp_ctx_codex_state=pending yafp_ctx_codex_color=90
     fi
     yafp_ctx_codex=$yafp_ctx_codex_token
     return 0
@@ -145,9 +145,11 @@ yafp-codex() {
             reset_color=93
         fi
     fi
+    local remaining_color=90
+    [ "$yafp_ctx_codex_remaining" = - ] || remaining_color=$yafp_ctx_codex_color
     printf -v report '        Reset: \033[%sm%s\033[0m\n        State: \033[%sm%s %s\033[0m\n    Remaining: \033[%sm%s\033[0m' \
         "$reset_color" "$reset_text" "$state_color" "$state_icon" "$yafp_ctx_codex_state" \
-        "$yafp_ctx_codex_color" "$remaining_text"
+        "$remaining_color" "$remaining_text"
     . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
     yafp_preview_frame "$report"
     if [ "$yafp_ctx_codex_state" = disabled ]; then

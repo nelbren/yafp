@@ -6,10 +6,6 @@
 YAFP_THEME_NAME="minimal"
 YAFP_THEME_VERSION="2.2"
 
-YAFP_COLOR_GIT_CHANGE_BG="YELLOW"
-YAFP_COLOR_GIT_CHANGE_FG="black"
-YAFP_COLOR_GIT_CHANGE_ATTRS=""
-
 
 theme_render_general_block() {
     emulate -L zsh -o KSH_ARRAYS
@@ -38,8 +34,9 @@ theme_render_general_block() {
 
     country_text="${OMP_GEOIP_COUNTRY:-}"
 
+    theme_render_os_icon
     local parts=(
-        "$SERVER_OS_EMOJI $YAFP_USER_ICON "
+        " $YAFP_USER_ICON "
         "$cUserPS1%n"
     )
     printf '%s' "${parts[@]}"
@@ -71,42 +68,25 @@ theme_render_general_block() {
 
 theme_render_git_block() {
     emulate -L zsh -o KSH_ARRAYS
-    local remote_symbol
     local remote_status
     local counts
     local cGitBranchPS1
-    local cNormalPS1
 
     [ "$yafp_ctx_git_has_repo" = "1" ] || return
 
     counts="$(theme_render_git_counts)"
-    remote_status="$(theme_render_git_remote_status)"
-    [ -z "$remote_status" ] || remote_status="${remote_status} "
+    remote_status=""
+    if [ "${yafp_ctx_git_remote:-}" != local ]; then
+        remote_status="$(theme_render_git_remote_status)"
+    fi
     cGitBranchPS1="$(ps1_wrap "$cGitBranch")"
-    cNormalPS1="$(theme_ps1_reset)"
-
-    if [ "$yafp_ctx_git_remote" = "remote" ]; then
-        remote_symbol="$YAFP_SYMBOL_REMOTE"
-    else
-        remote_symbol="$YAFP_SYMBOL_LOCAL"
-    fi
-
-    if [ -z "$counts" ]; then
-        text=""
-    else
-        text=" with "
-    fi
 
     local parts=(
         "$cSeparator on "
-        "$cGitBranchPS1"
-        "$YAFP_SYMBOL_GIT_EMOJI"
         "$remote_status"
+        "$(theme_render_git_branch_icon)"
         "$cGitBranchPS1"
         "${yafp_ctx_git_branch//\%/%%}"
-        "$YAFP_SYMBOL_GIT_DIR"
-        "$remote_symbol"
-        "${cSeparator}$text"
         "$counts"
     )
 

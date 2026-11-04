@@ -125,10 +125,14 @@ Ubuntu, and missing or unknown IDs use the Tux symbol ``.
 Unix server and client indicators use these glyphs;
 WSL, Cygwin, and Git Bash client indicators retain their environment markers.
 PowerShell uses the Windows glyph where its themes show an OS indicator.
+En `minimal` y `light`, el icono inicial usa el estado de CPU, RAM, swap y
+disco. Se muestra rojo si algún recurso está en rojo, amarillo si hay una
+advertencia y blanco en los demás casos. El rojo tiene prioridad. El icono
+permanece blanco mientras llega la primera muestra o si el monitoreo está
+desactivado.
 
-Repository markers use Git logo `` (`U+F1D3`) in all shells and themes.
-It replaces `` in minimal/light and `💾` before the repository name in default;
-the default theme's existing repository/branch separator stays unchanged.
+Repository markers use `` (`U+F1D3`) and `` (`U+F1D2`) in all shells and
+themes. The marker sits directly before the branch name.
 Directory markers use the open-folder glyph `` (`U+F07C`) instead of `⌂`.
 The current timestamp uses the clock glyph `` (`U+F017`) in all three themes.
 Previous glyph assignments remain commented beside the active code. The
@@ -139,7 +143,7 @@ Los iconos de estado, contadores Git, Python, usuario/equipo y diagnóstico
 usan Font Awesome mediante Nerd Fonts. El catálogo de glifos y sus códigos se
 encuentra en [FONTS.md](docs/FONTS.md#prompt-icons). Los códigos de salida,
 umbrales y significados permanecen iguales. Todos los temas usan `` y ``
-para éxito y error; `light` conserva `↯` y sus contadores numéricos; los archivos,
+para éxito y error. Los archivos,
 comandos y otros textos del usuario se muestran sin sustituir sus emojis.
 
 ### :bulb: Colors change according to
@@ -192,42 +196,40 @@ In the Bash `default` theme, only the repository name uses the same yellow
 highlight as its directory representation in PowerShell. The surrounding Git
 symbols and metadata keep the Git block color.
 
-The origin symbol distinguishes repositories by configuration:
-
-| Symbol | Themes               | Meaning                                |
-| ------ | -------------------- | -------------------------------------- |
-| `↯`    | `light`              | The repository has a configured remote |
-| ``    | `default`, `minimal` | The repository has a configured remote |
-| `⇣`    | All                  | The repository has no `origin` remote  |
-
-The `light` and `minimal` themes render the branch name in blue in both Bash
-and PowerShell, including when a remote countdown or status precedes it. In
-`light`, the adjacent repository-origin symbol keeps the neutral color.
+El icono Git se pega al nombre de la rama en los tres temas. `` indica
+que el repositorio tiene un remoto configurado. Se muestra en verde cuando
+la última comprobación tuvo éxito, en amarillo mientras no hay resultado
+y en rojo cuando la comprobación falla. `` en amarillo identifica un
+repositorio sin remoto.
 
 ### Indicator blocks
 
 Codex quota, machine resources, Git remote status, and Git change counters
-use bracketed frames in every shell and theme: `↤[…]` for Codex and
-`↦[…]` for the other indicators:
+use bracketed frames in every shell and theme.
 
 ```text
 USER↤[֍⣷5d9h]
 HOST↦[⣀▦⣶⣦⣿]
-↦[⣦] main↯↦[-1±2+3]
+[⡀]↤master↦[21]
+master↦[21]
 ```
 
-`↤` associates the username with its Codex quota; `↦` associates the other
-labels with their data. The arrows and brackets use the theme's
-Git delimiter colors; each inner indicator retains its own severity color.
+`↤` associates the username with its Codex quota and the remote frame with
+its branch. `↦` connects the hostname and branch to resources and changes.
+The arrows and brackets use the theme's Git delimiter colors. Each inner
+indicator retains its own severity color.
 Codex keeps the reset countdown attached to its value, and resources keep
 their configured separators. The Git remote countdown and status are adjacent
-inside one frame: symbolic `↦[⣦]` or numeric `↦[(175)]`. Refresh,
+inside one frame: symbolic `[⣦]↤` or numeric `[(175)]↤`. Refresh,
 tracking, warning, and error states use the same frame. Empty remote and
 counter blocks produce no frame. The `light` theme retains its clean-worktree
 check mark, while the other themes retain their existing clean-state behavior.
-Counter labels and emoji remain theme-specific inside the common frame.
-The remote frame touches the preceding Git marker, as in `↦[⣦]`,
-with a space after the frame before the branch name.
+Todos los temas muestran los cambios como `↦[123]`. Los iconos
+``, `` y `` identifican eliminados, modificados y nuevos con texto
+rojo, amarillo y cian sobre fondo transparente. La cantidad va pegada
+a cada icono.
+El marco remoto precede al icono Git y a la rama, sin espacios entre ellos.
+Un repositorio sin remoto omite el marco.
 
 `` marks a background refresh in Git and machine resources. `⟳` is a
 placeholder for the first pending values in machine resources and Codex quota.
@@ -369,7 +371,7 @@ theme:
 | Swap           | ≤10%  | >10%   | >30% |
 
 Red takes precedence over yellow. Thresholds use the actual integer percentage
-even in Braille mode; unavailable values appear in gray. The prompt omits
+even in Braille mode; unavailable values appear in red. The prompt omits
 sample age to keep the host block compact. `yafp-resources` still reports age:
 `17s` means seconds elapsed since sampling, rather than a countdown to the
 next update. The gray Font Awesome icon `` (`U+F021`, refresh) inside the
@@ -378,8 +380,10 @@ value without a space, for example `↦[⣷▦⣦⡀⣿]`.
 While the first sample loads, the prompt displays `↦[⟳▦⟳⟳⟳]` in
 Unicode + symbols mode, or `↦[C⟳ R⟳ S⟳ D⟳]` with the default styles.
 Loading tokens use gray and follow the configured labels and spacing, without
-a trailing ``. Unavailable prompt metrics appear as `N/A`, never as an
-invented zero. A swap total of zero means
+a trailing ``. Las métricas ausentes del prompt usan `` en rojo, nunca un cero
+inventado. Sin muestra válida, se conservan las cuatro etiquetas:
+`↦[▦]` en Unicode + símbolos o `↦[C R S D]`
+con los estilos predeterminados. A swap total of zero means
 no swap/pagefile is allocated: this appears as `S0%` or `0%`, or the
 minimum cell in symbolic mode.
 
@@ -422,13 +426,29 @@ If a session's temporary resource directory disappears, the next scheduled
 refresh creates a new private directory and resumes sampling automatically.
 An already running worker finishes before a replacement is started.
 
+Para comparar los colores con porcentajes simulados, ejecuta
+`yafp-demo-resources`. El comando prueba CPU por defecto. También acepta
+`MEMORY`, `SWAP`, `DISK` y `ALL`.
+
+```text
+yafp-demo-resources ALL
+```
+
+La vista muestra tres filas por recurso con el icono del sistema en blanco,
+amarillo y rojo. `ALL` agrupa las doce filas en orden CPU, MEMORY, SWAP y DISK.
+Una línea en blanco separa los grupos.
+El icono y el bloque de recursos empiezan en la misma columna en cada fila.
+Usa el formato de recursos configurado en la sesión y no cambia la
+muestra real. Funciona en Bash, zsh y PowerShell, incluso con el monitoreo
+desactivado.
+
 macOS uses `sysctl`, `vm_stat`, two `top` samples one second apart, and `df`.
 RAM is an estimate of occupied physical memory that excludes free, inactive,
 and speculative pages; it can differ from Activity Monitor. Linux/WSL2 uses
 `MemTotal - MemAvailable`, swap from `/proc/meminfo`, and two `/proc/stat`
 samples 200 ms apart. Windows uses CIM/WMI and allocated pagefiles from a
 PowerShell 7 thread job. In Git Bash, metrics without a native probe appear
-as `N/A`; disk usage still uses `df`. Disk reports capacity, without measuring
+as ``; disk usage still uses `df`. Disk reports capacity, without measuring
 I/O latency or saturation.
 
 All probes run in the background with isolated input and output. Rendering
@@ -442,8 +462,8 @@ investigate memory pressure, Activity Monitor also considers the swap rate,
 wired memory, and file cache:
 [Apple memory guide](https://support.apple.com/guide/activity-monitor/view-memory-usage-actmntr1004/mac).
 
-All prompt, diagnostic, and test messages are in English. Unavailable values
-use `N/A` in resource and Codex prompt indicators. Los cuadros de
+Los mensajes del prompt, diagnóstico y pruebas están en inglés. Los valores
+ausentes usan `` en rojo en los indicadores de recursos y Codex. Los cuadros de
 `yafp-resources` y `yafp-codex` usan `` en gris para los datos no disponibles.
 
 ### Background Codex quota
@@ -504,8 +524,8 @@ The value is `100 - usedPercent`, rounded down, for the `codex` bucket. When
 both primary and secondary windows are available, the smaller remaining
 percentage wins. Other model buckets are ignored. The legacy single-bucket
 response is supported. Missing windows are ignored; if neither is available,
-the token is `֍N/A` in gray. A missing CLI, missing Python, logged-out or API-key
-session, request error, or timeout also produces `֍N/A`, never a false 0%.
+the token is `֍dh` in red. A missing CLI, missing Python, logged-out or API-key
+session, request error, or timeout also produces `֍dh`, never a false 0%.
 
 The value is immediately followed by the time until that same window resets,
 without a separator: `֍75%5d9h` or `֍⣷5d9h`. Ties in remaining percentage select
@@ -520,12 +540,19 @@ Requests have a ten-second deadline in the worker. Rendering reads the cached
 result without waiting or accessing the network. The initial prompt can show
 `֍⟳d⟳h` in gray until the first result is collected at a later prompt. The
 `d`/`h` structure anticipates the reset countdown without inventing a duration.
-Once available, the real countdown uses the units appropriate to its duration.
+Si no hay datos disponibles, `֍dh` conserva la estructura de días/horas
+sin inventar una cuota ni un plazo. Once available, the real countdown uses
+the units appropriate to its duration.
 Each session keeps at most one quota worker, and reloads reuse it. In zsh, the
 worker is disowned
 at launch to suppress job notifications. There is no persistent polling timer
 or redraw while typing. The last sample remains visible during a refresh;
-a failed refresh replaces it with `֍N/A`.
+a failed refresh replaces it with `֍dh`.
+
+El prompt muestra `` en verde para Git al día y `⟳` en gris mientras espera
+la primera comprobación. Al anunciar una conexión, YAFP adelanta la próxima
+revisión de Codex si está habilitada. Si ya hay una consulta de Codex en curso,
+la revisión adelantada comienza después de que termine.
 On Unix, a missing temporary quota directory is recreated on the next
 scheduled refresh, after any active worker finishes.
 
@@ -653,15 +680,15 @@ of the branch symbol and to the left of the branch name:
 | ``       | Black / intense yellow | Refreshing cached state                |
 | `⇣N`      | White / red            | Behind: `N` commits need integration   |
 | `⇡N⇣M`    | White / red            | Diverged: unique commits on both sides |
-| ``       | White / intense red    | Remote check failed                    |
+| ``       | White / red            | Remote check failed                    |
 
 The `` indicator can precede the last known state while YAFP refreshes it,
 for example `` or `⇣2`. Warning expansions and compact indicators use black
 text on an intense yellow background. Error expansions and behind/diverged
 indicators use intense white text on a red background. The compact connectivity
 icon `` (`U+F1EB`) uses intense green on a transparent background. The
-compact failure icon `` (`U+F072`) uses intense white on intense red while
-the remote error alert is active, independently of `YAFP_DARKC`. Acknowledged
+compact failure icon `` (`U+F072`) shares the white text and red background
+of the active remote error banner. Acknowledged
 errors use intense red on a transparent background. Their previous glyphs
 remain commented in the code.
 `YAFP_DARKC` selects the dark or bright
@@ -686,8 +713,9 @@ between the terminal edges at the compact indicator's current column. Narrow
 or crowded prompts automatically use ` PUSH PENDING: N`,
 ` PULL PENDING: N`, or
 ` DIVERGED: ⇡N ⇣M`; all variants retain the centered `( … )` presentation.
-Bash keeps a small right-edge safety margin for terminals that report stale
-columns or render prompt glyphs wider than their Unicode cell estimate.
+Cuando el indicador se acerca al borde derecho, YAFP desplaza el aviso hacia
+la izquierda para que quepa en su fila. También calcula cuántas filas debe
+subir si el prefijo del prompt se ha partido en varias líneas.
 
 After the first fresh successful check, or after connectivity recovers from an
 offline state, YAFP displays
@@ -696,8 +724,9 @@ background above the compact remote indicator.
 Green banners use exact RGB `#008000` with white `#FFFFFF` text; yellow
 banners use `#FFFF00` with black text in Bash and PowerShell. These banners
 use ANSI true color so a customized terminal palette cannot change their tones.
-The compact `` keeps intense green text on a transparent background during
-the announcement and on later prompts. The connection
+The compact `` shares the banner’s white text and green background on that
+prompt. On later prompts it uses intense green on a transparent background.
+The connection
 expansion appears once per offline-to-online transition; reloading YAFP does
 not duplicate the current state. If the recovered result is ahead, behind, or
 diverged, the connection expansion takes precedence for one prompt and the
@@ -714,14 +743,14 @@ The detailed `yafp-status` report uses the same severity colors: current is
 intense green; ahead, checking, and refreshing are intense yellow; and behind,
 diverged, and remote-check errors are intense red.
 
-For example, `↦[(250)⇡1] master` means that the local branch is one commit
+For example, `[(250)⇡1]↤master` means that the local branch is one commit
 ahead and the next remote check will run in 250 seconds. When the countdown
-reaches zero, the display can temporarily become `↦[(0)⇡1] master` while the
+reaches zero, the display can temporarily become `[(0)⇡1]↤master` while the
 background refresh completes.
 
 A successful `git push`, `git fetch`, or `git pull` bypasses the remaining
 countdown and requests an immediate background refresh. The prompt temporarily
-shows `` immediately before the last known state, as in `↦[(0)]` with a
+shows `` immediately before the last known state, as in `[(0)]↤` with a
 numeric countdown; after the worker completes, the next
 prompt displays the new state and restarts the configured countdown. Failed
 commands and incidental text such as `echo "git push"` do not reset it. This
@@ -908,6 +937,7 @@ Use `yafp-help` to list the main YAFP commands with a short description:
 │ yafp-help • Show available YAFP commands.                           │
 │ yafp-codex • Show cached Codex quota and authentication status.     │
 │ yafp-resources • Show the latest RAM, swap, CPU, and disk sample.   │
+│ yafp-demo-resources • Simulate resource load and colors.            │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1391,6 +1421,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-03 00:16:15 🍎 MBP02 |
+📆 2026-11-03 19:39:00 🍎 MBP02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

@@ -44,8 +44,7 @@ else {
 function script:Write-YafpGitCounts {
     param(
         [Parameter(Mandatory)]
-        [object]$Git,
-        [switch]$Plain
+        [object]$Git
     )
 
     if ($Git.DeleteCount -le 0 -and $Git.ChangeCount -le 0 -and
@@ -59,18 +58,15 @@ function script:Write-YafpGitCounts {
     Write-YafpText -Text '↦[' -ForegroundColor $frameForeground `
         -BackgroundColor $frameBackground -NoNewline
     if ($Git.DeleteCount -gt 0) {
-        $prefix = if ($Plain) { '' } else { '' }
-        Write-YafpText -Text "$prefix-$($Git.DeleteCount)" `
+        Write-YafpText -Text "$($Git.DeleteCount)" `
             -ForegroundColor Red -BackgroundColor $null -NoNewline
     }
     if ($Git.ChangeCount -gt 0) {
-        $prefix = if ($Plain) { '' } else { '' }
-        Write-YafpText -Text "$prefix±$($Git.ChangeCount)" `
+        Write-YafpText -Text "$($Git.ChangeCount)" `
             -ForegroundColor Yellow -BackgroundColor $null -NoNewline
     }
     if ($Git.NewCount -gt 0) {
-        $prefix = if ($Plain) { '' } else { '' }
-        Write-YafpText -Text "$prefix+$($Git.NewCount)" `
+        Write-YafpText -Text "$($Git.NewCount)" `
             -ForegroundColor Cyan -BackgroundColor $null -NoNewline
     }
     if ($Git.StagedCount -gt 0) {
@@ -94,14 +90,16 @@ function script:Write-YafpTheme {
     Write-YafpRemoteExpansionRow -Context $Context
 
     if ($Context.Git) {
-        $remoteSymbol = if ($Context.Git.Remote -eq 'remote') { '' } else { '⇣' }
         # Anterior: Write-YafpText -Text "[🔛$($Context.Git.LastTimestamp)💾$($Context.Git.Repository)ᚼ"
         # Anterior (cuadrado): Write-YafpText -Text "[🔛$($Context.Git.LastTimestamp)$($Context.Git.Repository)ᚼ"
-        Write-YafpText -Text "[🔛$($Context.Git.LastTimestamp)$($Context.Git.Repository)ᚼ" `
+        Write-YafpText -Text "[🔛$($Context.Git.LastTimestamp) $($Context.Git.Repository)ᚼ" `
             -ForegroundColor $grayColorForeground `
             -BackgroundColor $grayColorBackground -NoNewline
-        Write-YafpGitRemoteStatus -Git $Context.Git
-        Write-YafpText -Text "$($Context.Git.Branch)$remoteSymbol" `
+        if ($Context.Git.Remote -ne 'local') {
+            Write-YafpGitRemoteStatus -Git $Context.Git
+        }
+        Write-YafpGitBranchIcon -Git $Context.Git
+        Write-YafpText -Text $Context.Git.Branch `
             -ForegroundColor $grayColorForeground `
             -BackgroundColor $grayColorBackground -NoNewline
         Write-YafpGitCounts -Git $Context.Git

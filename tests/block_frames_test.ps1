@@ -49,23 +49,23 @@ try {
                 $git.RemoteStatus.State = 'current'; $git.RemoteStatus.RefreshIn = 175
                 $out = (@(Write-YafpGitRemoteStatus -Git $git 6>&1) | ForEach-Object { "$_" }) -join ''
                 $out = $out -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
-                $expected = if ($style -eq 'symbols') { '↦[⣦]' } else { '↦[(175)]' }
+                $expected = if ($style -eq 'symbols') { '[⣦]↤' } else { '[(175)]↤' }
                 if ($out.TrimEnd() -ne $expected) { throw "Remote frame mismatch: $theme/$style/$out" }
             }
             $git.RemoteStatus.RefreshIn = $null
             $git.RemoteStatus.State = 'current'; $git.RemoteStatus.Refreshing = $true
             $out = (@(Write-YafpGitRemoteStatus -Git $git 6>&1) | ForEach-Object { "$_" }) -join ''
             $out = $out -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
-            if ($out.TrimEnd() -ne '↦[]') { throw "Refresh icon spacing: $theme/$out" }
+            if ($out.TrimEnd() -ne '[]↤') { throw "Refresh icon spacing: $theme/$out" }
             $git.RemoteStatus.Refreshing = $false
             foreach ($case in @(
-                @('no-commits', '○0'), @('no-upstream', '⇡?'), @('checking', '…'),
+                @('no-commits', '○0'), @('no-upstream', '⇡?'), @('checking', '⟳'),
                 @('ahead', '⇡2'), @('behind', '⇣3'), @('diverged', '⇡2⇣3'), @('error', '')
             )) {
                 $git.RemoteStatus.State = $case[0]
                 $out = (@(Write-YafpGitRemoteStatus -Git $git 6>&1) | ForEach-Object { "$_" }) -join ''
                 $out = $out -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
-                if ($out.TrimEnd() -ne "↦[$($case[1])]") { throw "State frame mismatch: $theme/$($case[0]): [$out]" }
+                if ($out.TrimEnd() -ne "[$($case[1])]↤") { throw "State frame mismatch: $theme/$($case[0]): [$out]" }
             }
             $git.RemoteStatus.State = ''
             $out = (@(Write-YafpGitRemoteStatus -Git $git 6>&1) | ForEach-Object { "$_" }) -join ''
@@ -84,11 +84,8 @@ try {
                 throw "Python/staged glyph missing or environment name changed: $theme"
             }
             if (-not $out.Contains('')) { throw "Success glyph missing: $theme" }
-            if ($theme -ne 'light') {
-                if (-not $out.Contains('-1') -or -not $out.Contains('±2') -or
-                    -not $out.Contains('+3') -or -not $out.Contains('') -or -not $out.Contains('')) {
-                    throw "Git counter, remote, or success glyph missing: $theme"
-                }
+            if (-not $out.Contains('↦[1234]')) {
+                throw "Git counter format mismatch: $theme/$out"
             }
             if ($theme -eq 'default' -and -not $out.Contains('echo ⚠️')) {
                 throw 'Command marker must not alter command text'
@@ -110,11 +107,14 @@ try {
             if ($theme -ne 'default' -and (-not $out.Contains(' ') -or $out.Contains('🪟'))) {
                 throw "Windows font glyph missing: $theme"
             }
-            $gitIndicator = if ($theme -eq 'default') { 'ᚼ' } else { '' }
-            if (-not $out.Contains("$gitIndicator↦[")) { throw "Space between Git marker and remote frame: $theme" }
-            if ([regex]::Matches($out, '↦\[').Count -ne 2 -or $out.Contains('↦[↦[')) {
-                throw "Missing or nested Git frames: $theme/$out"
+            if (-not $out.Contains(']↤main↦[')) { throw "Branch indicator adjacency: $theme/$out" }
+            $remote = $git.RemoteStatus
+            $git.Remote = 'local'; $git.RemoteStatus = $null
+            $local = (@(Write-YafpTheme -Context $context 6>&1) | ForEach-Object { "$_" }) -join ''
+            if (-not $local.Contains('main↦[') -or $local.Contains(']↤') -or $local.Contains('↯')) {
+                throw "Local branch indicator: $theme/$local"
             }
+            $git.Remote = 'remote'; $git.RemoteStatus = $remote
             function Write-YafpText {
                 param([string]$Text, [object]$ForegroundColor, [object]$BackgroundColor, [switch]$NoNewline)
                 $script:frameWrites.Add([pscustomobject]@{
@@ -125,20 +125,32 @@ try {
             try {
                 $script:frameWrites.Clear()
                 $null = Write-YafpGitRemoteStatus -Git $git 6>&1
-                $null = Write-YafpGitCounts -Git $git -Plain 6>&1
-                $frames = @($script:frameWrites | Where-Object { $_.Text -in @('↦[', ']') })
+                $null = Write-YafpGitCounts -Git $git 6>&1
+                $frames = @($script:frameWrites | Where-Object { $_.Text -in @('↦[', '[', ']', ']↤') })
                 if ($frames.Count -ne 4) { throw 'Expected a single frame per block' }
                 foreach ($frame in $frames) {
                     if ($frame.Foreground -ne $foreground -or $frame.Background -ne $background -or -not $frame.NoNewline) {
                         throw "Frame color mismatch: $theme/$dark"
                     }
                 }
-                foreach ($case in @(@('', 'Green'), @('-1', 'Red'), @('±2', 'Yellow'), @('+3', 'Cyan'))) {
+                foreach ($case in @(@('', 'Green'), @('1', 'Red'), @('2', 'Yellow'), @('3', 'Cyan'))) {
                     $token = @($script:frameWrites | Where-Object Text -EQ $case[0])
                     if ($token.Count -ne 1 -or $token[0].Foreground -ne $case[1] -or $null -ne $token[0].Background) {
                         throw "Token color changed: $($case[0])"
                     }
                 }
+                $script:frameWrites.Clear()
+                foreach ($case in @(@('current', 'Green'), @('checking', 'Yellow'), @('error', 'Red'), @('local', 'Yellow'))) {
+                    $git.RemoteStatus.State = $case[0]
+                    $git.Remote = if ($case[0] -eq 'local') { 'local' } else { 'remote' }
+                    $script:frameWrites.Clear()
+                    Write-YafpGitBranchIcon -Git $git
+                    $icon = if ($git.Remote -eq 'local') { '' } else { '' }
+                    if ($script:frameWrites[0].Text -ne $icon -or $script:frameWrites[0].Foreground -ne $case[1]) {
+                        throw "Branch icon color: $($case[0])"
+                    }
+                }
+                $git.Remote = 'remote'; $git.RemoteStatus.State = 'current'
                 $script:frameWrites.Clear()
                 $git.RemoteStatus.Refreshing = $true
                 $null = Write-YafpGitRemoteStatus -Git $git 6>&1
@@ -156,7 +168,7 @@ try {
                     $null = Write-YafpGitRemoteStatus -Git $git 6>&1 | Out-String
                     $icon = $script:frameWrites | Where-Object Text -EQ '' | Select-Object -Last 1
                     $expectedForeground = if ($acknowledged) { 'Red' } else { 'White' }
-                    $expectedBackground = if ($acknowledged) { $null } else { 'Red' }
+                    $expectedBackground = if ($acknowledged) { $null } else { (Get-YafpSeverityStyle -Severity error).Background }
                     if ($icon.Foreground -ne $expectedForeground -or $icon.Background -ne $expectedBackground) {
                         throw "Offline highlight mismatch: $theme/$dark/$acknowledged"
                     }

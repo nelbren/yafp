@@ -309,7 +309,8 @@ expected_help="$(printf '%s\n' \
     'yafp-msgs • Show all prompt banners in severity order.' \
     'yafp-help • Show available YAFP commands.' \
     'yafp-codex • Show cached Codex quota and authentication status.' \
-    'yafp-resources • Show the latest RAM, swap, CPU, and disk sample.')"
+    'yafp-resources • Show the latest RAM, swap, CPU, and disk sample.' \
+    'yafp-demo-resources • Simulate resource load and colors.')"
 assert_eq "$expected_help" "$(framed_output yafp-help)" 'yafp-help output'
 
 expected_messages=''
@@ -509,7 +510,7 @@ set +u
 indicator="$(theme_render_git_remote_status)"
 set -u
 case "$indicator" in
-    *'…'*) ;;
+    *'⟳'*) ;;
     *) fail 'checking indicator was not rendered' ;;
 esac
 
@@ -537,7 +538,7 @@ set +u
 indicator="$(theme_render_git_remote_status)"
 set -u
 case "$indicator" in
-    *'↦['*'('*')'*'⇣1'*']'*) ;;
+    *'['*'('*')'*'⇣1'*']↤'*) ;;
     *) fail 'behind indicator was not rendered' ;;
 esac
 
@@ -696,12 +697,16 @@ yafp_remote_context "$TEST_ROOT/local" main
 
 YAFP_REMOTE_CONNECTIVITY_STATE=offline
 YAFP_SESSION_STARTED_AT=0
+YAFP_CODEX_ATTEMPT=123
 yafp_remote_context "$TEST_ROOT/local" main
 assert_eq 1 "$yafp_ctx_git_remote_connection_announcement" \
     'first recovered remote check announces internet connection'
+assert_eq '' "$YAFP_CODEX_ATTEMPT" 'connection makes Codex due'
+YAFP_CODEX_ATTEMPT=124
 yafp_remote_context "$TEST_ROOT/local" main
 assert_eq 0 "$yafp_ctx_git_remote_connection_announcement" \
     'internet connection is announced only once per transition'
+assert_eq 124 "$YAFP_CODEX_ATTEMPT" 'steady connection preserves Codex interval'
 YAFP_REMOTE_CONNECTIVITY_STATE=offline
 yafp_remote_context "$TEST_ROOT/local" main
 assert_eq 1 "$yafp_ctx_git_remote_connection_announcement" \
@@ -719,7 +724,7 @@ case "$indicator" in
     *) fail 'connection announcement was not rendered' ;;
 esac
 case "$indicator" in
-    *"$cRemoteConnection"'(  INTERNET CONNECTION )'*"$(ps1_wrap "$cRemoteOk")"''*) ;;
+    *"$cRemoteConnection"'(  INTERNET CONNECTION )'*"$(ps1_wrap "$cRemoteConnection")"''*) ;;
     *) fail 'connection transition is not intense white on normal green' ;;
 esac
 yafp_ctx_git_remote_connection_announcement=0
@@ -789,8 +794,8 @@ case "$indicator" in
     *) fail 'offline indicator was not rendered' ;;
 esac
 case "$indicator" in
-    *"$(ps1_wrap "$cRemoteFailure")"''*) ;;
-    *) fail 'Unacknowledged offline icon must be intense white on intense red' ;;
+    *"$(ps1_wrap "$cRemoteProblem")"''*) ;;
+    *) fail 'Offline icon must use the error banner style' ;;
 esac
 case "$warning" in
     '\n') ;;

@@ -6,6 +6,7 @@
 
 Set-StrictMode -Version Latest
 
+$script:YafpRemoteExpansionRow = $null
 $script:YafpScriptPath = $PSCommandPath
 $script:YafpRoot = Split-Path -Parent $script:YafpScriptPath
 $cfg = Join-Path $script:YafpRoot 'yafp-cfg.ps1'
@@ -786,6 +787,7 @@ function Get-YafpRemoteContext {
         $remoteContext.State -in @('current', 'ahead', 'behind', 'diverged')) {
         $announceConnection = `
             $script:YafpRemoteConnectivityState -ne 'online'
+        if ($announceConnection) { $script:YafpCodexAttempt = $null }
         $script:YafpRemoteConnectivityState = 'online'
         $script:YafpRemoteOfflineAcknowledged = $false
     }
@@ -1142,6 +1144,7 @@ function Show-YafpHelp {
         @{ Name = 'yafp-help'; Description = 'Show available YAFP commands.' }
         @{ Name = 'yafp-codex'; Description = 'Show cached Codex quota and authentication state.' }
         @{ Name = 'yafp-resources'; Description = 'Show the latest RAM, swap, CPU, and disk sample.' }
+        @{ Name = 'yafp-demo-resources'; Description = 'Simulate resource load and colors.' }
     )) {
         Write-YafpText -Text $entry.Name -ForegroundColor Yellow `
             -BackgroundColor $null -NoNewline
@@ -1294,7 +1297,7 @@ function Write-YafpGitRemoteStatus {
         'ahead' { "⇡$($remote.Ahead)" }
         'behind' { "⇣$($remote.Behind)" }
         'diverged' { "⇡$($remote.Ahead)⇣$($remote.Behind)" }
-        'checking' { '…' }
+        'checking' { '⟳' }
         # Anterior: 'error' { '☒🌐︎' }
         'error' { '' }
         default { '' }
@@ -1312,7 +1315,7 @@ function Write-YafpGitRemoteStatus {
         $frameForeground = $script:grayColorForeground
         $frameBackground = $script:grayColorBackground
     }
-    Write-YafpText -Text '↦[' -ForegroundColor $frameForeground `
+    Write-YafpText -Text '[' -ForegroundColor $frameForeground `
         -BackgroundColor $frameBackground -NoNewline
     if ($countdown) {
         Write-YafpText -Text $countdown `
@@ -1328,41 +1331,55 @@ function Write-YafpGitRemoteStatus {
     }
 
     if (-not $text) {
-        Write-YafpText -Text ']' -ForegroundColor $frameForeground `
+        Write-YafpText -Text ']↤' -ForegroundColor $frameForeground `
             -BackgroundColor $frameBackground -NoNewline
-        Write-Host ' ' -NoNewline
         return
     }
 
-    Write-YafpRemoteExpansion -Remote $remote -IndicatorText $text
+    $connectionStyle = $null
+    Write-YafpRemoteExpansion -Remote $remote -IndicatorText $text -ConnectionStyle ([ref]$connectionStyle)
 
     if ($remote.State -eq 'current') {
-        Write-YafpText -Text $text -ForegroundColor Green `
-            -BackgroundColor $null -NoNewline
+        $foreground = if ($connectionStyle) { $connectionStyle.Foreground } else { 'Green' }
+        $background = if ($connectionStyle) { $connectionStyle.Background } else { $null }
+        Write-YafpText -Text $text -ForegroundColor $foreground -BackgroundColor $background -NoNewline
     }
-    elseif ($remote.State -in @('no-commits', 'no-upstream', 'ahead', 'checking')) {
+    elseif ($remote.State -eq 'checking') {
+        Write-YafpText -Text $text -ForegroundColor DarkGray -BackgroundColor $null -NoNewline
+    }
+    elseif ($remote.State -in @('no-commits', 'no-upstream', 'ahead')) {
         $style = Get-YafpSeverityStyle -Severity warning
         Write-YafpText -Text $text -ForegroundColor $style.Foreground `
             -BackgroundColor $style.Background -NoNewline
     }
-    elseif ($remote.State -eq 'error') {
-        if ($script:YafpRemoteOfflineAcknowledged) {
-            Write-YafpText -Text $text -ForegroundColor Red `
-                -BackgroundColor $null -NoNewline
-        }
-        else {
-            Write-YafpText -Text $text -ForegroundColor White `
-                -BackgroundColor Red -NoNewline
-        }
+    elseif ($remote.State -eq 'error' -and $script:YafpRemoteOfflineAcknowledged) {
+        Write-YafpText -Text $text -ForegroundColor Red `
+            -BackgroundColor $null -NoNewline
     }
     else {
         $style = Get-YafpSeverityStyle -Severity error
         Write-YafpText -Text $text -ForegroundColor $style.Foreground `
             -BackgroundColor $style.Background -NoNewline
     }
-    Write-YafpText -Text ']' -ForegroundColor $frameForeground `
+    Write-YafpText -Text ']↤' -ForegroundColor $frameForeground `
         -BackgroundColor $frameBackground -NoNewline
-    Write-Host ' ' -NoNewline
+}
+
+function Write-YafpGitBranchIcon {
+    param([Parameter(Mandatory)][object]$Git)
+
+    $icon = ''
+    $color = 'Yellow'
+    if ($Git.Remote -eq 'local') {
+        $icon = ''
+    }
+    elseif ($Git.RemoteStatus) {
+        switch ($Git.RemoteStatus.State) {
+            { $_ -in @('current', 'ahead', 'behind', 'diverged') } { $color = 'Green' }
+            'error' { $color = 'Red' }
+        }
+    }
+    Write-YafpText -Text $icon -ForegroundColor $color -BackgroundColor $null -NoNewline
 }
 
 function Get-YafpRemoteCountdownIndicator {
@@ -1406,11 +1423,17 @@ function Get-YafpRemoteCountdownIndicator {
 function Write-YafpRemoteExpansionRow {
     param([Parameter(Mandatory)][object]$Context)
 
+    $script:YafpRemoteExpansionRow = $null
     if (-not $Context.Git -or -not $Context.Git.RemoteStatus) {
+        return
+    }
+    if ($Context.Git.PSObject.Properties['Remote'] -and $Context.Git.Remote -eq 'local') {
         return
     }
 
     if (Test-YafpRemoteExpansion -Remote $Context.Git.RemoteStatus) {
+        try { $script:YafpRemoteExpansionRow = $Host.UI.RawUI.CursorPosition.Y }
+        catch { $script:YafpRemoteExpansionRow = $null }
         Write-Host
     }
 }
@@ -1475,7 +1498,8 @@ function Get-YafpCursorColumn {
 function Write-YafpRemoteExpansion {
     param(
         [Parameter(Mandatory)][object]$Remote,
-        [Parameter(Mandatory)][string]$IndicatorText
+        [Parameter(Mandatory)][string]$IndicatorText,
+        [ref]$ConnectionStyle
     )
 
     $announceConnection = $Remote.PSObject.Properties[
@@ -1539,21 +1563,29 @@ function Write-YafpRemoteExpansion {
     }
 
     if ([string]::IsNullOrEmpty($message)) { return }
-    $message = Get-YafpExpansionMessage `
-        -LongMessage $message -ShortMessage $message `
-        -IndicatorColumn $indicatorColumn -IndicatorWidth $indicatorWidth
-    if ([string]::IsNullOrEmpty($message)) { return }
     $banner = "( $message )"
-    $left = [Math]::Max(
-        0,
-        [Math]::Floor(($banner.Length - $indicatorWidth) / 2)
-    )
+    $left = [Math]::Max(0, [Math]::Floor(($banner.Length - $indicatorWidth) / 2))
+    $terminalWidth = 80
+    $rows = 1
+    try {
+        $width = $Host.UI.RawUI.WindowSize.Width
+        if ($width -gt 0) { $terminalWidth = $width }
+        if ($null -ne $script:YafpRemoteExpansionRow) {
+            $rows = [Math]::Max(1, $Host.UI.RawUI.CursorPosition.Y - $script:YafpRemoteExpansionRow)
+        }
+    }
+    catch { $rows = 1 }
+    if ($banner.Length -ge $terminalWidth) { return }
+    $left = [Math]::Max($left, $indicatorColumn - ($terminalWidth - $banner.Length))
     $escape = [char]27
     $moveLeft = if ($left -gt 0) { "$escape[$($left)D" } else { '' }
-    Write-Host "$escape[s$escape[1A$moveLeft" -NoNewline
+    Write-Host "$escape[s$escape[$($rows)A$moveLeft" -NoNewline
     Write-YafpText -Text $banner -ForegroundColor $style.Foreground `
         -BackgroundColor $style.Background -NoNewline
     Write-Host "$escape[u" -NoNewline
+    if ($announceConnection -and $null -ne $ConnectionStyle) {
+        $ConnectionStyle.Value = $style
+    }
 }
 
 function Get-YafpSeverityStyle {
@@ -1690,7 +1722,8 @@ function Get-YafpGitContext {
         $gitRepoUrl = git remote get-url origin 2>$null
         if ([string]::IsNullOrWhiteSpace($gitRepoUrl)) {
             $repo = Split-Path $top -Leaf
-            $remote = 'local'
+            $remoteNames = git remote 2>$null
+            $remote = if ($remoteNames) { 'remote' } else { 'local' }
         }
         else {
             $lastPart = $gitRepoUrl -split '[\\/]' | Select-Object -Last 1
@@ -1765,6 +1798,7 @@ Set-Alias -Name yafp-stats -Value Show-YafpStats -Scope Global -Force
 Set-Alias -Name yafp-msgs -Value Show-YafpMessages -Scope Global -Force
 Set-Alias -Name yafp-codex -Value Show-YafpCodex -Scope Global -Force
 Set-Alias -Name yafp-resources -Value Show-YafpResources -Scope Global -Force
+Set-Alias -Name yafp-demo-resources -Value Show-YafpDemoResources -Scope Global -Force
 
 Import-YafpTheme
 $script:YafpLoadedCommit = Get-YafpCurrentCommit

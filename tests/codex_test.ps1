@@ -152,6 +152,22 @@ try {
     $savedAttempt = $script:YafpCodexAttempt
     try {
         $script:YafpCodexAttempt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        foreach ($theme in @('default', 'minimal', 'light')) {
+            $global:YAFP_THEME = $theme
+            Import-YafpTheme
+            foreach ($style in @('percent', 'symbols')) {
+                $global:YAFP_CODEX_VALUE_STYLE = $style
+                foreach ($state in @('missing-cli', 'missing-python', 'logged-out', 'unsupported-auth', 'timeout', 'unavailable')) {
+                    $script:YafpCodexSample = [pscustomobject]@{ State = $state; Remaining = $null }
+                    $context = Get-YafpCodexContext
+                    $output = (@(Write-YafpCodex -Context ([pscustomobject]@{ Codex = $context }) 6>&1) |
+                        ForEach-Object { "$_" }) -join ''
+                    if ($output -ne '↤[֍dh]' -or $context.Foreground -ne 'Red') {
+                        throw "Incorrect unavailable quota frame: $theme/$style/$state/$output"
+                    }
+                }
+            }
+        }
         $global:YAFP_CODEX_VALUE_STYLE = 'symbols'
         foreach ($line in Get-Content (Join-Path $PSScriptRoot 'codex_report_cases.txt')) {
             $state, $icon, $color = $line.Split('|')

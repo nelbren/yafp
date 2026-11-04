@@ -47,7 +47,7 @@ function global:Format-YafpCodexReset {
 
 function global:Format-YafpCodexSegment {
     param([AllowNull()][Nullable[int]]$Value)
-    $text = '֍N/A'; $color = 'DarkGray'
+    $text = '֍dh'; $color = 'Red'
     if ($null -ne $Value -and $Value -ge 0 -and $Value -le 100) {
         $color = if ($Value -ge 50) { 'Green' } elseif ($Value -ge 25) { 'Yellow' } else { 'Red' }
         $text = "֍$Value%"
@@ -99,6 +99,7 @@ function global:Get-YafpCodexContext {
     $segment = Format-YafpCodexSegment -Value $value
     if ($null -eq $script:YafpCodexSample -and $null -ne $script:YafpCodexJob) {
         $segment.Text = '֍⟳d⟳h'
+        $segment.Foreground = 'DarkGray'
     }
     if ($null -ne $value -and $script:YafpCodexSample.PSObject.Properties['ResetsAt'] -and
         $null -ne $script:YafpCodexSample.ResetsAt) {
@@ -130,7 +131,8 @@ function global:Show-YafpCodex {
     if ($null -ne $quota) {
         $state = if ($null -ne $quota.Sample) { $quota.Sample.State }
         elseif ($null -ne $script:YafpCodexJob) { 'pending' } else { 'unavailable' }
-        if ($state -eq 'ok' -and $quota.Foreground -ne 'DarkGray') {
+        if ($state -eq 'ok' -and $null -ne $quota.Sample.Remaining -and
+            $quota.Sample.Remaining -ge 0 -and $quota.Sample.Remaining -le 100) {
             $remainingText = "$($quota.Sample.Remaining)%"
             $remainingColor = switch ($quota.Foreground) { Green { 92 }; Yellow { 93 }; Red { 91 }; default { 90 } }
             if ($quota.Sample.PSObject.Properties['ResetsAt'] -and $null -ne $quota.Sample.ResetsAt) {

@@ -75,8 +75,12 @@ yafp_resources_context() {
 
 yafp_resources_pending() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
-    [ "$yafp_ctx_resources" = 'Resources: waiting for sample' ] || return 0
-    local index
+    local index placeholder color
+    case "$yafp_ctx_resources" in
+        'Resources: waiting for sample') placeholder='⟳'; color=90 ;;
+        'Resources: no valid sample') placeholder=''; color=91 ;;
+        *) return 0 ;;
+    esac
     yafp_ctx_resource_separator=' '
     if [ "${YAFP_RESOURCE_LABEL_STYLE:-letters}" = unicode ] &&
        [ "${YAFP_RESOURCE_VALUE_STYLE:-percent}" = symbols ]; then
@@ -84,8 +88,8 @@ yafp_resources_pending() {
     fi
     for index in 0 1 2 3; do
         yafp_resource_segment "$index" -
-        yafp_ctx_resource_tokens+=("${yafp_resource_token%N/A}⟳")
-        yafp_ctx_resource_colors+=(90)
+        yafp_ctx_resource_tokens+=("${yafp_resource_token%}$placeholder")
+        yafp_ctx_resource_colors+=("$color")
     done
 }
 
@@ -99,7 +103,7 @@ yafp_resource_segment() {
     if [ "${YAFP_RESOURCE_LABEL_STYLE:-letters}" = unicode ]; then
         label="${unicode_labels[$index]}"
     fi
-    yafp_resource_token="${label}N/A" yafp_resource_color=90
+    yafp_resource_token="${label}" yafp_resource_color=91
     case "$value" in ''|*[!0-9]*) return 0 ;; esac
     [ "$value" -le 100 ] || return 0
     [ "$index" -ne 2 ] || { warning=10; critical=30; }
@@ -183,6 +187,56 @@ theme_render_resources() {
     fi
     printf '%s%s%s]%s%s%s' "$open" "$frame" "$close" \
         "$open" $'\033[0m' "$close"
+}
+
+yafp-demo-resources() {
+    if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
+    local resource="${1:-CPU}" selected load index rendered
+    local values=(20 40 5 50) loads=(20 90 98)
+    local usage='Usage: yafp-demo-resources [CPU|MEMORY|SWAP|DISK|ALL]'
+    if [ "$#" -gt 1 ]; then
+        printf '%s\n' "$usage" >&2
+        return 2
+    fi
+    case "$resource" in
+        ALL|all)
+            for resource in CPU MEMORY SWAP DISK; do
+                [ "$resource" = CPU ] || printf '\n'
+                yafp-demo-resources "$resource"
+            done
+            return
+            ;;
+        CPU|cpu) resource=CPU; selected=0 ;;
+        MEMORY|memory|MEMORIA|memoria|RAM|ram) resource=MEMORY; selected=1 ;;
+        SWAP|swap) resource=SWAP; selected=2; loads=(5 20 40) ;;
+        DISK|disk|DISCO|disco) resource=DISK; selected=3 ;;
+        *) printf '%s\n' "$usage" >&2; return 2 ;;
+    esac
+
+    local yafp_ctx_resources='demo' yafp_ctx_resource_separator=' '
+    local yafp_ctx_resource_tokens=() yafp_ctx_resource_colors=()
+    local yafp_resource_token yafp_resource_color
+    if [ "$YAFP_RESOURCE_LABEL_STYLE" = unicode ] && [ "$YAFP_RESOURCE_VALUE_STYLE" = symbols ]; then
+        yafp_ctx_resource_separator=''
+    fi
+    for load in "${loads[@]}"; do
+        values[selected]=$load
+        yafp_ctx_resource_tokens=() yafp_ctx_resource_colors=()
+        for index in 0 1 2 3; do
+            yafp_resource_segment "$index" "${values[$index]}"
+            yafp_ctx_resource_tokens+=("$yafp_resource_token")
+            yafp_ctx_resource_colors+=("$yafp_resource_color")
+        done
+        rendered="$(theme_render_os_icon) $(theme_render_resources)"
+        printf '%-10s  ' "$resource $load%"
+        if [ -n "${ZSH_VERSION:-}" ]; then
+            print -Pr -- "$rendered"
+        else
+            rendered=${rendered//\\[/}
+            rendered=${rendered//\\]/}
+            printf '%s\n' "$rendered"
+        fi
+    done
 }
 
 yafp-resources() {

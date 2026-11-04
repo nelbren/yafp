@@ -320,8 +320,8 @@ width of prompt symbols.
 The first successful remote check and each later offline-to-online transition
 set a one-render announcement. It displays
 `(  INTERNET CONNECTION )` with intense white text on a normal green
-background. The compact `` remains intense green on a transparent background
-during that announcement and on subsequent renders.
+background. The compact `` shares the banner colors when the announcement fits.
+It uses intense green on a transparent background otherwise.
 The announcement takes precedence over any repository-state expansion for that
 one prompt. Cached success from before the session does not trigger the initial
 announcement, and reloads preserve the current connectivity state.
@@ -331,9 +331,9 @@ in their rendering code. Each icon occupies one cell for banner alignment.
 Expansions and compact prompt indicators share one severity contract: warnings
 use black text on an intense yellow background, while error banners and
 behind/diverged counters use intense white
-text on a red background. The compact error icon `` uses intense white
-text on an intense red background while the alert is active, independently of
-`YAFP_DARKC`. After acknowledgement, it uses intense red text on a transparent
+text on a red background. The compact error icon `` shares the white text
+and red background of the active alert. After
+acknowledgement, it uses intense red text on a transparent
 background. The warning background remains intense for contrast,
 while `YAFP_DARKC` selects the dark or bright red error background. The
 detailed `yafp-status` report retains foreground-only severity colors.
@@ -400,8 +400,8 @@ frame. Host resources participate in the existing prompt-prefix
 measurement, preserving staged and remote banner alignment when Git follows
 the host. RAM, CPU, and disk become yellow above 85% and red
 above 95%; swap uses thresholds above 10% and 30%. Comparison uses the integer
-percentage before conversion to Braille, with red taking precedence. `N/A`
-appears in gray. Shared fixtures check color boundaries,
+percentage before conversion to Braille, with red taking precedence.
+Los valores ausentes usan `` en rojo. Shared fixtures check color boundaries,
 Braille transitions, and all four combinations across shells and themes.
 
 Swap usage is relative to allocated capacity; no allocated swap means 0%.
@@ -427,11 +427,22 @@ inválida no puede volver a mostrar datos diagnósticos antiguos. Las métricas
 parciales permanecen disponibles y un swap no asignado sigue siendo cero.
 El comando no espera al trabajador. Los marcadores textuales de contexto
 `Resources: waiting for sample` y `Resources: no valid sample` siguen siendo
-internos; el informe los presenta mediante `State`. Las cadenas `N/A` del
-prompt conservan su significado. README describes platform definitions
-and diagnostic limitations. Probe and lifecycle tests use fixtures and
-controlled workers to cover intervals, reload, failures, rendering without
-external tools, and preservation of the previous command status.
+internos; el informe los presenta mediante `State`. Sin muestra válida, el
+prompt genera cuatro tokens rojos con ``, respetando etiquetas y separador
+(`↦[▦]` en Unicode + símbolos). Las métricas parciales ausentes
+también usan ``; los valores válidos conservan sus colores. README describes
+platform definitions and diagnostic limitations. Probe and lifecycle tests use
+fixtures and controlled workers to cover intervals, reload, failures, rendering
+without external tools, and preservation of the previous command status.
+
+El comando `yafp-demo-resources` genera tres lecturas para el recurso
+seleccionado. Con `ALL` muestra los cuatro grupos en orden CPU, MEMORY, SWAP
+y DISK, separados por una línea en blanco. Reutiliza el formateador de métricas
+y el renderizado del icono
+del sistema y del marco. Bash y zsh aíslan los tokens en variables locales.
+PowerShell pasa un contexto temporal a los renderizadores. La demostración
+no lee la caché ni arranca un trabajador.
+La etiqueta y el porcentaje ocupan un campo fijo para alinear los ejemplos.
 
 ## Codex quota context
 
@@ -492,7 +503,7 @@ All themes insert `↤[֍value]` immediately after the username, before `@`.
 `YAFP_CODEX_VALUE_STYLE` chooses `percent` or `symbols` independently of the
 machine resource options. Braille uses `min(7, floor(value * 8 / 100))` with
 fuller cells meaning greater availability. Foreground is green at 50% or
-above, yellow at 25% or above, and red below 25%. Gray `֍N/A` covers missing
+above, yellow at 25% or above, and red below 25%. Red `֍dh` covers missing
 dependencies, authentication, quota, and errors. Before the first sample, an
 active worker displays gray `֍⟳d⟳h`, with day/hour placeholders for the pending
 reset countdown. Valid samples replace the placeholders with the existing
@@ -521,13 +532,19 @@ uniqueness/reload, all themes, invisible ANSI markers, and previous exit status.
 The interactive zsh test also covers job notifications and OSC 133 while quota
 and machine resource monitoring coexist.
 
+El anuncio de conexión de Git invalida el temporizador de Codex una vez por
+transición. El prompt recoge primero el contexto de Git para que Codex pueda
+iniciar una revisión en esa misma pasada. Si hay un trabajador activo, la
+solicitud sigue pendiente hasta que termine. El intervalo cero conserva Codex
+deshabilitado.
+
 ## Uniform indicator frames
 
-Codex uses `↤[…]` after the username; resources, Git remote status, and
-populated Git counter groups use `↦[…]` in Bash, zsh, and PowerShell.
+Codex uses `↤[…]` after the username. Resources and populated Git counter
+groups use `↦[…]` in Bash, zsh, and PowerShell. Git remote status uses `[…]↤`.
 Git and resource refreshes use `` (`U+F021`); `⟳` denotes initial pending
 values in the resource and Codex blocks. Git retains its warning colors and
-resources retain gray. The Git icon touches its cached state, as in `↦[]`,
+resources retain gray. The Git icon touches its cached state, as in `[]↤`,
 and the detailed remote report uses the same refresh icon.
 The frame uses `cGit` in the Unix default
 theme and `cSeparator` in the other themes; PowerShell uses the equivalent
@@ -536,16 +553,19 @@ existing color, including warnings, errors, staged counts, and the connection
 announcement. The closing bracket restores the frame style.
 
 The remote renderer groups countdown, refresh marker, and status without inner
-spaces: `↦[⣦]` or `↦[(175)]`. All remote states share that wrapper;
-an empty context emits nothing. The frame is attached directly to the preceding
-Git marker, without a leading space; one trailing space separates the branch.
-Unix themes own this trailing separator, and PowerShell emits it in the remote
-renderer.
+spaces: `[⣦]↤` or `[(175)]↤`. The frame touches the Git icon, which
+touches the branch. The branch also touches the change frame. An empty remote
+context emits nothing. The Git icon is `` for a configured remote and ``
+otherwise. The cached remote status selects green for a successful check,
+red for a failure, and yellow for unavailable status or a local repository.
 The counter renderer owns its single wrapper in all themes; light no longer
-adds a second frame. Empty counter groups remain silent. Labels, counter
-emoji, and clean-worktree presentation remain theme-specific.
+adds a second frame. Empty counter groups remain silent. The counters share
+``, ``, and `` in red, yellow, and cyan in every theme. Each number
+follows its icon directly, as in `↦[123]`.
 
-Unix includes each frame in the existing expansion-prefix measurement. Before
+Unix measures the prefix in terminal cells to locate the indicator column
+and wrapped row. PowerShell uses the cursor position. Remote banners move
+left at the right edge to stay inside the row reserved above the prompt. Before
 emitting a staged expansion, the counter renderer flushes earlier counters so
 the marker anchors the staged token at its actual column inside the frame.
 PowerShell writes the frame and preceding counters before capturing the banner
@@ -584,11 +604,13 @@ composites. Linux servers specialize exact `/etc/os-release` IDs `debian`
 shell builtins without evaluating file contents. Missing or unreadable release
 files and absent IDs fall back to ``; `ID_LIKE` does not select a logo.
 PowerShell themes use the Windows glyph
-where an OS indicator already exists.
+where an OS indicator already exists. En `minimal` y `light`, el icono del
+servidor reutiliza los colores de los cuatro indicadores de recursos. El
+rojo tiene prioridad sobre el amarillo y el resto se muestra en blanco.
+La evaluación usa los datos del prompt en memoria.
 
-Git logo `` (`U+F1D3`) replaces the minimal/light Git marker and the
-repository-name prefix in default. Branch separators, remote origin symbols,
-and counters retain their semantics. Old assignments remain commented beside
+Git logos `` (`U+F1D3`) and `` (`U+F1D2`) distinguish branches with
+and without a configured remote. Old assignments remain commented beside
 their replacements. These glyphs use existing colors and width measurement;
 rendering adds no font probing or external process. Existing directory markers
 use `` (`U+F07C`); current timestamp markers use `` (`U+F017`) across themes.
@@ -603,13 +625,13 @@ sus renderizadores. Los reemplazos se limitan a etiquetas estáticas: no se
 reescribe el texto de comandos, rutas, ramas ni entornos. No se incorporan
 procesos, detección de fuentes ni trabajo adicional por renderizado.
 
-Los contadores mantienen sus signos y colores, y las expansiones miden el
-texto que se muestra con los nuevos glifos. El temporizador remoto usa ``
+Las expansiones miden el texto que se muestra con los glifos de los
+contadores. El temporizador remoto usa ``
 con los tonos verde, amarillo o rojo existentes; el texto conserva porcentaje
-y segundos. Todos los temas usan `` y `` para éxito y error; `light`
-mantiene `↯` y sus contadores numéricos. Los indicadores Braille, `֍`, ``,
-`⟳`, marcos y momentos del día conservan su representación. Las pruebas de
-presentación verifican las variantes oscuras/claras, los tres temas, los
+y segundos. Todos los temas usan `` y `` para éxito y error.
+Los indicadores Braille, `֍`, ``, `⟳`, marcos y momentos del día conservan su
+representación. Las pruebas de presentación verifican las variantes
+oscuras/claras, los tres temas, los
 umbrales de rendimiento y los anclajes de las expansiones con estas etiquetas.
 
 El informe compartido de `yafp-status` y `yafp-demo` usa iconos Font Awesome
@@ -791,6 +813,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-03 00:23:38 🍎 MBP02 |
+📆 2026-11-03 19:39:00 🍎 MBP02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

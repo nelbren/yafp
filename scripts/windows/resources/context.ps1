@@ -67,8 +67,8 @@ function global:Format-YafpResourceSegment {
         # Anterior: $label = @{ R = '▦'; S = '⇄'; C = '⚙'; D = '◉' }[$Kind]
         $label = @{ R = '▦'; S = ''; C = ''; D = '' }[$Kind]
     }
-    $text = "${label}N/A"
-    $color = 'DarkGray'
+    $text = "${label}"
+    $color = 'Red'
     if ($null -ne $Value -and $Value -ge 0 -and $Value -le 100) {
         $warning = if ($Kind -eq 'S') { 10 } else { 85 }
         $critical = if ($Kind -eq 'S') { 30 } else { 95 }
@@ -156,10 +156,12 @@ function global:Get-YafpResourceContext {
         $state = if ($null -eq $sample) { 'pending' } else { 'refreshing' }
     }
     elseif ($null -eq $sample) { $text = 'Resources: no valid sample' }
-    if ($null -eq $sample -and $null -ne $script:YafpResourceJob) {
+    if ($null -eq $sample) {
+        $placeholder = if ($null -ne $script:YafpResourceJob) { '⟳' } else { '' }
         $segments = @(foreach ($kind in @('C', 'R', 'S', 'D')) {
             $segment = Format-YafpResourceSegment -Kind $kind -Value $null
-            $segment.Text = $segment.Text.Replace('N/A', '⟳')
+            $segment.Text = $segment.Text.Replace('', $placeholder)
+            if ($placeholder -eq '⟳') { $segment.Foreground = 'DarkGray' }
             $segment
         })
         $suffix = ''
@@ -168,6 +170,22 @@ function global:Get-YafpResourceContext {
         Text = $text; Sample = $sample; Segments = $segments; Suffix = $suffix; Separator = $separator
         State = $state; Percentages = $percentages
     }
+}
+
+function global:Write-YafpOsIcon {
+    param([Parameter(Mandatory)][object]$Context)
+
+    $color = 'White'
+    if ($Context.PSObject.Properties['Resources'] -and $Context.Resources) {
+        foreach ($segment in $Context.Resources.Segments) {
+            if ($segment.Foreground -eq 'Red') {
+                $color = 'Red'
+                break
+            }
+            if ($segment.Foreground -eq 'Yellow') { $color = 'Yellow' }
+        }
+    }
+    Write-YafpText -Text '' -ForegroundColor $color -BackgroundColor $null -NoNewline
 }
 
 function global:Write-YafpResources {
@@ -204,6 +222,45 @@ function global:Write-YafpResources {
     }
 }
 
+function global:Show-YafpDemoResources {
+    param(
+        [ValidateSet('CPU', 'MEMORY', 'SWAP', 'DISK', 'ALL', 'RAM', 'MEMORIA', 'DISCO')]
+        [string]$Resource = 'CPU'
+    )
+
+    $names = @('CPU', 'MEMORY', 'SWAP', 'DISK')
+    if ($Resource -eq 'ALL') {
+        foreach ($name in $names) {
+            if ($name -ne 'CPU') { Write-Host }
+            Show-YafpDemoResources -Resource $name
+        }
+        return
+    }
+    $index = @{ CPU = 0; MEMORY = 1; RAM = 1; MEMORIA = 1; SWAP = 2; DISK = 3; DISCO = 3 }[$Resource]
+    $values = @(20, 40, 5, 50)
+    $loads = if ($index -eq 2) { @(5, 20, 40) } else { @(20, 90, 98) }
+    $separator = if ($global:YAFP_RESOURCE_LABEL_STYLE -eq 'unicode' -and
+        $global:YAFP_RESOURCE_VALUE_STYLE -eq 'symbols') { '' } else { ' ' }
+
+    foreach ($load in $loads) {
+        $values[$index] = $load
+        $segments = @(
+            Format-YafpResourceSegment -Kind C -Value $values[0]
+            Format-YafpResourceSegment -Kind R -Value $values[1]
+            Format-YafpResourceSegment -Kind S -Value $values[2]
+            Format-YafpResourceSegment -Kind D -Value $values[3]
+        )
+        $context = [pscustomobject]@{
+            Resources = [pscustomobject]@{ Segments = $segments; Separator = $separator; Suffix = '' }
+        }
+        Write-Host ('{0,-10}  ' -f "$($names[$index]) $load%") -NoNewline
+        Write-YafpOsIcon -Context $context
+        Write-Host ' ' -NoNewline
+        Write-YafpResources -Context $context
+        Write-Host
+    }
+}
+
 function global:Show-YafpResources {
     $resource = Get-YafpResourceContext
     $state = 'disabled'; $age = ''; $ageColor = 90
@@ -232,7 +289,8 @@ function global:Show-YafpResources {
     for ($index = 0; $index -lt 4; $index++) {
         $value = ''; $color = 90; $detail = ''
         if ($null -ne $resource -and $null -ne $resource.Sample -and
-            $resource.Segments[$index].Foreground -ne 'DarkGray') {
+            $null -ne $resource.Percentages[$index] -and
+            $resource.Percentages[$index] -ge 0 -and $resource.Percentages[$index] -le 100) {
             $value = "$($resource.Percentages[$index])%"
             $color = switch ($resource.Segments[$index].Foreground) { Green { 92 }; Yellow { 93 }; Red { 91 }; default { 90 } }
         }

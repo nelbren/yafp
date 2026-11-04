@@ -8,32 +8,29 @@ YAFP_THEME_VERSION="2.2"
 
 
 theme_render_git_block() {
-    local remote_symbol
     local remote_status
     local counts
 
     counts="$(theme_render_git_counts)"
-    remote_status="$(theme_render_git_remote_status)"
-    [ -z "$remote_status" ] || remote_status="${remote_status} "
-
-    if [ "$yafp_ctx_git_remote" = "remote" ]; then
-        remote_symbol="$YAFP_SYMBOL_REMOTE"
-    else
-        remote_symbol="$YAFP_SYMBOL_LOCAL"
+    remote_status=""
+    if [ "${yafp_ctx_git_remote:-}" != local ]; then
+        remote_status="$(theme_render_git_remote_status)"
     fi
 
     local parts=(
         "${cGit}["
         "$YAFP_SYMBOL_ON"
         "$yafp_ctx_git_last_ts"
-        "$YAFP_SYMBOL_GIT_REPO"
+        " "
         "$cRepo"
         "$yafp_ctx_git_repo"
         "$cGit"
         "$YAFP_SYMBOL_GIT_SEP"
         "$remote_status"
+        "$(theme_render_git_branch_icon)"
+        "$cGit"
         "$yafp_ctx_git_branch"
-        "$YAFP_SYMBOL_GIT_DIR${remote_symbol}${counts}"
+        "$counts"
         "$cGit]"
     )
 

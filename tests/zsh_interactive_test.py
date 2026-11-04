@@ -110,7 +110,7 @@ def main():
                 host + pending_resources in plain
                 or re.search(
                     re.escape(host + "↦[".encode())
-                    + rb"C(?:\d+%|N/A) R(?:\d+%|N/A) S(?:\d+%|N/A) D(?:\d+%|N/A)\]",
+                    + "C(?:\\d+%|) R(?:\\d+%|) S(?:\\d+%|) D(?:\\d+%|)\\]".encode(),
                     plain,
                 )
             ), output

@@ -71,19 +71,6 @@ YAFP_COLOR_OK_ICON_FG="GREEN"
 YAFP_COLOR_WARN_ICON_BG="intense-yellow"
 YAFP_COLOR_WARN_ICON_FG="black"
 
-# Git counters
-YAFP_COLOR_GIT_DELETE_BG="transparent"
-YAFP_COLOR_GIT_DELETE_FG="RED"
-YAFP_COLOR_GIT_DELETE_ATTRS=""
-
-YAFP_COLOR_GIT_CHANGE_BG="transparent"
-YAFP_COLOR_GIT_CHANGE_FG="YELLOW"
-YAFP_COLOR_GIT_CHANGE_ATTRS=""
-
-YAFP_COLOR_GIT_NEW_BG="transparent"
-YAFP_COLOR_GIT_NEW_FG="CYAN"
-YAFP_COLOR_GIT_NEW_ATTRS=""
-
 # Extra blocks
 YAFP_COLOR_CLIENT_BG="transparent"
 YAFP_COLOR_CLIENT_FG="WHITE"
@@ -93,11 +80,6 @@ YAFP_COLOR_COUNTRY_FG="CYAN"
 
 YAFP_COLOR_GIT_BRANCH_BG="transparent"
 YAFP_COLOR_GIT_BRANCH_FG="BLUE"
-
-YAFP_SYMBOL_REMOTE="↯"
-YAFP_SYMBOL_GIT_DELETE_EMOJI=""
-YAFP_SYMBOL_GIT_CHANGE_EMOJI=""
-YAFP_SYMBOL_GIT_NEW_EMOJI=""
 
 # Anterior: YAFP_CLOCK_EMOJI="⧖"
 YAFP_CLOCK_EMOJI=""
@@ -131,8 +113,9 @@ theme_render_general_block() {
 
     country_text="${OMP_GEOIP_COUNTRY:-}"
 
+    theme_render_os_icon
     local parts=(
-        "$SERVER_OS_EMOJI "
+        " "
         "$cUserPS1%n"
     )
     printf '%s' "${parts[@]}"
@@ -160,26 +143,18 @@ theme_render_general_block() {
 
 theme_render_git_block() {
     emulate -L zsh -o KSH_ARRAYS
-    local remote_symbol
     local remote_status
     local counts
     local cGitBranchPS1
-    local cNormalPS1
-    local emojiGit
 
     [ "$yafp_ctx_git_has_repo" = "1" ] || return
 
     counts="$(theme_render_git_counts)"
-    remote_status="$(theme_render_git_remote_status)"
-    [ -z "$remote_status" ] || remote_status="${remote_status} "
-    cGitBranchPS1="$(ps1_wrap "$cGitBranch")"
-    cNormalPS1="$(theme_ps1_reset)"
-
-    if [ "$yafp_ctx_git_remote" = "remote" ]; then
-        remote_symbol="$YAFP_SYMBOL_REMOTE"
-    else
-        remote_symbol="$YAFP_SYMBOL_LOCAL"
+    remote_status=""
+    if [ "${yafp_ctx_git_remote:-}" != local ]; then
+        remote_status="$(theme_render_git_remote_status)"
     fi
+    cGitBranchPS1="$(ps1_wrap "$cGitBranch")"
 
     if [ -z "$counts" ]; then
         text="${cStatusOk}${cSeparator}"
@@ -188,12 +163,12 @@ theme_render_git_block() {
     fi
 
     local parts=(
-        "$cSeparator $YAFP_SYMBOL_GIT_EMOJI"
+        "$cSeparator "
         "$remote_status"
+        "$(theme_render_git_branch_icon)"
         "$cGitBranchPS1"
         "${yafp_ctx_git_branch//\%/%%}"
         "$cSeparator"
-        "$remote_symbol"
         "$text"
     )
 
