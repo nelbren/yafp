@@ -35,6 +35,9 @@ try {
     $sample = & $collector
     if ($sample.State -ne 'ok' -or $sample.Primary -ne 75 -or $sample.Secondary -ne 59 -or
         $sample.Remaining -ne 59 -or $sample.ResetsAt -ne $resetAt) { throw "Wrong quota sample: $($sample | ConvertTo-Json)" }
+    if ($sample.Diagnostic.Stage -ne 'parse-limits' -or $sample.Diagnostic.Reason -ne 'ok' -or
+        $sample.Diagnostic.Duration -lt 0 -or $sample.Diagnostic.ServerPid -le 0 -or
+        ($sample | ConvertTo-Json -Depth 4).Contains('PRIVATE')) { throw 'Invalid or sensitive diagnostic' }
     $requests = @(Get-Content $env:YAFP_CODEX_TEST_LOG | ConvertFrom-Json)
     if (($requests.method -join ',') -ne 'initialize,initialized,account/read,account/rateLimits/read' -or
         $requests[2].params.refreshToken -ne $false) { throw 'Unexpected RPC or interactive auth request' }
@@ -89,11 +92,24 @@ try {
         if ($sample.Remaining -ne 75 -or $null -ne $sample.ResetsAt) { throw 'Invalid reset timestamp discarded valid quota' }
     }
     $fixture.result = $originalResult
-    $fixture.error = 'account/rateLimits/read'
-    $fixture | ConvertTo-Json -Depth 10 | Set-Content $env:YAFP_CODEX_TEST_FIXTURE
-    $sample = & $collector
-    if ($sample.State -ne 'unavailable' -or $null -ne $sample.Remaining) { throw 'RPC error invented a quota' }
+    foreach ($method in @('initialize', 'account/read', 'account/rateLimits/read')) {
+        $fixture.error = $method
+        $fixture | ConvertTo-Json -Depth 10 | Set-Content $env:YAFP_CODEX_TEST_FIXTURE
+        $sample = & $collector
+        if ($sample.State -ne 'unavailable' -or $null -ne $sample.Remaining -or
+            $sample.Diagnostic.Stage -ne $method -or $sample.Diagnostic.Reason -ne 'rpc-error' -or
+            ($sample | ConvertTo-Json -Depth 4).Contains('PRIVATE')) { throw 'RPC error diagnostic is incorrect or sensitive' }
+    }
     $fixture.Remove('error')
+    foreach ($case in @(@{ Field = 'close'; Reason = 'server-closed' },
+        @{ Field = 'invalid'; Reason = 'invalid-response' })) {
+        $fixture[$case.Field] = 'account/rateLimits/read'
+        $fixture | ConvertTo-Json -Depth 10 | Set-Content $env:YAFP_CODEX_TEST_FIXTURE
+        $sample = & $collector
+        if ($sample.Diagnostic.Stage -ne 'account/rateLimits/read' -or
+            $sample.Diagnostic.Reason -ne $case.Reason) { throw 'Invalid response failure diagnostic' }
+        $fixture.Remove($case.Field)
+    }
     $fixture | ConvertTo-Json -Depth 10 | Set-Content $env:YAFP_CODEX_TEST_FIXTURE
     $env:PATH = Join-Path $temporary 'missing'
     $sample = & $collector
@@ -123,6 +139,11 @@ try {
         if ($null -ne (Get-YafpCodexContext) -or $null -ne $script:YafpCodexJob) { throw 'Disabled worker started' }
     }
     $global:YAFP_CODEX_CHECK_INTERVAL = 300
+    $script:YafpCodexControl = [hashtable]::Synchronized(@{ Process = $null; Cancelled = $false })
+    . (Join-Path $PSScriptRoot '../scripts/windows/codex/context.ps1')
+    if (-not $script:YafpCodexControl.ContainsKey('Diagnostic')) { throw 'Old session control not upgraded' }
+    $fixture.delay = 1500
+    $fixture | ConvertTo-Json -Depth 10 | Set-Content $env:YAFP_CODEX_TEST_FIXTURE
     $timer.Restart()
     $context = Get-YafpCodexContext
     if ($context.Text -ne '֍⟳d⟳h' -or $context.Foreground -ne 'DarkGray') {
@@ -140,6 +161,22 @@ try {
         }
     }
     $job = $script:YafpCodexJob
+    $liveDeadline = [DateTime]::UtcNow.AddSeconds(5)
+    while ($null -eq $script:YafpCodexControl.Diagnostic -or
+        $script:YafpCodexControl.Diagnostic.Stage -ne 'account/rateLimits/read') {
+        if ([DateTime]::UtcNow -gt $liveDeadline) { throw 'Live stage not published' }
+        Start-Sleep -Milliseconds 20
+    }
+    $global:LASTEXITCODE = 7
+    $out = (@(yafp-codex --debug 6>&1) | ForEach-Object { "$_" }) -join "`n"
+    foreach ($expected in @("Worker: running (job $($job.Id))", 'Stage: account/rateLimits/read',
+        'Reason: in-progress', 'ms (running)')) {
+        if (-not $out.Contains($expected)) { throw "Missing live diagnostic: $expected" }
+    }
+    if ($out.Contains('PRIVATE') -or $global:LASTEXITCODE -ne 7 -or
+        $script:YafpCodexJob.Id -ne $job.Id) { throw 'Debug affected worker or exit status' }
+    $fixture.Remove('delay')
+    $fixture | ConvertTo-Json -Depth 10 | Set-Content $env:YAFP_CODEX_TEST_FIXTURE
     $null = Get-YafpCodexContext
     . (Join-Path $PSScriptRoot '../scripts/windows/codex/context.ps1')
     $null = Get-YafpCodexContext
@@ -147,6 +184,17 @@ try {
     $null = Wait-Job $job -Timeout 15
     $context = Get-YafpCodexContext
     if ($null -ne $script:YafpCodexJob -or $context.Sample.Remaining -ne 59) { throw 'Worker not collected' }
+    $out = (@(yafp-codex -Diagnostics 6>&1) | ForEach-Object { "$_" }) -join "`n"
+    foreach ($expected in @('Worker: idle', 'Stage: parse-limits', 'Reason: ok', 'Server PID:', 'Duration:')) {
+        if (-not $out.Contains($expected)) { throw "Missing final diagnostic: $expected" }
+    }
+    $out = (@(yafp-codex 6>&1) | ForEach-Object { "$_" }) -join "`n"
+    if ($out.Contains('Stage:')) { throw 'Default report changed' }
+    $savedDiagnostic = $script:YafpCodexControl.Diagnostic
+    $script:YafpCodexControl.Diagnostic = $null
+    $out = (@(yafp-codex --debug 6>&1) | ForEach-Object { "$_" }) -join "`n"
+    if (-not $out.Contains('Reason: no-diagnostics')) { throw 'Legacy worker not supported' }
+    $script:YafpCodexControl.Diagnostic = $savedDiagnostic
 
     $savedSample = $script:YafpCodexSample
     $savedAttempt = $script:YafpCodexAttempt

@@ -125,11 +125,10 @@ Ubuntu, and missing or unknown IDs use the Tux symbol ``.
 Unix server and client indicators use these glyphs;
 WSL, Cygwin, and Git Bash client indicators retain their environment markers.
 PowerShell uses the Windows glyph where its themes show an OS indicator.
-En `minimal` y `light`, el icono inicial usa el estado de CPU, RAM, swap y
-disco. Se muestra rojo si algún recurso está en rojo, amarillo si hay una
-advertencia y blanco en los demás casos. El rojo tiene prioridad. El icono
-permanece blanco mientras llega la primera muestra o si el monitoreo está
-desactivado.
+In `minimal` and `light`, the leading icon reflects CPU, RAM, swap, and disk
+status. It appears red if any resource is red, yellow if there is a warning,
+and white otherwise. Red takes precedence. The icon stays white while waiting
+for the first sample or when monitoring is disabled.
 
 Repository markers use `` (`U+F1D3`) and `` (`U+F1D2`) in all shells and
 themes. The marker sits directly before the branch name.
@@ -139,12 +138,12 @@ Previous glyph assignments remain commented beside the active code. The
 terminal must use a Nerd Font containing these private-use glyphs; SSH clients
 render them using the font installed locally, independently of the remote OS.
 
-Los iconos de estado, contadores Git, Python, usuario/equipo y diagnóstico
-usan Font Awesome mediante Nerd Fonts. El catálogo de glifos y sus códigos se
-encuentra en [FONTS.md](docs/FONTS.md#prompt-icons). Los códigos de salida,
-umbrales y significados permanecen iguales. Todos los temas usan `` y ``
-para éxito y error. Los archivos,
-comandos y otros textos del usuario se muestran sin sustituir sus emojis.
+Status, Git counter, Python, user/host, and diagnostic icons use Font Awesome
+through Nerd Fonts. The glyph catalog and code points are listed in
+[FONTS.md](docs/FONTS.md#prompt-icons). Exit codes, thresholds, and meanings
+remain unchanged. All themes use `` and `` for success and error.
+Files, commands, and other user text are displayed without replacing their
+emoji.
 
 ### :bulb: Colors change according to
 
@@ -196,11 +195,10 @@ In the Bash `default` theme, only the repository name uses the same yellow
 highlight as its directory representation in PowerShell. The surrounding Git
 symbols and metadata keep the Git block color.
 
-El icono Git se pega al nombre de la rama en los tres temas. `` indica
-que el repositorio tiene un remoto configurado. Se muestra en verde cuando
-la última comprobación tuvo éxito, en amarillo mientras no hay resultado
-y en rojo cuando la comprobación falla. `` en amarillo identifica un
-repositorio sin remoto.
+The Git icon sits directly before the branch name in all three themes. ``
+indicates a repository with a configured remote. It appears green when the
+last check succeeded, yellow while no result is available, and red when the
+check fails. A yellow `` identifies a repository without a remote.
 
 ### Indicator blocks
 
@@ -224,12 +222,11 @@ inside one frame: symbolic `[⣦]↤` or numeric `[(175)]↤`. Refresh,
 tracking, warning, and error states use the same frame. Empty remote and
 counter blocks produce no frame. The `light` theme retains its clean-worktree
 check mark, while the other themes retain their existing clean-state behavior.
-Todos los temas muestran los cambios como `↦[123]`. Los iconos
-``, `` y `` identifican eliminados, modificados y nuevos con texto
-rojo, amarillo y cian sobre fondo transparente. La cantidad va pegada
-a cada icono.
-El marco remoto precede al icono Git y a la rama, sin espacios entre ellos.
-Un repositorio sin remoto omite el marco.
+All themes display changes as `↦[123]`. The ``, ``, and `` icons
+identify deleted, modified, and new files with red, yellow, and cyan text on a
+transparent background. Each count sits directly beside its icon.
+The remote frame precedes the Git icon and branch with no spaces between them.
+A repository without a remote omits the frame.
 
 `` marks a background refresh in Git and machine resources. `⟳` is a
 placeholder for the first pending values in machine resources and Codex quota.
@@ -380,16 +377,16 @@ value without a space, for example `↦[⣷▦⣦⡀⣿]`.
 While the first sample loads, the prompt displays `↦[⟳▦⟳⟳⟳]` in
 Unicode + symbols mode, or `↦[C⟳ R⟳ S⟳ D⟳]` with the default styles.
 Loading tokens use gray and follow the configured labels and spacing, without
-a trailing ``. Las métricas ausentes del prompt usan `` en rojo, nunca un cero
-inventado. Sin muestra válida, se conservan las cuatro etiquetas:
-`↦[▦]` en Unicode + símbolos o `↦[C R S D]`
-con los estilos predeterminados. A swap total of zero means
+a trailing ``. Missing prompt metrics use a red ``, never an invented zero.
+Without a valid sample, all four labels remain:
+`↦[▦]` in Unicode + symbols mode or `↦[C R S D]`
+with the default styles. A swap total of zero means
 no swap/pagefile is allocated: this appears as `S0%` or `0%`, or the
 minimum cell in symbolic mode.
 
-`yafp-resources` usa el mismo cuadro gris y ajuste de ancho que `yafp-demo` y
-`yafp-codex`. Muestra el estado de la muestra, su edad en segundos y los cuatro
-recursos, con porcentajes numéricos incluso si el prompt usa Braille:
+`yafp-resources` uses the same gray frame and width adjustment as `yafp-demo`
+and `yafp-codex`. It shows the sample state, its age in seconds, and all four
+resources, with numeric percentages even when the prompt uses Braille:
 
 ```text
 ┌─────────────────────────────────────────────────┐
@@ -402,19 +399,18 @@ recursos, con porcentajes numéricos incluso si el prompt usa Braille:
 └─────────────────────────────────────────────────┘
 ```
 
-CPU, RAM, SWAP y disco conservan los colores y umbrales del prompt. Los detalles
-usados/totales siguen en MiB para RAM/SWAP y KiB para el volumen de `HOME`.
-Los datos ausentes aparecen como `` en gris, también dentro de un par
-usado/total parcialmente disponible. Un swap sin capacidad asignada conserva
-`0% · 0/0 MiB`.
+CPU, RAM, SWAP, and disk retain the prompt's colors and thresholds. Used/total
+details remain in MiB for RAM/SWAP and KiB for the volume containing `HOME`.
+Missing data appears as a gray ``, including within a partially available
+used/total pair. Swap without allocated capacity retains `0% · 0/0 MiB`.
 
-` State` describe la disponibilidad de la muestra: ` ok`, ` refreshing`
-en gris si una muestra anterior sigue disponible, ` pending` mientras llega
-la primera, ` unavailable` si no existe una muestra válida y ` disabled`.
-` Sample age` mide el tiempo desde la toma de la muestra; usa `` si no hay
-una válida. Cuando está desactivado, el comando conserva la indicación de
-configuración debajo del cuadro. El informe no espera al trabajador ni
-reutiliza detalles antiguos tras una lectura de caché inválida.
+` State` describes sample availability: ` ok`, gray ` refreshing` if a
+previous sample remains available, ` pending` while waiting for the first,
+` unavailable` if there is no valid sample, and ` disabled`.
+` Sample age` measures the time since sampling; it uses `` if no valid
+sample exists. When monitoring is disabled, the command retains the
+configuration hint below the frame. The report does not wait for the worker
+or reuse old details after an invalid cache read.
 A worker starts during prompt rendering when the interval expires; a later
 prompt reads its result. There is no persistent timer, and the line is not
 redrawn while you type. The sample age identifies older data when a probe is
@@ -426,21 +422,21 @@ If a session's temporary resource directory disappears, the next scheduled
 refresh creates a new private directory and resumes sampling automatically.
 An already running worker finishes before a replacement is started.
 
-Para comparar los colores con porcentajes simulados, ejecuta
-`yafp-demo-resources`. El comando prueba CPU por defecto. También acepta
-`MEMORY`, `SWAP`, `DISK` y `ALL`.
+To compare colors with simulated percentages, run `yafp-demo-resources`.
+The command demonstrates CPU by default. It also accepts `MEMORY`, `SWAP`,
+`DISK`, and `ALL`.
 
 ```text
 yafp-demo-resources ALL
 ```
 
-La vista muestra tres filas por recurso con el icono del sistema en blanco,
-amarillo y rojo. `ALL` agrupa las doce filas en orden CPU, MEMORY, SWAP y DISK.
-Una línea en blanco separa los grupos.
-El icono y el bloque de recursos empiezan en la misma columna en cada fila.
-Usa el formato de recursos configurado en la sesión y no cambia la
-muestra real. Funciona en Bash, zsh y PowerShell, incluso con el monitoreo
-desactivado.
+The view shows three rows per resource with the system icon in white, yellow,
+and red. `ALL` groups all twelve rows in CPU, MEMORY, SWAP, and DISK order.
+A blank line separates the groups.
+The icon and resource block start in the same column on each row.
+The view uses the session's configured resource format and does not change
+the actual sample. It works in Bash, zsh, and PowerShell, even when monitoring
+is disabled.
 
 macOS uses `sysctl`, `vm_stat`, two `top` samples one second apart, and `df`.
 RAM is an estimate of occupied physical memory that excludes free, inactive,
@@ -462,9 +458,9 @@ investigate memory pressure, Activity Monitor also considers the swap rate,
 wired memory, and file cache:
 [Apple memory guide](https://support.apple.com/guide/activity-monitor/view-memory-usage-actmntr1004/mac).
 
-Los mensajes del prompt, diagnóstico y pruebas están en inglés. Los valores
-ausentes usan `` en rojo en los indicadores de recursos y Codex. Los cuadros de
-`yafp-resources` y `yafp-codex` usan `` en gris para los datos no disponibles.
+Prompt, diagnostic, and test messages are in English. Missing values use a
+red `` in resource and Codex indicators. The `yafp-resources` and `yafp-codex`
+frames use a gray `` for unavailable data.
 
 ### Background Codex quota
 
@@ -540,8 +536,8 @@ Requests have a ten-second deadline in the worker. Rendering reads the cached
 result without waiting or accessing the network. The initial prompt can show
 `֍⟳d⟳h` in gray until the first result is collected at a later prompt. The
 `d`/`h` structure anticipates the reset countdown without inventing a duration.
-Si no hay datos disponibles, `֍dh` conserva la estructura de días/horas
-sin inventar una cuota ni un plazo. Once available, the real countdown uses
+When no data is available, `֍dh` preserves the days/hours structure without
+inventing a quota or deadline. Once available, the real countdown uses
 the units appropriate to its duration.
 Each session keeps at most one quota worker, and reloads reuse it. In zsh, the
 worker is disowned
@@ -549,15 +545,15 @@ at launch to suppress job notifications. There is no persistent polling timer
 or redraw while typing. The last sample remains visible during a refresh;
 a failed refresh replaces it with `֍dh`.
 
-El prompt muestra `` en verde para Git al día y `⟳` en gris mientras espera
-la primera comprobación. Al anunciar una conexión, YAFP adelanta la próxima
-revisión de Codex si está habilitada. Si ya hay una consulta de Codex en curso,
-la revisión adelantada comienza después de que termine.
+The prompt shows a green `` when Git is up to date and a gray `⟳` while
+waiting for the first check. When announcing a connection, YAFP brings forward
+the next Codex check if enabled. If a Codex query is already running, the
+requested check starts after it finishes.
 On Unix, a missing temporary quota directory is recreated on the next
 scheduled refresh, after any active worker finishes.
 
-`yafp-codex` muestra un cuadro con el mismo estilo de `yafp-demo`, sin esperar
-a que termine una actualización pendiente:
+`yafp-codex` displays a frame in the same style as `yafp-demo`, without waiting
+for a pending refresh to finish:
 
 ```text
 ┌─────────────────────────────────┐
@@ -567,21 +563,63 @@ a que termine una actualización pendiente:
 └─────────────────────────────────┘
 ```
 
-`Reset` muestra días y horas restantes hasta el restablecimiento de la ventana
-que limita la cuota. `Remaining` siempre usa un porcentaje numérico y coincide
-con el valor agregado del prompt, aunque este use Braille. Se toma el menor
-porcentaje disponible entre las ventanas primaria y secundaria. `` indica
-que no hay un dato válido; un plazo vencido aparece como `0d0h`.
+`Reset` shows the days and hours remaining until the limiting quota window
+resets. `Remaining` always uses a numeric percentage and matches the prompt's
+aggregate value, even when the prompt uses Braille. The smaller available
+percentage from the primary and secondary windows is selected. `` indicates
+that no valid value is available; an elapsed deadline appears as `0d0h`.
 
-` State` distingue el estado de la consulta de la cantidad de cuota: ` ok`,
+` State` distinguishes the query state from the quota amount: ` ok`,
 ` pending`, ` disabled`, ` logged-out`, ` unsupported-auth`, ` missing-cli`
-o ` missing-python`, ` timeout` y ` unavailable`. El porcentaje conserva los
-umbrales verde/amarillo/rojo del prompt. Cuando la monitorización está
-desactivada, se conserva también la indicación para habilitarla. Los detalles
-por ventana y la edad de la muestra ya no se imprimen en este resumen.
+or ` missing-python`, ` timeout`, and ` unavailable`. The percentage retains
+the prompt's green/yellow/red thresholds. When monitoring is disabled, the
+hint for enabling it is also retained. Per-window details and sample age are
+no longer printed in this summary.
 
-Solo se almacenan porcentajes numéricos, plazos de restablecimiento y estados
-fijos. YAFP nunca guarda ni imprime identificadores de cuenta o credenciales.
+To inspect the background process, run this in the same terminal:
+
+```bash
+yafp-codex --debug
+```
+
+This works in Bash, zsh, and PowerShell 7; PowerShell also accepts `-Diagnostics`.
+It adds these fields to the frame:
+
+```text
+        Worker: idle
+    Server PID: 12345 (last started)
+         Stage: account/rateLimits/read
+        Reason: rpc-error
+      Duration: 340ms
+```
+
+`Worker` shows `running` with the Unix worker PID or PowerShell job ID, `idle`
+when no query is active, and `disabled` when monitoring is disabled.
+`Server PID` identifies the last server started for that attempt; it does not
+imply that the server is still alive. `Stage` identifies the last stage:
+dependency lookup, server startup, `initialize`, `account/read`,
+`account/rateLimits/read`, or limit parsing (`parse-limits`).
+`Duration` measures the entire attempt in milliseconds, including server
+cleanup; while active, it shows an estimate with `~` and `(running)`.
+
+`Reason` distinguishes `in-progress`, `ok`, missing dependencies or
+authentication, `timeout`, `server-start-failed`, `server-closed`, `rpc-error`,
+`invalid-response`, `no-valid-limits`, and `io-error`. PowerShell can also
+report `worker-start-failed` and `cleanup-failed`. `worker-ended` indicates
+that the worker ended without publishing a final diagnostic. `no-diagnostics`
+means that information for the current attempt is not yet available, is invalid,
+or comes from a collector predating this version; wait for the next query.
+Reloading YAFP preserves the session's attempt and sample.
+
+The diagnostic reads available progress without waiting or forcing an
+additional query. It retains the usual interval and a single worker; run the
+command again to see progress. The normal frame may retain the previous sample
+while the diagnostic fields describe the new attempt. It is not a continuous
+event log and does not display original server messages.
+
+Only percentages, deadlines, states, and diagnostics with fixed stages and
+reasons, duration, and process identifiers are stored. YAFP never stores or
+prints account identifiers, credentials, or server responses.
 
 ### Remote repository checks
 
@@ -713,9 +751,9 @@ between the terminal edges at the compact indicator's current column. Narrow
 or crowded prompts automatically use ` PUSH PENDING: N`,
 ` PULL PENDING: N`, or
 ` DIVERGED: ⇡N ⇣M`; all variants retain the centered `( … )` presentation.
-Cuando el indicador se acerca al borde derecho, YAFP desplaza el aviso hacia
-la izquierda para que quepa en su fila. También calcula cuántas filas debe
-subir si el prefijo del prompt se ha partido en varias líneas.
+When the indicator approaches the right edge, YAFP shifts the banner left
+to fit its row. It also calculates how many rows to move up if the prompt
+prefix has wrapped across multiple lines.
 
 After the first fresh successful check, or after connectivity recovers from an
 offline state, YAFP displays
@@ -805,10 +843,10 @@ of the configured countdown style:
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-`yafp-status` utiliza el mismo marco gris y ajuste al ancho de terminal que
-`yafp-codex` y `yafp-resources`, incluidas las salidas sin repositorio, sin
-upstream o sin Git. Conserva el estado, la barra de tiempo y ambas horas.
-`yafp-demo` muestra ese cuadro antes del cuadro independiente de vista previa.
+`yafp-status` uses the same gray frame and terminal-width adjustment as
+`yafp-codex` and `yafp-resources`, including output without a repository,
+upstream, or Git. It preserves the state, timer bar, and both timestamps.
+`yafp-demo` shows that frame before the separate preview frame.
 
 The remote state text is intense green when up to date and intense red when
 a remote check fails. The timer bar and metrics use green with `` when at
@@ -941,12 +979,12 @@ Use `yafp-help` to list the main YAFP commands with a short description:
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-`yafp-help` y `yafp-msgs` usan el mismo marco gris y ajuste de ancho que los
-otros informes en Bash, zsh y PowerShell. La ayuda conserva nombres amarillos,
-separadores neutros y descripciones blancas. El catálogo conserva el orden de
-éxito, advertencia y error, los paréntesis y los colores de fondo de cada aviso,
-incluidas las variantes claras/oscuras. Las líneas largas continúan dentro del
-cuadro; los márgenes y los bordes se restablecen a su propio color.
+`yafp-help` and `yafp-msgs` use the same gray frame and width adjustment as the
+other reports in Bash, zsh, and PowerShell. Help retains yellow names, neutral
+separators, and white descriptions. The catalog preserves success, warning,
+and error order, parentheses, and each banner's background colors, including
+light/dark variants. Long lines wrap inside the frame; margins and borders
+reset to their own color.
 
 Use `yafp-msgs` in Bash, zsh, or PowerShell to preview all prompt banners, including
 their detailed and compact variants. It prints green banners first, then
@@ -973,9 +1011,9 @@ including an interrupted command, counts as failed:
 └──────────────────────────┘
 ```
 
-`yafp-stats` usa el mismo cuadro gris. Las columnas, porcentajes, colores y el
-separador interior se conservan; el informe automático de salida incluye el
-mismo marco. En una terminal estrecha, las líneas continúan dentro del cuadro.
+`yafp-stats` uses the same gray frame. Columns, percentages, colors, and the
+inner separator are preserved; the automatic exit report includes the same
+frame. In a narrow terminal, lines wrap inside the frame.
 
 The names use intense green, intense red, and intense white respectively; the
 separator uses normal white. YAFP prints the same report during a normal shell
@@ -1002,14 +1040,14 @@ command block. In Bash, the preview expands PS1 display escapes before printing,
 so ANSI colors and the user or root prompt mark render as they do in the active
 prompt instead of appearing as literal backslash sequences.
 
-La vista previa de `yafp-demo` queda dentro de un marco Unicode `┌─┐│└─┘`,
-incluidas las líneas del prompt y su marca `$` o `#`. Conserva los colores y
-reparte las líneas largas entre filas interiores. El ancho sigue la terminal,
-con una columna libre a la derecha para evitar saltos automáticos del borde.
-Los avisos de Git y los controles de borrado se resuelven dentro del cuadro;
-no se envían movimientos de cursor que puedan alterar sus bordes. En una
-terminal de menos de siete columnas se usa la vista previa sin marco.
-El prompt interactivo, las teclas y la pausa del bucle no cambian.
+The `yafp-demo` preview sits inside a Unicode `┌─┐│└─┘` frame, including
+prompt lines and the `$` or `#` mark. It preserves colors and wraps long lines
+across interior rows. The width follows the terminal, leaving one free column
+on the right to prevent the border from wrapping automatically.
+Git banners and erase controls are resolved inside the frame; cursor movements
+that could alter its borders are not emitted. Terminals narrower than seven
+columns use the unframed preview. The interactive prompt, key bindings, and
+loop pause remain unchanged.
 
 ---
 
@@ -1280,9 +1318,9 @@ installation commands without changing the system with `--dry-run` on Unix or
 `-DryRun` on Windows. Use `-PackageManager scoop`, `winget`, or `choco` to
 override automatic selection.
 
-Usa `-SkipShellCheck` para preparar solo la validación de PowerShell.
-El job de Windows en CI usa esta opción e instala PSScriptAnalyzer y
-markdownlint. El job de Linux ejecuta ShellCheck.
+Use `-SkipShellCheck` to prepare only PowerShell validation. The Windows CI
+job uses this option and installs PSScriptAnalyzer and markdownlint. The Linux
+job runs ShellCheck.
 
 <!-- markdownlint-disable MD013 -->
 
@@ -1425,6 +1463,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-03 20:12:02 🍎 MBP02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-11-03 20:54:35 🍎 MBP02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

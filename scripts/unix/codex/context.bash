@@ -96,7 +96,7 @@ yafp_codex_context() {
                 yafp_zsh_codex_start_worker
             else
                 bash "$YAFP_ROOT/scripts/unix/codex/collect.bash" \
-                    "$YAFP_CODEX_DIR/sample" "$SECONDS" </dev/null &
+                    "$YAFP_CODEX_DIR/sample" "$YAFP_CODEX_ATTEMPT" </dev/null &
                 YAFP_CODEX_PID=$!
                 disown "$YAFP_CODEX_PID" 2>/dev/null || true
             fi
@@ -125,6 +125,10 @@ yafp-codex() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
     local report reset_text='' remaining_text='' seconds
     local state_icon state_color reset_color=90
+    case "$#:${1:-}" in
+        0:|1:--debug) ;;
+        *) printf '%s\n' 'Usage: yafp-codex [--debug]' >&2; return 2 ;;
+    esac
     yafp_codex_context
     case "$yafp_ctx_codex_state" in
         ok) state_icon=''; state_color=92 ;;
@@ -150,6 +154,10 @@ yafp-codex() {
     printf -v report '        Reset: \033[%sm%s\033[0m\n        State: \033[%sm%s %s\033[0m\n    Remaining: \033[%sm%s\033[0m' \
         "$reset_color" "$reset_text" "$state_color" "$state_icon" "$yafp_ctx_codex_state" \
         "$remaining_color" "$remaining_text"
+    if [ "${1:-}" = --debug ]; then
+        yafp_codex_debug_report
+        report+=$'\n'"$yafp_codex_debug_text"
+    fi
     . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
     yafp_preview_frame "$report"
     if [ "$yafp_ctx_codex_state" = disabled ]; then
@@ -157,12 +165,56 @@ yafp-codex() {
     fi
 }
 
+yafp_codex_debug_report() {
+    if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
+    local checked stage reason duration server extra valid=1 item elapsed
+    local worker=idle stage_text=unknown reason_text=no-diagnostics duration_text='' server_text=''
+    if [ "$yafp_ctx_codex_state" = disabled ]; then
+        worker=disabled
+    elif [ -n "${YAFP_CODEX_PID:-}" ] && kill -0 "$YAFP_CODEX_PID" 2>/dev/null; then
+        worker="running (PID $YAFP_CODEX_PID)"
+    fi
+    if [ "$worker" != disabled ] && [ -n "${YAFP_CODEX_DIR:-}" ] &&
+        [ -r "$YAFP_CODEX_DIR/sample.debug" ]; then
+        IFS=' ' read -r checked stage reason duration server extra < "$YAFP_CODEX_DIR/sample.debug" || valid=0
+        for item in "$checked" "$duration" "$server"; do
+            case "$item" in ''|*[!0-9]*|0?*|????????????*) valid=0 ;; esac
+        done
+        case "$stage" in
+            locate-python|locate-cli|start-server|initialize|account/read|account/rateLimits/read|parse-limits) ;;
+            *) valid=0 ;;
+        esac
+        case "$reason" in
+            in-progress|ok|missing-cli|missing-python|logged-out|unsupported-auth|timeout|server-start-failed|server-closed|rpc-error|invalid-response|no-valid-limits|io-error|cancelled) ;;
+            *) valid=0 ;;
+        esac
+        [ -z "$extra" ] || valid=0
+        # Never attribute a previous attempt's stage to a new worker.
+        if [ "$valid" = 1 ] && [ "$checked" = "${YAFP_CODEX_ATTEMPT:-}" ] && [ "$checked" -le "$SECONDS" ]; then
+            stage_text=$stage reason_text=$reason duration_text="${duration}ms"
+            [ "$server" = 0 ] || server_text="$server (last started)"
+            if [ "$reason" = in-progress ]; then
+                case "$worker" in
+                    running*)
+                        elapsed=$(((SECONDS - checked) * 1000))
+                        [ "$elapsed" -ge "$duration" ] || elapsed=$duration
+                        duration_text="~${elapsed}ms (running)" ;;
+                    *) reason_text='worker-ended' ;;
+                esac
+            fi
+        fi
+    fi
+    printf -v yafp_codex_debug_text '        Worker: %s\n    Server PID: %s\n         Stage: %s\n        Reason: %s\n      Duration: %s' \
+        "$worker" "$server_text" "$stage_text" "$reason_text" "$duration_text"
+}
+
 yafp_codex_cleanup() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
     # The collector handles SIGTERM and terminates its private app-server.
     [ -z "${YAFP_CODEX_PID:-}" ] || kill "$YAFP_CODEX_PID" 2>/dev/null || true
     if [ -n "${YAFP_CODEX_DIR:-}" ]; then
-        rm -f -- "$YAFP_CODEX_DIR/sample" "$YAFP_CODEX_DIR/sample.tmp" 2>/dev/null
+        rm -f -- "$YAFP_CODEX_DIR/sample" "$YAFP_CODEX_DIR/sample.tmp" \
+            "$YAFP_CODEX_DIR/sample.debug" "$YAFP_CODEX_DIR/sample.debug.tmp" 2>/dev/null
         rmdir -- "$YAFP_CODEX_DIR" 2>/dev/null || true
     fi
     YAFP_CODEX_DIR='' YAFP_CODEX_PID='' YAFP_CODEX_ATTEMPT=''

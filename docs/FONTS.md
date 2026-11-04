@@ -56,12 +56,12 @@ colors and `unavailable` output. The preview is introduced by `` (`U+F120`);
 the `Ctrl+C` reminder uses `` (`U+EDFE`, infinity remapped by Nerd Fonts) and
 `` (`U+F021`, refresh). The loop interval remains four seconds.
 
-Los valores ausentes del prompt usan `` (`U+F12A`, exclamation) en rojo
-en Bash, zsh y PowerShell, en los tres temas. Codex muestra `֍dh`;
-recursos sin muestra válida muestran `▦` en Unicode + símbolos.
-Las métricas parciales usan el mismo icono y respetan las etiquetas y espacios
-configurados. `⟳` conserva la espera inicial y `` la actualización activa.
-Los informes de diagnóstico conservan `` para los datos ausentes.
+Missing prompt values use a red `` (`U+F12A`, exclamation) in Bash, zsh,
+and PowerShell across all three themes. Codex displays `֍dh`; resources
+without a valid sample display `▦` in Unicode + symbols mode.
+Partial metrics use the same icon and respect the configured labels and
+spacing. `⟳` retains the initial pending state and `` the active refresh.
+Diagnostic reports retain `` for missing data.
 
 The `yafp-codex` frame uses `` (`U+F274`) for the reset, `` (`U+F21E`,
 heartbeat) for the state, and `` (`U+F200`, chart-pie) for the remaining quota.
@@ -417,6 +417,6 @@ $
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-03 19:12:30 🍎 MBP02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-11-03 20:54:35 🍎 MBP02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

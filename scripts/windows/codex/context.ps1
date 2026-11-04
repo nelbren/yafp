@@ -15,6 +15,9 @@ foreach ($name in @('YafpCodexJob', 'YafpCodexSample', 'YafpCodexAttempt')) {
 if (-not (Get-Variable YafpCodexControl -Scope Script -ErrorAction Ignore)) {
     $script:YafpCodexControl = [hashtable]::Synchronized(@{ Process = $null; Cancelled = $false })
 }
+if (-not $script:YafpCodexControl.ContainsKey('Diagnostic')) {
+    $script:YafpCodexControl.Diagnostic = $null
+}
 
 function global:Stop-YafpCodexWorker {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
@@ -86,11 +89,17 @@ function global:Get-YafpCodexContext {
         $script:YafpCodexAttempt = $now
         try {
             $script:YafpCodexControl.Cancelled = $false
+            $script:YafpCodexControl.Diagnostic = $null
             $script:YafpCodexJob = Start-ThreadJob -FilePath `
                 (Join-Path $script:YafpRoot 'scripts/windows/codex/collect.ps1') `
-                -ArgumentList 10000, $script:YafpCodexControl -ErrorAction Stop
+                -ArgumentList 10000, $script:YafpCodexControl, $now -ErrorAction Stop
         }
-        catch { }
+        catch {
+            $script:YafpCodexControl.Diagnostic = [pscustomobject]@{
+                CheckedAt = $now; Stage = 'start-worker'; Reason = 'worker-start-failed'
+                Duration = 0; ServerPid = 0
+            }
+        }
     }
     $value = $null
     if ($null -ne $script:YafpCodexSample -and $script:YafpCodexSample.State -eq 'ok') {
@@ -125,6 +134,11 @@ function global:Write-YafpCodex {
 }
 
 function global:Show-YafpCodex {
+    param([Alias('Debug')][switch]$Diagnostics)
+    if ($args.Count -gt 0) {
+        if ($args.Count -eq 1 -and $args[0] -eq '--debug') { $Diagnostics = $true }
+        else { throw 'Usage: yafp-codex [--debug | -Diagnostics]' }
+    }
     $quota = Get-YafpCodexContext
     $state = 'disabled'; $resetText = ''; $remainingText = ''
     $resetColor = 90; $remainingColor = 90
@@ -156,9 +170,33 @@ function global:Show-YafpCodex {
     $report = "        Reset: $escape[$($resetColor)m$resetText$escape[0m`n" +
         "        State: $escape[$($stateColor)m$stateIcon $state$escape[0m`n" +
         "    Remaining: $escape[$($remainingColor)m$remainingText$escape[0m"
+    if ($Diagnostics) { $report += "`n" + (Get-YafpCodexDebugReport -Disabled ($state -eq 'disabled')) }
     . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
     Write-YafpPreviewFrame -Text $report
     if ($state -eq 'disabled') {
         Write-Output 'Codex quota disabled. Set $global:YAFP_CODEX_CHECK_INTERVAL=300.'
     }
+}
+
+function global:Get-YafpCodexDebugReport {
+    param([bool]$Disabled)
+    $worker = 'idle'; $stage = 'unknown'; $reason = 'no-diagnostics'; $duration = ''; $server = ''
+    $snapshot = $null
+    if ($Disabled) { $worker = 'disabled' }
+    else {
+        $snapshot = $script:YafpCodexControl.Diagnostic
+        if ($null -ne $script:YafpCodexJob) { $worker = "running (job $($script:YafpCodexJob.Id))" }
+    }
+    if ($null -ne $snapshot -and $snapshot.CheckedAt -eq $script:YafpCodexAttempt) {
+        $stage = $snapshot.Stage; $reason = $snapshot.Reason; $duration = "$($snapshot.Duration)ms"
+        if ($snapshot.ServerPid -gt 0) { $server = "$($snapshot.ServerPid) (last started)" }
+        if ($reason -eq 'in-progress') {
+            if ($null -ne $script:YafpCodexJob) {
+                $elapsed = ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - $snapshot.CheckedAt) * 1000
+                $duration = "~$([Math]::Max($elapsed, $snapshot.Duration))ms (running)"
+            }
+            else { $reason = 'worker-ended' }
+        }
+    }
+    "        Worker: $worker`n    Server PID: $server`n         Stage: $stage`n        Reason: $reason`n      Duration: $duration"
 }

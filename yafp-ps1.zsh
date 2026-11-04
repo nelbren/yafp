@@ -1699,7 +1699,7 @@ yafp_zsh_codex_start_worker() {
     emulate -L zsh -o KSH_ARRAYS
     unsetopt BG_NICE
     bash "$YAFP_ROOT/scripts/unix/codex/collect.bash" \
-        "$YAFP_CODEX_DIR/sample" "$SECONDS" </dev/null >/dev/null 2>&1 &!
+        "$YAFP_CODEX_DIR/sample" "$YAFP_CODEX_ATTEMPT" </dev/null >/dev/null 2>&1 &!
     YAFP_CODEX_PID=$!
 }
 

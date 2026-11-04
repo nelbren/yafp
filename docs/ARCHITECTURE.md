@@ -401,7 +401,7 @@ measurement, preserving staged and remote banner alignment when Git follows
 the host. RAM, CPU, and disk become yellow above 85% and red
 above 95%; swap uses thresholds above 10% and 30%. Comparison uses the integer
 percentage before conversion to Braille, with red taking precedence.
-Los valores ausentes usan `` en rojo. Shared fixtures check color boundaries,
+Missing values use a red ``. Shared fixtures check color boundaries,
 Braille transitions, and all four combinations across shells and themes.
 
 Swap usage is relative to allocated capacity; no allocated swap means 0%.
@@ -411,38 +411,36 @@ appends it directly to the final resource token. While the first sample is
 pending, context supplies gray loading tokens for CPU, RAM, swap, and disk,
 using the configured labels and separator. The prompt displays
 `↦[⟳▦⟳⟳⟳]` in Unicode + symbols mode, without a trailing ``.
-El informe `yafp-resources` muestra un cuadro compartido con las otras
-herramientas de diagnóstico. Sus seis campos alineados son `State`,
-`Sample age`, `CPU`, `RAM`, `SWAP` y `Disk (HOME)`. Las métricas se muestran
-siempre como porcentajes y conservan los detalles usados/totales y sus unidades.
-Las etiquetas usan Font Awesome; los valores ausentes se representan con ``
-en gris. El contexto conserva porcentajes antes de su conversión a Braille;
-el informe reutiliza esos valores y sus colores, sin cambiar los umbrales.
+The `yafp-resources` report displays a frame shared with the other diagnostic
+tools. Its six aligned fields are `State`, `Sample age`, `CPU`, `RAM`, `SWAP`,
+and `Disk (HOME)`. Metrics always appear as percentages and retain used/total
+details and their units. Labels use Font Awesome; missing values appear as a
+gray ``. Context retains percentages before conversion to Braille;
+the report reuses those values and their colors without changing thresholds.
 
-Los estados son `ok` (muestra disponible), `refreshing` (muestra disponible y
-trabajador activo), `pending` (trabajador sin muestra), `unavailable` y
-`disabled`. El icono `` y su estado `refreshing` siguen en gris. La edad y los
-detalles solo proceden de la muestra aceptada en la lectura actual; una caché
-inválida no puede volver a mostrar datos diagnósticos antiguos. Las métricas
-parciales permanecen disponibles y un swap no asignado sigue siendo cero.
-El comando no espera al trabajador. Los marcadores textuales de contexto
-`Resources: waiting for sample` y `Resources: no valid sample` siguen siendo
-internos; el informe los presenta mediante `State`. Sin muestra válida, el
-prompt genera cuatro tokens rojos con ``, respetando etiquetas y separador
-(`↦[▦]` en Unicode + símbolos). Las métricas parciales ausentes
-también usan ``; los valores válidos conservan sus colores. README describes
+States are `ok` (sample available), `refreshing` (sample available and worker
+active), `pending` (worker without a sample), `unavailable`, and `disabled`.
+The `` icon and its `refreshing` state remain gray. Age and details come only
+from the sample accepted during the current read; an invalid cache cannot
+redisplay old diagnostic data. Partial metrics remain available, and
+unallocated swap remains zero. The command does not wait for the worker.
+The context text markers `Resources: waiting for sample` and
+`Resources: no valid sample` remain internal; the report presents them through
+`State`. Without a valid sample, the prompt produces four red tokens with
+``, respecting labels and the separator (`↦[▦]` in Unicode +
+symbols mode). Missing partial metrics also use ``; valid values retain
+their colors. README describes
 platform definitions and diagnostic limitations. Probe and lifecycle tests use
 fixtures and controlled workers to cover intervals, reload, failures, rendering
 without external tools, and preservation of the previous command status.
 
-El comando `yafp-demo-resources` genera tres lecturas para el recurso
-seleccionado. Con `ALL` muestra los cuatro grupos en orden CPU, MEMORY, SWAP
-y DISK, separados por una línea en blanco. Reutiliza el formateador de métricas
-y el renderizado del icono
-del sistema y del marco. Bash y zsh aíslan los tokens en variables locales.
-PowerShell pasa un contexto temporal a los renderizadores. La demostración
-no lee la caché ni arranca un trabajador.
-La etiqueta y el porcentaje ocupan un campo fijo para alinear los ejemplos.
+The `yafp-demo-resources` command generates three readings for the selected
+resource. With `ALL`, it shows all four groups in CPU, MEMORY, SWAP, and DISK
+order, separated by blank lines. It reuses the metric formatter and the system
+icon and frame rendering. Bash and zsh isolate tokens in local variables.
+PowerShell passes temporary context to the renderers. The demo does not read
+the cache or start a worker. The label and percentage occupy a fixed-width
+field to align the examples.
 
 ## Codex quota context
 
@@ -464,12 +462,36 @@ The worker has a ten-second deadline and terminates its private process group
 on completion, timeout, or normal shell cleanup. Native Python in Git Bash
 uses Windows process-tree termination instead.
 
+`yafp-codex --debug` extends only the requested report. On Unix, the worker
+atomically publishes `sample.debug`: the attempt's session-clock value,
+stage, fixed reason, elapsed milliseconds, and server PID. It publishes a
+snapshot before each request and another after cleanup. The reader validates
+numeric fields and closed sets of stages and reasons, and requires the
+attempt to match `YAFP_CODEX_ATTEMPT`. It does not evaluate file contents or
+attribute an old stage to the new worker. Diagnostic files and their temporary
+files are removed with the session cache. Older collectors remain compatible
+and show `no-diagnostics` until the next query. Normal rendering does not read
+this additional file.
+
 Windows loads `scripts/windows/codex/context.ps1` and runs the native
 `collect.ps1` client in a `Start-ThreadJob`. Redirected process streams,
 asynchronous reads, a shared deadline, and process-tree cleanup isolate the
 CLI from the prompt. Both native binaries and npm `.cmd` launchers are
 supported. Completed jobs are received and removed without waiting; reloads
 preserve the job and sample. No Python dependency is added on Windows.
+
+In PowerShell, the synchronized control shares a diagnostic snapshot by
+replacing its reference; the final result also includes it. The attempt's
+clock value is passed to the job to associate progress even if it starts in
+a different second. The report accepts `--debug` and `-Diagnostics`, shows
+the job ID and server PID, and does not wait for the job. Both systems retain
+the last stage with a fixed reason (`rpc-error`, `server-closed`,
+`invalid-response`, `no-valid-limits`, among others), without persisting error
+messages, stderr, or account data. Final duration includes cleanup; active
+duration is approximate. The server PID is historical, not proof of activity.
+If the worker disappears with reason `in-progress`, the report shows
+`worker-ended`. Diagnostics preserve existing scheduling and never start a
+second worker or make foreground network queries.
 
 Both collectors prefer `rateLimitsByLimitId.codex`, falling back to the legacy
 `rateLimits` view without accepting an unrelated bucket. They validate numeric
@@ -510,21 +532,20 @@ reset countdown. Valid samples replace the placeholders with the existing
 quota and duration formatting; later refreshes retain the last sample. The
 frame shares Git delimiter colors and the existing prompt-prefix width
 measurement.
-Disabled context renders no prompt frame. El informe `yafp-codex` reutiliza el
-marco de diagnóstico y muestra tres campos alineados: ` Reset` en días y
-horas, ` State` con un icono semántico por estado, y ` Remaining` con el
-porcentaje agregado que limita la cuota. No cambia según el estilo Braille del
-prompt ni imprime las ventanas individuales o la edad de la muestra. Los
-campos ausentes usan `` (`U+F059`, question-circle) en gris; el plazo
-vencido se limita a `0d0h`. El estado de
-consulta y la severidad del porcentaje tienen colores independientes.
+Disabled context renders no prompt frame. The `yafp-codex` report reuses the
+diagnostic frame and shows three aligned fields: ` Reset` in days and hours,
+` State` with a semantic icon for each state, and ` Remaining` with the
+aggregate percentage limiting the quota. It does not change with the prompt's
+Braille style or print individual windows or sample age. Missing fields use
+a gray `` (`U+F059`, question-circle); an elapsed deadline is clamped to
+`0d0h`. Query state and percentage severity have independent colors.
 
-En Unix, el contexto expone estado, valor y plazo derivados únicamente de la
-muestra validada en esa lectura, evitando que un informe sin muestra reutilice
-datos diagnósticos de una lectura anterior. PowerShell usa el objeto de muestra
-del contexto. `pending` exige un trabajador activo y `disabled` conserva la
-instrucción de configuración. El informe no espera al trabajador ni modifica
-la selección de ventana o el token del prompt.
+On Unix, context exposes state, value, and deadline derived only from the
+sample validated during that read, preventing a report without a sample from
+reusing diagnostic data from a previous read. PowerShell uses the context's
+sample object. `pending` requires an active worker, and `disabled` retains the
+configuration hint. The report does not wait for the worker or modify window
+selection or the prompt token.
 
 Offline protocol peers and shared boundary fixtures test authentication gates,
 bucket selection, unavailable values, timeouts, atomic publication, worker
@@ -532,11 +553,10 @@ uniqueness/reload, all themes, invisible ANSI markers, and previous exit status.
 The interactive zsh test also covers job notifications and OSC 133 while quota
 and machine resource monitoring coexist.
 
-El anuncio de conexión de Git invalida el temporizador de Codex una vez por
-transición. El prompt recoge primero el contexto de Git para que Codex pueda
-iniciar una revisión en esa misma pasada. Si hay un trabajador activo, la
-solicitud sigue pendiente hasta que termine. El intervalo cero conserva Codex
-deshabilitado.
+The Git connection announcement invalidates the Codex timer once per
+transition. The prompt collects Git context first so Codex can start a check
+during the same pass. If a worker is active, the request remains pending until
+it finishes. A zero interval keeps Codex disabled.
 
 ## Uniform indicator frames
 
@@ -604,10 +624,10 @@ composites. Linux servers specialize exact `/etc/os-release` IDs `debian`
 shell builtins without evaluating file contents. Missing or unreadable release
 files and absent IDs fall back to ``; `ID_LIKE` does not select a logo.
 PowerShell themes use the Windows glyph
-where an OS indicator already exists. En `minimal` y `light`, el icono del
-servidor reutiliza los colores de los cuatro indicadores de recursos. El
-rojo tiene prioridad sobre el amarillo y el resto se muestra en blanco.
-La evaluación usa los datos del prompt en memoria.
+where an OS indicator already exists. In `minimal` and `light`, the server
+icon reuses the colors of the four resource indicators. Red takes precedence
+over yellow, and other states appear white. Evaluation uses prompt data
+already in memory.
 
 Git logos `` (`U+F1D3`) and `` (`U+F1D2`) distinguish branches with
 and without a configured remote. Old assignments remain commented beside
@@ -618,88 +638,83 @@ Their replaced assignments remain commented in the engines and themes.
 The terminal's local Nerd
 Font must contain the glyphs, including when displaying a remote shell.
 
-Los estados y las etiquetas decorativas del prompt usan los glifos Font
-Awesome documentados en [FONTS.md](FONTS.md#prompt-icons). Bash y zsh
-conservan sus variables `YAFP_SYMBOL_*`; PowerShell usa los mismos glifos en
-sus renderizadores. Los reemplazos se limitan a etiquetas estáticas: no se
-reescribe el texto de comandos, rutas, ramas ni entornos. No se incorporan
-procesos, detección de fuentes ni trabajo adicional por renderizado.
+Prompt states and decorative labels use the Font Awesome glyphs documented
+in [FONTS.md](FONTS.md#prompt-icons). Bash and zsh retain their `YAFP_SYMBOL_*`
+variables; PowerShell uses the same glyphs in its renderers. Replacements are
+limited to static labels: command, path, branch, and environment text is not
+rewritten. No processes, font detection, or additional per-render work are
+introduced.
 
-Las expansiones miden el texto que se muestra con los glifos de los
-contadores. El temporizador remoto usa ``
-con los tonos verde, amarillo o rojo existentes; el texto conserva porcentaje
-y segundos. Todos los temas usan `` y `` para éxito y error.
-Los indicadores Braille, `֍`, ``, `⟳`, marcos y momentos del día conservan su
-representación. Las pruebas de presentación verifican las variantes
-oscuras/claras, los tres temas, los
-umbrales de rendimiento y los anclajes de las expansiones con estas etiquetas.
+Expansions measure the displayed text with the counter glyphs. The remote
+timer uses `` with the existing green, yellow, or red shades; its text retains
+percentages and seconds. All themes use `` and `` for success and error.
+Braille indicators, `֍`, ``, `⟳`, frames, and time-of-day symbols retain
+their representation. Presentation tests verify dark/light variants, all
+three themes, performance thresholds, and expansion anchors with these labels.
 
-El informe compartido de `yafp-status` y `yafp-demo` usa iconos Font Awesome
-para remoto, estado al día, hora actual y próxima revisión. Las cuatro
-etiquetas terminan en la misma columna, incluso sin datos disponibles. La
-vista previa y el aviso de interrupción también usan Font Awesome; el bucle,
-su pausa de cuatro segundos y las secuencias OSC 133 conservan su lógica.
-PowerShell mantiene sus patrones de reconocimiento alineados con las nuevas
-etiquetas para conservar los colores de las horas.
+The report shared by `yafp-status` and `yafp-demo` uses Font Awesome icons for
+the remote, up-to-date status, current time, and next check. All four labels
+end in the same column, even when no data is available. The preview and
+interruption reminder also use Font Awesome; the loop, its four-second pause,
+and OSC 133 sequences retain their logic. PowerShell keeps its recognition
+patterns aligned with the new labels to preserve timestamp colors.
 
-### Marcos de diagnóstico
+### Diagnostic frames
 
 `yafp-demo`, `yafp-codex`, `yafp-resources`, `yafp-status`, `yafp-stats`,
-`yafp-help` y `yafp-msgs` cargan bajo demanda los helpers
-`scripts/unix/preview/lib/frame.bash` y
-`scripts/windows/preview/lib/frame.ps1`. No se añaden procesos ni trabajo al
-renderizado del prompt interactivo. La vista previa normal sigue disponible
-sin marco; Bash/zsh seleccionan el cuadro con el argumento interno `frame`.
-PowerShell captura los registros de información de la vista previa y convierte
-sus colores de consola a SGR antes de dibujar el cuadro.
+`yafp-help`, and `yafp-msgs` load the helpers
+`scripts/unix/preview/lib/frame.bash` and
+`scripts/windows/preview/lib/frame.ps1` on demand. No processes or work are
+added to interactive prompt rendering. The normal preview remains available
+without a frame; Bash/zsh select the frame with the internal `frame` argument.
+PowerShell captures the preview's information records and converts their
+console colors to SGR before drawing the frame.
 
-`Write-YafpText` emite registros `HostInformationMessage` con los colores
-solicitados: un fondo no especificado permanece nulo. Así se evita que
-`Write-Host` materialice el fondo actual de `RawUI` en Windows y lo convierta
-en un fondo explícito dentro del cuadro. Los fondos solicitados, los avisos
-RGB y los saltos de línea separados conservan su comportamiento. Las pruebas
-fijan fondos de consola negro y azul para verificar esta captura también en
-los hosts que normalmente no exponen un color predeterminado.
+`Write-YafpText` emits `HostInformationMessage` records with the requested
+colors: an unspecified background remains null. This prevents `Write-Host`
+from materializing the current `RawUI` background on Windows and turning it
+into an explicit background inside the frame. Requested backgrounds, RGB
+banners, and separate newlines retain their behavior. Tests set black and blue
+console backgrounds to verify this capture even on hosts that do not normally
+expose a default color.
 
-Un lienzo de celdas interpreta saltos de línea, SGR, borrado de línea y los
-movimientos relativos y de guardado/restauración usados por los avisos. Solo
-se imprimen texto, colores y los bordes; los movimientos no escapan del cuadro.
-Las líneas se distribuyen según su ancho visible, con tratamiento de marcas
-combinantes y caracteres de dos celdas. Bash 3.2 decodifica el primer byte UTF-8
-que devuelve su `printf` para medir estos caracteres en la vista previa.
-Se sigue el modelo de ancho de YAFP; no se sustituye el cálculo de grafemas
-del editor ni el de la terminal.
+A cell canvas interprets newlines, SGR, line erasure, and the relative and
+save/restore movements used by banners. Only text, colors, and borders are
+printed; movements do not escape the frame. Lines wrap according to their
+visible width, accounting for combining marks and double-width characters.
+Bash 3.2 decodes the first UTF-8 byte returned by its `printf` to measure
+these characters in the preview. This follows YAFP's width model; it does not
+replace the editor's or terminal's grapheme calculations.
 
-El ancho interior es el ancho de terminal menos cinco columnas: cuatro para
-los bordes y su espacio interior, y una libre al margen derecho. El cuadro
-usa gris, con restablecimiento de color antes de los márgenes; menos de siete
-columnas conserva la salida normal. Las pruebas cubren ajuste de línea,
-colores, Unicode, avisos, borrado y la salida estrecha; una prueba PTY de zsh
-verifica la ejecución real a 240 y 60 columnas, OSC 133 e interrupción.
+The interior width is the terminal width minus five columns: four for the
+borders and their inner padding, and one free column at the right margin.
+The frame uses gray, with a color reset before the margins; terminals with
+fewer than seven columns retain normal output. Tests cover wrapping, colors,
+Unicode, banners, erasure, and narrow output; a zsh PTY test verifies actual
+execution at 240 and 60 columns, OSC 133, and interruption.
 
-`yafp-status` encuadra el resultado del formateador existente sin volver a
-consultar el contexto remoto. Bash/zsh usan un modo interno `frame` en el
-formateador; PowerShell usa `-Framed`. Los formateadores sin marco conservan
-sus contratos de texto para las pruebas de campos y horas. El color capturado
-en Unix se habilita solo en el formateador de diagnóstico y respeta `NO_COLOR`.
-La vista de `yafp-demo` contiene dos cuadros independientes: estado y prompt.
+`yafp-status` frames the existing formatter's result without querying remote
+context again. Bash/zsh use an internal `frame` formatter mode; PowerShell uses
+`-Framed`. Unframed formatters preserve their text contracts for field and
+timestamp tests. Captured color on Unix is enabled only in the diagnostic
+formatter and respects `NO_COLOR`. The `yafp-demo` view contains two independent
+frames: status and prompt.
 
-`yafp-stats` conserva las operaciones de contadores, el redondeo, la alineación
-y las cuatro líneas del informe dentro del cuadro. También se encuadra el
-informe automático de salida. PowerShell ofrece al renderer `-DirectConsole`
-para escribir directamente con `Console.WriteLine` durante `PowerShell.Exiting`,
-sin depender de la entrega de mensajes del host al cerrar. Restaura los colores
-de consola originales cuando están disponibles. Las pruebas comparan el texto
-dentro del cuadro con las caracterizaciones anteriores y comprueban colores,
-la ruta directa de consola, cero comandos, recarga y el encadenamiento de EXIT.
+`yafp-stats` preserves counter operations, rounding, alignment, and all four
+report lines inside the frame. The automatic exit report is also framed.
+PowerShell offers the renderer `-DirectConsole` to write directly with
+`Console.WriteLine` during `PowerShell.Exiting`, without depending on host
+message delivery at shutdown. It restores the original console colors when
+available. Tests compare framed text with previous characterizations and
+check colors, the direct console path, zero commands, reload, and EXIT chaining.
 
-`yafp-help` y `yafp-msgs` encuadran sus catálogos estáticos mediante el mismo
-renderer. Sus modos internos `plain` en Unix y `-Plain` en PowerShell conservan
-los formateadores originales para caracterizar texto, orden y estilos. La ruta
-pública captura ese texto coloreado una sola vez y aplica el marco; no consulta
-Git, recursos ni servicios. Las pruebas comparan las entradas con los catálogos
-anteriores, validan colores de ayuda y comprueban los fondos de los avisos en
-modo claro y oscuro, además de bordes y ajuste de línea del renderer compartido.
+`yafp-help` and `yafp-msgs` frame their static catalogs with the same renderer.
+Their internal `plain` mode on Unix and `-Plain` mode on PowerShell preserve
+the original formatters to characterize text, order, and styles. The public
+path captures that colored text once and applies the frame; it does not query
+Git, resources, or services. Tests compare entries with previous catalogs,
+validate help colors, and check banner backgrounds in light and dark modes,
+along with borders and wrapping in the shared renderer.
 
 ## Theme contract
 
@@ -753,9 +768,9 @@ pwsh -NoProfile -File scripts/windows/setup/quality.ps1
 Both installers support a non-mutating setup-plan mode through `--dry-run` on
 Unix and `-DryRun` on Windows.
 
-El instalador de CI en Windows y la vista previa del validador de PowerShell
-usan `-SkipShellCheck`. La instalación completa incluye ShellCheck para
-Git Bash. El job de Linux valida Bash con ShellCheck.
+The Windows CI installer and PowerShell validator preview use
+`-SkipShellCheck`. The full installation includes ShellCheck for Git Bash.
+The Linux job validates Bash with ShellCheck.
 
 The standalone `scripts/windows/setup/psscriptanalyzer.ps1` installer shares
 its cross-platform module installation logic with the Windows quality setup
@@ -817,6 +832,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-03 20:12:02 🍎 MBP02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-11-03 20:55:30 🍎 MBP02 |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

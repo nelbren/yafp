@@ -96,6 +96,73 @@ class CodexCollectorTests(unittest.TestCase):
         self.assertEqual(result.stdout, b"")
         self.assertEqual(sample.read_text(), "17 ok 60 75 60 -\n")
         self.assertFalse(sample.with_suffix(".tmp").exists())
+        diagnostic = sample.with_name("sample.debug").read_text().split()
+        self.assertEqual(diagnostic[:3], ["17", "parse-limits", "ok"])
+        self.assertTrue(all(value.isdecimal() for value in diagnostic[3:]))
+        self.assertNotIn("PRIVATE", sample.with_name("sample.debug").read_text())
+
+    def test_diagnostic_stages_and_sanitized_failure_reasons(self):
+        for fixture, stage, reason in [
+            ({"error": "initialize"}, "initialize", "rpc-error"),
+            ({"error": "account/read"}, "account/read", "rpc-error"),
+            ({"error": "account/rateLimits/read"}, "account/rateLimits/read", "rpc-error"),
+            ({"close": "account/read"}, "account/read", "server-closed"),
+            ({"invalid": "account/rateLimits/read"}, "account/rateLimits/read", "invalid-response"),
+            ({"delay": 4}, "account/rateLimits/read", "timeout"),
+            ({"account": None}, "account/read", "logged-out"),
+            ({"account": {"type": "apiKey"}}, "account/read", "unsupported-auth"),
+            ({}, "parse-limits", "no-valid-limits"),
+        ]:
+            with self.subTest(stage=stage, reason=reason):
+                self.fixture.write_text(json.dumps(fixture))
+                events = []
+                collector.probe(timeout=.3, report=lambda *event: events.append(event))
+                self.assertEqual(events[-1][:2], (stage, reason))
+                self.assertGreaterEqual(events[-1][2], 0)
+                self.assertGreater(events[-1][3], 0)
+                self.assertNotIn("PRIVATE", repr(events))
+                self.assertTrue(all(event[1] == "in-progress" for event in events[:-1]))
+        events = []
+        with patch.object(collector.shutil, "which", return_value=None):
+            collector.probe(report=lambda *event: events.append(event))
+        self.assertEqual(events[-1][:2], ("locate-cli", "missing-cli"))
+        with patch.object(collector.subprocess, "Popen", side_effect=OSError("PRIVATE")):
+            collector.probe(report=lambda *event: events.append(event))
+        self.assertEqual(events[-1][:2], ("start-server", "server-start-failed"))
+
+    def test_live_diagnostic_is_published_before_quota_finishes(self):
+        self.fixture.write_text(json.dumps({"delay": 20}))
+        sample = self.directory / "sample"
+        diagnostic = self.directory / "sample.debug"
+        process = subprocess.Popen([sys.executable, str(ROOT / "scripts/unix/codex/collect.py"),
+                                    str(sample), "17"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline:
+                if diagnostic.exists() and "account/rateLimits/read in-progress" in diagnostic.read_text():
+                    break
+                time.sleep(.01)
+            else:
+                self.fail("Live stage was not published")
+            self.assertFalse(sample.exists())
+            process.send_signal(signal.SIGTERM)
+            stdout, stderr = process.communicate(timeout=2)
+            self.assertEqual((stdout, stderr), (b"", b""))
+            self.assertIn("cancelled", diagnostic.read_text())
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.communicate()
+
+    def test_missing_python_publishes_diagnostic_without_output(self):
+        (self.directory / "mv").symlink_to("/bin/mv")
+        sample = self.directory / "sample"
+        result = subprocess.run(["/bin/bash", str(ROOT / "scripts/unix/codex/collect.bash"),
+                                 str(sample), "17"], capture_output=True, timeout=2)
+        self.assertEqual((result.returncode, result.stdout, result.stderr), (0, b"", b""))
+        self.assertEqual(sample.read_text(), "17 missing-python - - - -\n")
+        self.assertEqual(sample.with_name("sample.debug").read_text(),
+                         "17 locate-python missing-python 0 0\n")
 
     def test_selected_window_reset_and_invalid_timestamps(self):
         for primary, secondary, reset in [

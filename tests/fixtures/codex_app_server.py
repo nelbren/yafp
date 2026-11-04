@@ -18,6 +18,8 @@ for line in sys.stdin:
     method = request["method"]
     if method == "initialized":
         continue
+    if fixture.get("close") == method:
+        sys.exit(0)
     if method == "initialize":
         result = {}
     elif method == "account/read":
@@ -33,4 +35,6 @@ for line in sys.stdin:
     response = {"id": request["id"], "result": result}
     if fixture.get("error") == method:
         response = {"id": request["id"], "error": {"message": "PRIVATE"}}
+    if fixture.get("invalid") == method:
+        response = {"id": request["id"], "result": "PRIVATE"}
     print(json.dumps(response), flush=True)

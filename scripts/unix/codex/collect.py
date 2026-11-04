@@ -36,12 +36,29 @@ def remaining_windows(result):
     return values, resets[selected] if selected is not None else None
 
 
-def probe(timeout=10):
-    command = shutil.which("codex")
-    if not command:
-        return "missing-cli", [None, None], None
+class ProbeFailure(OSError):
+    """A fixed diagnostic code, never a server-provided message."""
+
+
+def probe(timeout=10, report=None):
+    started = time.monotonic()
+    stage, reason = "locate-cli", "in-progress"
     process = None
+
+    def progress(next_stage):
+        nonlocal stage
+        stage = next_stage
+        if report is not None:
+            report(stage, reason, int((time.monotonic() - started) * 1000),
+                   process.pid if process is not None else 0)
+
     try:
+        progress(stage)
+        command = shutil.which("codex")
+        if not command:
+            reason = "missing-cli"
+            return "missing-cli", [None, None], None
+        progress("start-server")
         process = subprocess.Popen(
             [command, "app-server"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace",
@@ -61,6 +78,7 @@ def probe(timeout=10):
         deadline = time.monotonic() + timeout
 
         def request(identifier, method, params=None):
+            progress(method)
             payload = {"id": identifier, "method": method}
             if params is not None:
                 payload["params"] = params
@@ -75,14 +93,16 @@ def probe(timeout=10):
                 except queue.Empty as error:
                     raise TimeoutError from error
                 if line is None:
-                    raise OSError("App server closed")
+                    raise ProbeFailure("server-closed")
                 try:
                     message = json.loads(line)
                 except ValueError:
                     continue
                 if isinstance(message, dict) and message.get("id") == identifier:
-                    if "error" in message or not isinstance(message.get("result"), dict):
-                        raise OSError("App server request failed")
+                    if "error" in message:
+                        raise ProbeFailure("rpc-error")
+                    if not isinstance(message.get("result"), dict):
+                        raise ProbeFailure("invalid-response")
                     return message["result"]
 
         request(1, "initialize", {"clientInfo": {"name": "yafp", "version": "1"}})
@@ -90,15 +110,28 @@ def probe(timeout=10):
         process.stdin.flush()
         account = request(2, "account/read", {"refreshToken": False}).get("account")
         if not isinstance(account, dict):
+            reason = "logged-out"
             return "logged-out", [None, None], None
         if account.get("type") != "chatgpt":
+            reason = "unsupported-auth"
             return "unsupported-auth", [None, None], None
-        values, reset = remaining_windows(request(3, "account/rateLimits/read"))
-        return ("ok" if any(value is not None for value in values) else "unavailable"), values, reset
+        result = request(3, "account/rateLimits/read")
+        progress("parse-limits")
+        values, reset = remaining_windows(result)
+        reason = "ok" if any(value is not None for value in values) else "no-valid-limits"
+        return ("ok" if reason == "ok" else "unavailable"), values, reset
     except TimeoutError:
+        reason = "timeout"
         return "timeout", [None, None], None
-    except (OSError, ValueError):
+    except ProbeFailure as error:
+        reason = str(error)
         return "unavailable", [None, None], None
+    except (OSError, ValueError):
+        reason = "server-start-failed" if stage == "start-server" else "io-error"
+        return "unavailable", [None, None], None
+    except SystemExit:
+        reason = "cancelled"
+        raise
     finally:
         if process is not None:
             # Kill only this private stdio tree, including helpers holding pipes.
@@ -136,6 +169,10 @@ def probe(timeout=10):
                         stream.close()
                     except OSError:
                         pass
+        # The final duration includes process-tree cleanup. The PID is historical.
+        if report is not None:
+            report(stage, reason, int((time.monotonic() - started) * 1000),
+                   process.pid if process is not None else 0)
 
 
 def main():
@@ -146,7 +183,18 @@ def main():
         raise SystemExit(0)
     signal.signal(signal.SIGTERM, interrupted)
     started_at = int(time.time())
-    status, windows, reset = probe()
+
+    def report(stage, reason, duration, server_pid):
+        diagnostic = target.with_name(target.name + ".debug")
+        temporary = diagnostic.with_name(diagnostic.name + ".tmp")
+        try:
+            temporary.write_text(f"{checked} {stage} {reason} {duration} {server_pid}\n",
+                                 encoding="utf-8")
+            temporary.replace(diagnostic)
+        except OSError:
+            pass
+
+    status, windows, reset = probe(report=report)
     available = [value for value in windows if value is not None]
     # Convert epoch time once in the worker so renderers need no date process.
     deadline = max(0, checked + reset - started_at) if reset is not None else None

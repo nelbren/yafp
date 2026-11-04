@@ -33,7 +33,11 @@ done
 export YAFP_TEST_CODEX_READY="$TEST_ROOT/codex-ready"
 cat > "$TEST_ROOT/scripts/unix/codex/collect.bash" <<'EOF'
 #!/usr/bin/env bash
+printf '%s account/rateLimits/read in-progress 10 %s\n' "$2" "$$" > "$1.debug.tmp"
+mv "$1.debug.tmp" "$1.debug"
 while [ ! -f "$YAFP_TEST_CODEX_READY" ]; do sleep 0.05; done
+printf '%s parse-limits ok 25 %s\n' "$2" "$$" > "$1.debug.tmp"
+mv "$1.debug.tmp" "$1.debug"
 printf '%s ok 60 75 60 %s\n' "$2" "$(( $2 + 464460 ))" > "$1.tmp"
 mv "$1.tmp" "$1"
 EOF
@@ -76,6 +80,48 @@ out="$(yafp-codex)"
 yafp_strip_terminal_styles "$out"
 contains "$yafp_plain_text" '    Remaining: 60%' 'Diagnostic uses the limiting window'
 contains "$yafp_plain_text" '        Reset: 5d9h' 'Diagnostic reset duration'
+check_codex_debug() {
+    local out saved_diagnostic worker_pid=$YAFP_CODEX_PID
+    local YAFP_CODEX_PID='' YAFP_CODEX_ATTEMPT=$YAFP_CODEX_ATTEMPT
+    saved_diagnostic=$(< "$YAFP_CODEX_DIR/sample.debug")
+    out="$(yafp-codex)"
+    case "$out" in *'Stage:'*) fail 'Default report exposed debug fields' ;; esac
+    out="$(yafp-codex --debug)"
+    contains "$out" 'Worker: idle' 'Completed worker'
+    contains "$out" 'Stage: parse-limits' 'Last completed stage'
+    contains "$out" 'Reason: ok' 'Last completed reason'
+    contains "$out" 'Duration: 25ms' 'Final duration'
+    printf '%s account/rateLimits/read in-progress 10 123\n' "$YAFP_CODEX_ATTEMPT" > "$YAFP_CODEX_DIR/sample.debug"
+    YAFP_CODEX_PID=$$
+    out="$(yafp-codex --debug)"
+    contains "$out" "Worker: running (PID $$)" 'Live worker'
+    contains "$out" 'Stage: account/rateLimits/read' 'Live request stage'
+    contains "$out" 'Reason: in-progress' 'Live progress reason'
+    contains "$out" 'ms (running)' 'Live duration'
+    [ "$YAFP_CODEX_PID" = "$$" ] || fail 'Debug replaced an active worker'
+    YAFP_CODEX_PID=''
+    out="$(yafp-codex --debug)"
+    contains "$out" 'Reason: worker-ended' 'Interrupted worker must not look active'
+    printf '%s initialize rpc-error 15 123\n' "$YAFP_CODEX_ATTEMPT" > "$YAFP_CODEX_DIR/sample.debug"
+    out="$(yafp-codex --debug)"
+    contains "$out" 'Reason: rpc-error' 'Failure reason'
+    for row in 'PRIVATE initialize rpc-error 10 1' '0 PRIVATE rpc-error 10 1' '0 initialize PRIVATE 10 1' '0 initialize rpc-error PRIVATE 1' '0 initialize rpc-error 10 PRIVATE' '0 initialize rpc-error 10 1 PRIVATE'; do
+        printf '%s\n' "$row" > "$YAFP_CODEX_DIR/sample.debug"
+        out="$(yafp-codex --debug)"
+        contains "$out" 'Reason: no-diagnostics' 'Malformed diagnostic rejected'
+        case "$out" in *PRIVATE*) fail 'Debug leaked unvalidated cache content' ;; esac
+    done
+    printf '%s initialize rpc-error 15 123\n' "$((YAFP_CODEX_ATTEMPT + 1))" > "$YAFP_CODEX_DIR/sample.debug"
+    out="$(yafp-codex --debug)"
+    contains "$out" 'Reason: no-diagnostics' 'Other attempt diagnostic rejected'
+    rm "$YAFP_CODEX_DIR/sample.debug"
+    out="$(yafp-codex --debug)"
+    contains "$out" 'Reason: no-diagnostics' 'Legacy worker supported'
+    if yafp-codex --invalid >/dev/null 2>&1; then fail 'Unknown option accepted'; fi
+    printf '%s\n' "$saved_diagnostic" > "$YAFP_CODEX_DIR/sample.debug"
+    YAFP_CODEX_PID=$worker_pid
+}
+check_codex_debug
 check_codex_report() {
     local original_sample state icon color out expected reset
     local YAFP_CODEX_PID='' YAFP_CODEX_ATTEMPT=$SECONDS
@@ -248,7 +294,7 @@ printf 'ok - Codex percent/Braille, inclusive color boundaries, user placement, 
 
 # The quota cache has the same per-session temporary-directory lifecycle.
 old_dir=$YAFP_CODEX_DIR
-rm -f -- "$old_dir/sample"
+rm -f -- "$old_dir/sample" "$old_dir/sample.debug"
 rmdir -- "$old_dir"
 YAFP_CODEX_ATTEMPT=$((SECONDS - 301))
 yafp_codex_context

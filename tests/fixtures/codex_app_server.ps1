@@ -4,6 +4,7 @@ while ($null -ne ($line = [Console]::ReadLine())) {
     $request = ConvertFrom-Json -InputObject $line -AsHashtable
     Add-Content -Path $env:YAFP_CODEX_TEST_LOG -Value $line
     if ($request.method -eq 'initialized') { continue }
+    if ($fixture.close -eq $request.method) { exit 0 }
     $result = switch ($request.method) {
         initialize { @{} }
         'account/read' { @{ account = $fixture.account } }
@@ -17,5 +18,6 @@ while ($null -ne ($line = [Console]::ReadLine())) {
     [Console]::WriteLine('{"method":"account/updated","params":{}}')
     $response = @{ id = $request.id; result = $result }
     if ($fixture.error -eq $request.method) { $response = @{ id = $request.id; error = @{ message = 'PRIVATE' } } }
+    if ($fixture.invalid -eq $request.method) { $response = @{ id = $request.id; result = 'PRIVATE' } }
     [Console]::WriteLine(($response | ConvertTo-Json -Compress -Depth 10))
 }
