@@ -1622,7 +1622,7 @@ set_YAFP_CLOCK_EMOJI() {
 
 
 load_vars() {
-    set_SERVER_OS_EMOJI
+    set_SERVER_OS_EMOJI /etc/os-release
     set_CLIENT_OS_EMOJI
     set_YAFP_USER
     set_YAFP_GEOIP_COUNTRY

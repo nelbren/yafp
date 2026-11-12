@@ -107,7 +107,7 @@ yafp_linux_process_snapshot() {
 }
 
 yafp_collect_top_cpu_linux() {
-    local proc_dir=${1:-/proc} ticks_per_second first second
+    local proc_dir=$1 ticks_per_second first second
     ticks_per_second=$(getconf CLK_TCK 2>/dev/null) || return 0
     case "$ticks_per_second" in ''|0|*[!0-9]*) return 0 ;; esac
     first=$(yafp_linux_process_snapshot "$proc_dir") || return 0
@@ -157,7 +157,7 @@ yafp_collect_top_processes() {
     local metric=$1 platform
     platform=$(uname -s)
     case "$platform:$metric" in
-        Linux:pcpu) yafp_collect_top_cpu_linux ;;
+        Linux:pcpu) yafp_collect_top_cpu_linux /proc ;;
         Darwin:pcpu) yafp_collect_top_cpu_macos ;;
         Darwin:rss|Linux:rss)
             ps -axo "$metric=,pid=,comm=" 2>/dev/null | awk '

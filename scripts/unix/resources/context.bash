@@ -336,8 +336,9 @@ yafp_show_resources() {
             printf -v process_indent '%*s' "$(( ${#labels[$index]} + 1 ))" ''
             while IFS=$'\t' read -r process_name process_size process_pid &&
                   [ "$process_count" -lt 3 ]; do
-                [ -n "$process_name" ] && [ -n "$process_size" ] &&
-                    [ -n "$process_pid" ] || continue
+                if [ -z "$process_name" ] || [ -z "$process_size" ] || [ -z "$process_pid" ]; then
+                    continue
+                fi
                 if [ "$index" -eq 2 ]; then
                     case "$process_size" in *[!0-9]*|0?*|?????????????*) continue ;; esac
                     process_size=$(yafp_format_resource_capacity 1 "$process_size")

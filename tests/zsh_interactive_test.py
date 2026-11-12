@@ -259,7 +259,9 @@ def main():
                 assert "┌".encode() in output and "┘".encode() in output, output
                 assert b"Control+C to break" in output, output
                 assert OSC.findall(output) == [b"C"], output
-                lines = ANSI.sub(b"", output).decode().splitlines()
+                # OSC 133 C can share the first line with the top border.
+                command_output = output.partition(b"\x1b]133;C\x07")[2]
+                lines = ANSI.sub(b"", command_output).decode().splitlines()
                 framed = [line for line in lines if line.startswith(("┌", "├", "│", "└"))]
                 assert len(framed) >= 4, output
                 frame_width = None

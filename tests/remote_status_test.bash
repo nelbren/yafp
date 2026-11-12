@@ -447,10 +447,11 @@ case "$(declare -f yafp-demo)" in
 esac
 preview_user="${USER:-yafp-test-user}"
 preview_host="${HOSTNAME:-yafp-test-host}"
+preview_ssh_client="${SSH_CLIENT:-}"
 preview_output="$(
     USER="$preview_user"
     HOSTNAME="$preview_host"
-    SSH_CLIENT="${SSH_CLIENT:-}"
+    SSH_CLIENT="$preview_ssh_client"
     YAFP_REPOS=0
     YAFP_PVENV=0
     YAFP_ERROR=0
@@ -486,9 +487,12 @@ case "$preview_output" in
 esac
 demo_output="$(
     COLUMNS=200
-    USER="$preview_user" HOSTNAME="$preview_host" SSH_CLIENT="${SSH_CLIENT:-}"
+    USER="$preview_user" HOSTNAME="$preview_host" SSH_CLIENT="$preview_ssh_client"
     YAFP_REPOS=0 YAFP_PVENV=0 YAFP_ERROR=0 YAFP_CLOCK=0
+    # The sourced demo calls these replacements.
+    # shellcheck disable=SC2317,SC2329
     yafp-status() { :; }
+    # shellcheck disable=SC2317,SC2329
     sleep() { exit 0; }
     yafp-demo
 )"
@@ -501,17 +505,18 @@ demo_border=''
 while IFS= read -r line; do
     case "$line" in ┌*) demo_border=$line; break ;; esac
 done <<< "$yafp_plain_text"
-[ -n "$demo_border" ] && [ "${#demo_border}" -lt 199 ] || fail 'Demo prompt preview did not fit its content'
+if [ -z "$demo_border" ] || [ "${#demo_border}" -ge 199 ]; then
+    fail 'Demo prompt preview did not fit its content'
+fi
 
 refresh_args="$TEST_ROOT/refresh-args"
 (
     # shellcheck disable=SC2317,SC2329
     yafp_remote_context() {
         printf '%s|%s|%s' "$1" "$2" "$3" > "$refresh_args"
-        yafp_ctx_git_remote_state=checking
     }
     cd "$TEST_ROOT/local"
-    yafp-refresh
+    yafp_ctx_git_remote_state=checking yafp-refresh
 ) > "$TEST_ROOT/yafp-refresh-output"
 yafp_strip_terminal_styles "$(< "$TEST_ROOT/yafp-refresh-output")"
 case "$yafp_plain_text" in
@@ -687,6 +692,8 @@ yafp_reload_called=0
 yafp_current_commit() {
     printf '%s\n' 'new-commit'
 }
+# The sourced yafp_maybe_auto_reload passes --quiet to this replacement.
+# shellcheck disable=SC2120
 yafp-reload() {
     [ "${1:-}" = --quiet ] || fail 'Automatic reload requested a confirmation frame'
     yafp_reload_called=1

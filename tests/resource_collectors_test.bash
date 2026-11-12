@@ -23,6 +23,7 @@ vm_stat_fails=1
 [ -z "$(yafp_collect_memory_macos)" ] || fail 'failed probe invented a RAM value'
 
 # Replace /proc input so the fixtures can also run on macOS.
+# shellcheck disable=SC2317,SC2329
 awk() { command awk "$1" <<< "$fixture"; }
 fixture=$'MemTotal: 16384000 kB\nMemAvailable: 4096000 kB\nSwapTotal: 0 kB\nSwapFree: 0 kB'
 [ "$(yafp_collect_memory_linux)" = $'12000 16000\n0 0' ] || fail 'Linux RAM without swap'
@@ -59,6 +60,8 @@ for fixture_platform in Linux Darwin; do
     [ "$(yafp_collect_top_processes rss)" = $'large\t2\t13\nsmall\t1\t12' ] || fail "RAM process ranking on $fixture_platform"
 done
 check_recent_macos_cpu() (
+    # The sourced macOS collector calls this replacement between readings.
+    # shellcheck disable=SC2317,SC2329
     sleep() {
         [ "$1" = 0.2 ] || return 1
         command sleep "$1"
@@ -80,7 +83,10 @@ check_recent_linux_cpu() (
         printf '%s (%s) S 0 0 0 0 0 0 0 0 0 0 %s %s 0 0 0 0 1 0 %s 0\n' \
             "$pid" "$name" "$user_ticks" "$system_ticks" "$start_ticks" > "$fixture_proc/$pid/stat"
     }
+    # The sourced Linux collector calls these replacements.
+    # shellcheck disable=SC2317,SC2329
     getconf() { [ "$1" = CLK_TCK ] && printf '100\n'; }
+    # shellcheck disable=SC2317,SC2329
     sleep() {
         [ "$1" = 0.2 ] || return 1
         printf '100.25 0.00\n' > "$fixture_proc/uptime"
