@@ -24,6 +24,7 @@ $script:YafpResourceCollector = {
         SwapUsed = $null; SwapTotal = $null
         Cpu = $null; DiskUsed = $null; DiskTotal = $null
         TopProcesses = @()
+        TopCpuProcesses = @()
     }
     if ($Windows) {
         try {
@@ -60,6 +61,48 @@ $script:YafpResourceCollector = {
             if ($null -ne $cpu) { $sample.Cpu = [long]$cpu.PercentProcessorTime }
         }
         catch { $sample.Cpu = $null }
+        try {
+            $readProcessCpu = {
+                foreach ($process in Get-Process -ErrorAction Stop) {
+                    if ($process.Id -le 0) { continue }
+                    try {
+                        $started = $process.StartTime
+                        $cpuTime = $process.TotalProcessorTime
+                        $timestamp = [Diagnostics.Stopwatch]::GetTimestamp()
+                        if ($null -eq $started -or $null -eq $cpuTime) { continue }
+                        [pscustomobject]@{
+                            Id = $process.Id; Name = $process.ProcessName; Started = $started
+                            CpuSeconds = $cpuTime.TotalSeconds; Timestamp = $timestamp
+                        }
+                    }
+                    catch { continue }
+                }
+            }
+            $window = [Diagnostics.Stopwatch]::StartNew()
+            $previous = @{}
+            foreach ($process in (& $readProcessCpu)) { $previous[$process.Id] = $process }
+            if ($previous.Count -gt 0) {
+                # Start the second scan about 200 ms after the first started.
+                $remaining = 200 - $window.ElapsedMilliseconds
+                if ($remaining -gt 0) { Start-Sleep -Milliseconds $remaining }
+                $ranked = foreach ($process in (& $readProcessCpu)) {
+                    $before = $previous[$process.Id]
+                    if ($null -eq $before -or $before.Started -ne $process.Started) { continue }
+                    $cpuDelta = $process.CpuSeconds - $before.CpuSeconds
+                    $elapsed = ($process.Timestamp - $before.Timestamp) / [Diagnostics.Stopwatch]::Frequency
+                    if ($cpuDelta -lt 0 -or $elapsed -le 0) { continue }
+                    [pscustomobject]@{
+                        Name = $process.Name; Id = $process.Id; CpuPercent = 100 * $cpuDelta / $elapsed
+                    }
+                }
+                $sample.TopCpuProcesses = @($ranked | Sort-Object -Property CpuPercent -Descending |
+                    Select-Object -First 3 | ForEach-Object {
+                        $_.CpuPercent = [Math]::Round($_.CpuPercent, 1)
+                        $_
+                    })
+            }
+        }
+        catch { $sample.TopCpuProcesses = @() }
     }
     try {
         $drive = [IO.DriveInfo]::new([IO.Path]::GetPathRoot($HomePath))
@@ -242,40 +285,73 @@ function global:Show-YafpDemoResources {
     )
 
     $names = @('CPU', 'MEMORY', 'SWAP', 'DISK')
-    if ($Resource -eq 'ALL') {
-        foreach ($name in $names) {
-            if ($name -ne 'CPU') { Write-Host }
-            Show-YafpDemoResources -Resource $name
-        }
-        return
-    }
-    $index = @{ CPU = 0; MEMORY = 1; RAM = 1; MEMORIA = 1; SWAP = 2; DISK = 3; DISCO = 3 }[$Resource]
-    $values = @(20, 40, 5, 50)
-    $loads = if ($index -eq 2) { @(5, 20, 40) } else { @(20, 90, 98) }
+    $groups = if ($Resource -eq 'ALL') { $names } else { $Resource }
+    $indices = @{ CPU = 0; MEMORY = 1; RAM = 1; MEMORIA = 1; SWAP = 2; DISK = 3; DISCO = 3 }
     $separator = if ($global:YAFP_RESOURCE_LABEL_STYLE -eq 'unicode' -and
         $global:YAFP_RESOURCE_VALUE_STYLE -eq 'symbols') { '' } else { ' ' }
 
-    foreach ($load in $loads) {
-        $values[$index] = $load
-        $segments = @(
-            Format-YafpResourceSegment -Kind C -Value $values[0]
-            Format-YafpResourceSegment -Kind R -Value $values[1]
-            Format-YafpResourceSegment -Kind S -Value $values[2]
-            Format-YafpResourceSegment -Kind D -Value $values[3]
-        )
-        $context = [pscustomobject]@{
-            Resources = [pscustomobject]@{ Segments = $segments; Separator = $separator; Suffix = '' }
+    $records = @(& {
+        foreach ($group in $groups) {
+            if ($Resource -eq 'ALL' -and $group -ne 'CPU') { Write-Host }
+            $index = $indices[$group]
+            $values = @(20, 40, 5, 50)
+            $loads = if ($index -eq 2) { @(5, 20, 40) } else { @(20, 90, 98) }
+            foreach ($load in $loads) {
+                $values[$index] = $load
+                $segments = @(
+                    Format-YafpResourceSegment -Kind C -Value $values[0]
+                    Format-YafpResourceSegment -Kind R -Value $values[1]
+                    Format-YafpResourceSegment -Kind S -Value $values[2]
+                    Format-YafpResourceSegment -Kind D -Value $values[3]
+                )
+                $context = [pscustomobject]@{
+                    Resources = [pscustomobject]@{ Segments = $segments; Separator = $separator; Suffix = '' }
+                }
+                Write-Host ('{0,-10}  ' -f "$($names[$index]) $load%") -NoNewline
+                Write-YafpOsIcon -Context $context
+                Write-Host ' ' -NoNewline
+                Write-YafpResources -Context $context
+                Write-Host
+            }
         }
-        Write-Host ('{0,-10}  ' -f "$($names[$index]) $load%") -NoNewline
-        Write-YafpOsIcon -Context $context
-        Write-Host ' ' -NoNewline
-        Write-YafpResources -Context $context
-        Write-Host
-    }
+    } 6>&1)
+    . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
+    Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $records) -FitContent -Title ' yafp-demo-resources'
 }
 
 function global:Show-YafpResources {
+    Show-YafpResourceReport
+}
+
+function global:Show-YafpResourcesFix {
+    Show-YafpResourceReport -ShowTerminationCommands
+}
+
+function global:Format-YafpResourceCapacity {
+    param([int]$UnitIndex, [object[]]$Amounts)
+
+    $units = @('KiB', 'MiB', 'GiB', 'TiB')
+    $scale = 1L
+    $largest = 0L
+    foreach ($amount in $Amounts) { $largest = [Math]::Max($largest, [long]$amount) }
+    while ($UnitIndex -lt 3 -and $largest -ge $scale * 1024) {
+        $UnitIndex++
+        $scale *= 1024
+    }
+    $formatted = foreach ($amount in $Amounts) {
+        if ($null -eq $amount) { ''; continue }
+        $rounded = [Math]::Round([decimal]$amount / $scale, 2, [MidpointRounding]::AwayFromZero)
+        if ($rounded -eq 0 -and $amount -gt 0) { '<0.01'; continue }
+        $rounded.ToString('0.##', [Globalization.CultureInfo]::InvariantCulture)
+    }
+    "$($formatted -join '/') $($units[$UnitIndex])"
+}
+
+function global:Show-YafpResourceReport {
+    param([switch]$ShowTerminationCommands)
+
     $resource = Get-YafpResourceContext
+    $sample = $null
     $state = 'disabled'; $age = ''; $ageColor = 90
     $labels = @('          CPU:', '          RAM:', '         SWAP:', '  Disk (HOME):')
     $used = @($null, $null, $null); $totals = @($null, $null, $null)
@@ -308,17 +384,20 @@ function global:Show-YafpResources {
             $color = switch ($resource.Segments[$index].Foreground) { Green { 92 }; Yellow { 93 }; Red { 91 }; default { 90 } }
         }
         if ($index -gt 0 -and ($null -ne $used[$index - 1] -or $null -ne $totals[$index - 1])) {
-            $usedText = if ($null -eq $used[$index - 1]) { '' } else { "$($used[$index - 1])" }
-            $totalText = if ($null -eq $totals[$index - 1]) { '' } else { "$($totals[$index - 1])" }
-            $unit = if ($index -eq 3) { 'KiB' } else { 'MiB' }
-            $detail = " · $usedText/$totalText $unit"
+            $unitIndex = if ($index -eq 3) { 0 } else { 1 }
+            $detail = ' · ' + (Format-YafpResourceCapacity -UnitIndex $unitIndex -Amounts @($used[$index - 1], $totals[$index - 1]))
         }
         $report += "`n$($labels[$index]) $escape[$($color)m$value$detail$escape[0m"
-        if ($index -eq 2 -and $color -in @(93, 91) -and $null -ne $sample -and
-            $sample.TopProcesses.Count -gt 0) {
-            $processes = @($sample.TopProcesses | Where-Object {
+        switch ($index) {
+            0 { $processProperty = 'TopCpuProcesses'; $processMetric = 'CpuPercent' }
+            2 { $processProperty = 'TopProcesses'; $processMetric = 'RamMiB' }
+            default { $processProperty = $null }
+        }
+        if ($processProperty -and $null -ne $sample -and $sample.PSObject.Properties[$processProperty]) {
+            $processes = @($sample.$processProperty | Where-Object {
+                $null -ne $_ -and
                 $null -ne $_.PSObject.Properties['Name'] -and
-                $null -ne $_.PSObject.Properties['RamMiB'] -and
+                $null -ne $_.PSObject.Properties[$processMetric] -and
                 $null -ne $_.PSObject.Properties['Id']
             } | Select-Object -First 3)
             $processCount = $processes.Count
@@ -326,21 +405,28 @@ function global:Show-YafpResources {
             $processIndent = ' ' * ($labels[$index].Length + 1)
             $processNameWidth = ($processes | ForEach-Object { $_.Name.Length } |
                 Measure-Object -Maximum).Maximum
-            $processSizeWidth = ($processes | ForEach-Object { "$($_.RamMiB)".Length } |
-                Measure-Object -Maximum).Maximum
+            $processSizes = @(foreach ($process in $processes) {
+                if ($index -eq 2) { Format-YafpResourceCapacity -UnitIndex 1 -Amounts @($process.RamMiB) }
+                else { "$($process.CpuPercent)%" }
+            })
+            $processSizeWidth = ($processSizes | ForEach-Object { $_.Length } | Measure-Object -Maximum).Maximum
             for ($processIndex = 0; $processIndex -lt $processCount; $processIndex++) {
                 $branch = if ($processIndex -eq $processCount - 1) { '└──' } else { '├──' }
                 $process = $processes[$processIndex]
                 $processName = $process.Name.PadRight($processNameWidth)
-                $processSize = "$($process.RamMiB)".PadLeft($processSizeWidth)
+                $processSize = $processSizes[$processIndex].PadLeft($processSizeWidth)
                 $report += "`n$escape[90m${processIndent}${branch}$escape[0m $processName " +
-                    "$escape[$($color)m$processSize MiB$escape[0m  $escape[91m " +
-                    "Start-Process pwsh -Verb RunAs -ArgumentList '-NoProfile -Command `"Stop-Process -Id $($process.Id) -Force`"'$escape[0m"
+                    "$escape[$($color)m$processSize$escape[0m"
+                if ($ShowTerminationCommands) {
+                    $report += "  $escape[91m " +
+                        "Start-Process pwsh -Verb RunAs -ArgumentList '-NoProfile -Command `"Stop-Process -Id $($process.Id) -Force`"'$escape[0m"
+                }
             }
         }
     }
     . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
-    Write-YafpPreviewFrame -Text $report
+    $title = if ($ShowTerminationCommands) { ' yafp-resources-fix' } else { ' yafp-resources' }
+    Write-YafpPreviewFrame -Text $report -FitContent -Title $title
     if ($state -eq 'disabled') {
         Write-Output 'Resources disabled. Set $global:YAFP_RESOURCE_CHECK_INTERVAL=30.'
     }

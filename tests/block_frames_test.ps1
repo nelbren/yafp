@@ -242,6 +242,18 @@ $direct = $capturedConsole.ToString()
 if (-not $direct.Contains('┌') -or -not $direct.Contains('┘') -or -not $direct.Contains('∑ Total:     13 (100%)')) {
     throw 'Exit statistics must use the same frame through the direct console writer'
 }
+foreach ($report in @(
+    @{ Title = ' yafp-help'; Output = $helpOutput }
+    @{ Title = ' yafp-msgs'; Output = $messageOutput }
+    @{ Title = '∑ yafp-stats'; Output = $statsOutput }
+    @{ Title = '∑ yafp-stats'; Output = $direct }
+)) {
+    $plain = $report.Output -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
+    $title = [regex]::Escape($report.Title)
+    if ($plain -notmatch "(?s)│ +$title +│\r?\n├─+┤.*\S │(?:\r?\n|$)") {
+        throw "Frame omitted its title or did not fit its longest row: $($report.Title)"
+    }
+}
 foreach ($fixture in @(
     "$([char]27)[31m12345678901234567890$([char]27)[0m`n`$ "
     "`nabcdef$([char]27)[s$([char]27)[1A$([char]27)[3D$([char]27)[33mWARN$([char]27)[0m$([char]27)[uXYZ`n`$ "
@@ -306,4 +318,36 @@ if (-not $text.Contains("$([char]27)[91mtransparent") -or $text.Contains(';40m')
 }
 $tiny = (@(Write-YafpPreviewFrame -Text tiny -Columns 6 6>&1) | ForEach-Object { "$_" }) -join ''
 if ($tiny -ne 'tiny') { throw 'Very narrow preview must fall back to plain rendering' }
+$fixture = "$([char]27)[31mab界cd$([char]27)[0m`nx"
+foreach ($case in @(
+    @{ Columns = 80; Border = '┌────────┐'; Row = '│ ab界cd │' }
+    @{ Columns = 8; Border = '┌─────┐'; Row = '│ 界c │' }
+)) {
+    $lines = @(Write-YafpPreviewFrame -Text $fixture -Columns $case.Columns -FitContent 6>&1 | ForEach-Object {
+        "$_" -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
+    })
+    if ($lines[0] -ne $case.Border -or $lines -notcontains $case.Row) {
+        throw "Incorrect fitted frame at $($case.Columns) columns"
+    }
+}
+$savedNoColor = $env:NO_COLOR
+try {
+    $env:NO_COLOR = $null
+    $raw = (Write-YafpPreviewFrame -Text content -Columns 80 -FitContent -Title '界 A' 6>&1 |
+        ForEach-Object { "$_" }) -join "`n"
+    $esc = [char]27
+    if (-not $raw.Contains("$esc[90m│$esc[0m$esc[30;107m  界 A   $esc[0m$esc[90m│$esc[0m") -or
+        -not $raw.Contains("$esc[90m├─────────┤$esc[0m")) {
+        throw 'The title must be centered in visible cells and highlighted inside the border'
+    }
+    $env:NO_COLOR = '1'
+    $raw = (Write-YafpPreviewFrame -Text "$esc[1Aok" -Columns 8 -FitContent -Title Title 6>&1 |
+        ForEach-Object { "$_" }) -join "`n"
+    $plain = $raw -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
+    $expected = @('┌─────┐', '│ Tit │', '│ le  │', '├─────┤', '│ ok  │', '└─────┘') -join "`n"
+    if ($plain -ne $expected -or $raw.Contains("$esc[30;107m")) {
+        throw 'Title must wrap, respect NO_COLOR, and be protected from body cursor movement'
+    }
+}
+finally { $env:NO_COLOR = $savedNoColor }
 Write-Output 'ok - PowerShell frames, compact countdowns, states, and existing colors across all themes'

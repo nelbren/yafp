@@ -159,7 +159,7 @@ yafp-codex() {
         report+=$'\n'"$yafp_codex_debug_text"
     fi
     . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
-    yafp_preview_frame "$report"
+    yafp_preview_frame "$report" '' fit-content '֍ yafp-codex'
     if [ "$yafp_ctx_codex_state" = disabled ]; then
         printf '%s\n' 'Codex quota disabled. Set YAFP_CODEX_CHECK_INTERVAL=300.'
     fi

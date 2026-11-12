@@ -183,6 +183,11 @@ try {
         '        Timer: ⣿⣿⣿⣿⣀      42% · 125/300s elapsed · 175s remaining'
     ) $statusReport[1] 'Braille status progress'
     $global:YAFP_STATUS_PROGRESS_STYLE = 'blocks'
+    $framedStatus = (Write-YafpStatusReport -State '' -Remaining $null -Interval 0 -Now 0 -Framed 6>&1 |
+        Out-String) -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
+    if ($framedStatus -notmatch '(?s)│ + yafp-status +│\r?\n├─+┤.*\S │(?:\r?\n|$)') {
+        throw 'Remote status omitted its title or did not fit its longest row'
+    }
     Assert-Equal Show-YafpStatus (Get-Alias yafp-status).Definition `
         'yafp-status command'
     Assert-Equal Invoke-YafpRefresh (Get-Alias yafp-refresh).Definition `
@@ -207,15 +212,35 @@ try {
             [string]$Branch,
             [switch]$ForceRefresh
         )
+        if ($ForceRefresh) {
+            $script:manualRefreshRequested = $true
+            return [pscustomobject]@{ State = 'checking'; Refreshing = $false }
+        }
         return [pscustomobject]@{ State = 'error' }
     }
     $script:YafpRemoteOfflineAcknowledged = $false
     $ackOutput = Confirm-YafpRemoteAlert 6>&1 | Out-String
     Assert-Equal $true $script:YafpRemoteOfflineAcknowledged `
         'yafp-ack acknowledges the current remote error alert'
-    if ($ackOutput -notmatch 'Remote error alert acknowledged\.') {
-        throw 'yafp-ack confirmation was not rendered'
+    if ($ackOutput -notmatch '(?s)┌─+┐\s*│ + yafp-ack +│\s*├─+┤\s*│ Remote error alert acknowledged\. │\s*└─+┘') {
+        throw 'Missing compact yafp-ack confirmation'
     }
+    $script:manualRefreshRequested = $false
+    $refreshOutput = Invoke-YafpRefresh 6>&1 | Out-String
+    if (-not $script:manualRefreshRequested -or
+        $refreshOutput -notmatch '(?s)┌─+┐\s*│ + yafp-refresh +│\s*├─+┤\s*│ Background remote refresh requested\. │\s*└─+┘') {
+        throw 'Missing compact yafp-refresh confirmation'
+    }
+    Push-Location $testRoot
+    try {
+        $noAlert = Confirm-YafpRemoteAlert 6>&1 | Out-String
+        $unavailable = Invoke-YafpRefresh 6>&1 | Out-String
+        if ($noAlert -notmatch '(?s)│ + yafp-ack +│.*├─+┤.*No remote error alert to acknowledge\.' -or
+            $unavailable -notmatch '(?s)│ + yafp-refresh +│.*├─+┤.*Remote refresh unavailable\.') {
+            throw 'Missing framed unavailable result'
+        }
+    }
+    finally { Pop-Location }
     Set-Item -LiteralPath Function:Get-YafpRemoteContext `
         -Value $originalGetYafpRemoteContext
     $script:YafpRemoteOfflineAcknowledged = $false
@@ -277,6 +302,9 @@ try {
         [pscustomobject]@{ Text = 'yafp-resources'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Show the latest RAM, swap, CPU, and disk sample.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'yafp-resources-fix'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'Show process termination commands.'; Color = 'White'; NoNewline = $false }
         [pscustomobject]@{ Text = 'yafp-demo-resources'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Simulate resource load and colors.'; Color = 'White'; NoNewline = $false }
@@ -420,9 +448,21 @@ try {
         'Start-Sleep -Seconds \$sleepSecs') {
         throw 'yafp-demo does not reuse its configured sleep interval'
     }
-    if ((Get-Command Show-YafpDemo).Definition -notmatch
-        'Show-YafpPromptPreview') {
-        throw 'yafp-demo does not render a prompt preview'
+    $demoOutput = (& {
+        function Show-YafpStatus { }
+        function Show-YafpPromptPreview { Write-Host 'preview' }
+        function Start-Sleep {
+            [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+                'PSAvoidOverwritingBuiltInCmdlets', '', Justification = 'Stop the demo after its first frame.'
+            )]
+            param([int]$Seconds)
+            throw "Demo stopped after rendering with interval $Seconds"
+        }
+        try { Show-YafpDemo }
+        catch { if ($_.Exception.Message -ne 'Demo stopped after rendering with interval 4') { throw } }
+    } 6>&1 | Out-String) -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
+    if ($demoOutput -notmatch '│  yafp-demo · Prompt preview │\r?\n├─+┤\r?\n│ preview +│') {
+        throw 'Demo prompt preview did not fit its content'
     }
     $savedRepos = $global:YAFP_REPOS
     $savedVenv = $global:YAFP_PVENV
@@ -589,7 +629,10 @@ try {
     $script:YafpCommandsTotal = 7
     $script:YafpCommandsSucceeded = 5
     $script:YafpCommandsFailed = 2
-    Invoke-YafpReload
+    $reloadOutput = Invoke-YafpReload 6>&1 | Out-String
+    if ($reloadOutput -notmatch '(?s)┌─+┐\s*│ + yafp-reload +│\s*├─+┤\s*│ YAFP reloaded in the current shell\. │\s*└─+┘') {
+        throw 'Missing compact yafp-reload confirmation'
+    }
     Assert-Equal Invoke-YafpReload (Get-Alias yafp-reload).Definition `
         'yafp-reload command after reload'
     Assert-Equal Show-YafpHelp (Get-Alias yafp-help).Definition `
@@ -611,6 +654,8 @@ try {
     $script:YafpReloadCalled = $false
     function Get-YafpCurrentCommit { return 'new-commit' }
     function Invoke-YafpReload {
+        param([switch]$Quiet)
+        if (-not $Quiet) { throw 'Automatic reload requested a confirmation frame' }
         $script:YafpReloadCalled = $true
         $script:YafpLoadedCommit = 'new-commit'
     }
@@ -938,7 +983,7 @@ try {
     & git -C $local remote set-url origin (Join-Path $testRoot 'missing.git')
     Push-Location $local
     try {
-        Invoke-YafpRefresh
+        Invoke-YafpRefresh 6>$null
         $job = $script:YafpRemoteJobs[$cacheFile]
         $null = Wait-Job -Job $job -Timeout 30
         Assert-Equal Completed $job.State 'failed refresh job completed'
@@ -946,7 +991,7 @@ try {
         Assert-Equal error $remote.State 'invalid remote is a check error'
 
         & git -C $local remote set-url origin $origin
-        Invoke-YafpRefresh
+        Invoke-YafpRefresh 6>$null
         $job = $script:YafpRemoteJobs[$cacheFile]
         $null = Wait-Job -Job $job -Timeout 30
         Assert-Equal Completed $job.State 'recovery refresh job completed'

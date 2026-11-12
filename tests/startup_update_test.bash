@@ -13,6 +13,7 @@ cleanup() { yafp_update_cleanup; rm -rf -- "$TEST_ROOT"; }
 trap cleanup EXIT
 reloads=0
 yafp-reload() {
+    [ "${1:-}" = --quiet ] || fail 'Startup reload requested a confirmation frame'
     reloads=$((reloads + 1))
     this_command='' previous_command='' previous_timestamp=''
 }
@@ -27,8 +28,9 @@ start_check() {
 }
 git init --quiet --bare "$TEST_ROOT/remote.git"
 git clone --quiet "$TEST_ROOT/remote.git" "$TEST_ROOT/seed" 2>/dev/null
-mkdir -p "$TEST_ROOT/seed/scripts/unix/update"
+mkdir -p "$TEST_ROOT/seed/scripts/unix/update" "$TEST_ROOT/seed/scripts/unix/preview/lib"
 cp "$ROOT_DIR/scripts/unix/update/collect.bash" "$TEST_ROOT/seed/scripts/unix/update/"
+cp "$ROOT_DIR/scripts/unix/preview/lib/frame.bash" "$TEST_ROOT/seed/scripts/unix/preview/lib/"
 printf 'one\n' > "$TEST_ROOT/seed/file.txt"
 git -C "$TEST_ROOT/seed" add .
 git -C "$TEST_ROOT/seed" commit --quiet -m initial
@@ -51,7 +53,9 @@ yafp_update_notice > "$TEST_ROOT/output" <<< ''
 [ "$reloads" = 0 ] || fail 'Default answer reloaded'
 grep -q ' OUTDATED REPOSITORY: YAFP is 1 commit(s)' "$TEST_ROOT/output" || fail 'Missing behind count'
 grep -q 'YAFP startup check:' "$TEST_ROOT/output" || fail 'Missing installation label for a problem'
-grep -q 'Update YAFP now? \[y/N\]' "$TEST_ROOT/output" || fail 'Missing English consent prompt'
+grep -q ' YAFP startup update' "$TEST_ROOT/output" || fail 'Missing startup update title'
+[ "$(grep -c '┌' "$TEST_ROOT/output")" = 1 ] || fail 'Startup path and notice must share one frame'
+grep -q '^Update YAFP now? \[y/N\]' "$TEST_ROOT/output" || fail 'Missing consent prompt outside the frame'
 start_check
 yafp_update_notice < /dev/null > "$TEST_ROOT/output"
 [ "$reloads" = 0 ] || fail 'EOF was accepted'
@@ -70,7 +74,7 @@ yafp_update_notice > "$TEST_ROOT/output" <<< y
 git -C "$YAFP_ROOT" remote set-url origin "$TEST_ROOT/missing.git"
 start_check
 yafp_update_notice > "$TEST_ROOT/output" <<< y
-grep -qx '🌐 REMOTE CHECK FAILED' "$TEST_ROOT/output" || fail 'Remote failure message'
+grep -q '🌐 REMOTE CHECK FAILED' "$TEST_ROOT/output" || fail 'Missing remote failure inside the frame'
 [ "$reloads" = 1 ] || fail 'Remote failure reloaded'
 git -C "$YAFP_ROOT" remote set-url origin "$TEST_ROOT/remote.git"
 
@@ -80,12 +84,12 @@ git -C "$YAFP_ROOT" commit --quiet -m local
 start_check
 yafp_update_notice > "$TEST_ROOT/output" <<< y
 grep -q ' REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/' "$TEST_ROOT/output" || fail 'Missing ahead warning'
-grep -q '^ REMOTE NOT UPDATED:.*[^)]$' "$TEST_ROOT/output" || fail 'Startup warning must not have enclosing parentheses'
+if grep -Fq '(  REMOTE NOT UPDATED:' "$TEST_ROOT/output"; then fail 'Startup warning must not have enclosing parentheses'; fi
 [ "$reloads" = 1 ] || fail 'Ahead checkout reloaded'
 printf 'dirty\n' > "$YAFP_ROOT/dirty.tmp"
 start_check
 yafp_update_notice > "$TEST_ROOT/output" <<< y
-grep -q '^ REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/' "$TEST_ROOT/output" || fail 'Local changes obscured remote status'
+grep -q ' REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/' "$TEST_ROOT/output" || fail 'Local changes obscured remote status'
 if grep -q 'UNCOMMITTED CHANGES' "$TEST_ROOT/output"; then fail 'Startup must report remote state independently of local changes'; fi
 rm -f "$YAFP_ROOT/dirty.tmp"
 printf 'three\n' >> "$TEST_ROOT/seed/file.txt"

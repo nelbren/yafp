@@ -188,6 +188,8 @@ Missing Git, non-Git installations, unborn branches, detached HEAD, and missing
 upstream/remote configurations receive explicit messages. Failed remote access
 shows `🌐 REMOTE CHECK FAILED`, without claiming that general internet access
 was independently tested.
+Startup notices group the installation path and severity message in one
+compact frame. The interactive consent prompt appears below the frame.
 
 Only a behind-only checkout offers `Update YAFP now? [y/N]`. Enter, EOF, and
 answers other than `y`/`Y` decline. Accepted updates use `git pull --ff-only` in
@@ -241,7 +243,9 @@ foreground:
   prompt renders and can be disabled independently with `YAFP_AUTO_RELOAD=0`.
 - `yafp-reload` reloads the active shell definitions manually. Bash preserves
   an earlier non-YAFP `PROMPT_COMMAND` across repeated loads; PowerShell
-  promotes the reloaded definitions back into the interactive session.
+  promotes the reloaded definitions back into the interactive session. A
+  successful manual reload shows a compact confirmation frame. Reloads after
+  `git pull` and during the startup update use the quiet path.
 - Per-session command counters are updated once when the next prompt classifies
   a completed command. Empty input and internal previews are excluded, reloads
   preserve the counters, and no persistent statistics file is created.
@@ -253,6 +257,8 @@ foreground:
 - `yafp-ack` acknowledges the current remote-check failure for the session. It
   suppresses the error expansion and keeps the compact indicator intense
   red on a transparent background until a successful check resets it.
+  Both remote controls render their result in a compact frame with a centered
+  title and icon. They collect remote context in the current shell session.
 - The refreshing state remains visible on every render while the background
   worker or its cross-process lock is active.
 - `yafp-demo` repeatedly invokes the cached status view and renders the current
@@ -370,6 +376,17 @@ allow partial failures; in-memory results are collected only after completion,
 and the job is removed. Reloads preserve the job and last sample. Rendering
 neither waits nor invokes CIM. All three themes receive `Context.Resources`;
 Bash/zsh use `yafp_ctx_resources` in their general host renderer.
+The detailed resource report reads separate rankings for CPU percentage and
+physical RAM. Process values inherit the CPU or SWAP row's color, including
+gray when the corresponding system percentage is unavailable. Unix publishes
+the rankings as separate cache files and reads them with a valid resource
+sample. Each worker takes two readings about 200 ms apart and divides the
+change in process CPU time by the elapsed interval. Linux reads
+`/proc/<pid>/stat` and uptime, macOS reads cumulative CPU time from `ps`, and
+PowerShell reads `Get-Process` with a monotonic stopwatch. The ranking matches
+processes by PID and reported start time. PowerShell stores CPU results in
+`TopCpuProcesses` and working-set results in `TopProcesses`. Both fields are
+optional so samples retained across reloads still render their metrics.
 
 Presentation attaches `↦[resources]` directly to the hostname in every theme,
 before the path or other host metadata. The old standalone resource position
@@ -413,10 +430,14 @@ using the configured labels and separator. The prompt displays
 `↦[⟳▦⟳⟳⟳]` in Unicode + symbols mode, without a trailing ``.
 The `yafp-resources` report displays a frame shared with the other diagnostic
 tools. Its six aligned fields are `State`, `Sample age`, `CPU`, `RAM`, `SWAP`,
-and `Disk (HOME)`. Metrics always appear as percentages and retain used/total
-details and their units. Labels use Font Awesome; missing values appear as a
-gray ``. Context retains percentages before conversion to Braille;
+and `Disk (HOME)`. Metrics always appear as percentages. The report formats
+cached capacities in binary units up to TiB, sharing a unit per used/total
+pair and scaling each process's RAM independently. Labels use Font Awesome.
+Missing values appear as a gray ``. Context retains percentages before
+conversion to Braille;
 the report reuses those values and their colors without changing thresholds.
+`yafp-resources-fix` uses the same report and adds the red skull and a
+termination command as text beside each process.
 
 States are `ok` (sample available), `refreshing` (sample available and worker
 active), `pending` (worker without a sample), `unavailable`, and `disabled`.
@@ -436,8 +457,9 @@ without external tools, and preservation of the previous command status.
 
 The `yafp-demo-resources` command generates three readings for the selected
 resource. With `ALL`, it shows all four groups in CPU, MEMORY, SWAP, and DISK
-order, separated by blank lines. It reuses the metric formatter and the system
-icon and frame rendering. Bash and zsh isolate tokens in local variables.
+order, separated by blank lines. The command captures the rendered rows and
+fits one titled diagnostic frame around the result. It reuses the metric
+formatter and system icon. Bash and zsh isolate tokens in local variables.
 PowerShell passes temporary context to the renderers. The demo does not read
 the cache or start a worker. The label and percentage occupy a fixed-width
 field to align the examples.
@@ -661,8 +683,8 @@ patterns aligned with the new labels to preserve timestamp colors.
 
 ### Diagnostic frames
 
-`yafp-demo`, `yafp-codex`, `yafp-resources`, `yafp-status`, `yafp-stats`,
-`yafp-help`, and `yafp-msgs` load the helpers
+`yafp-demo`, `yafp-codex`, `yafp-resources`, `yafp-resources-fix`, `yafp-status`,
+`yafp-stats`, `yafp-help`, and `yafp-msgs` load the helpers
 `scripts/unix/preview/lib/frame.bash` and
 `scripts/windows/preview/lib/frame.ps1` on demand. No processes or work are
 added to interactive prompt rendering. The normal preview remains available
@@ -682,11 +704,17 @@ A cell canvas interprets newlines, SGR, line erasure, and the relative and
 save/restore movements used by banners. Only text, colors, and borders are
 printed; movements do not escape the frame. Lines wrap according to their
 visible width, accounting for combining marks and double-width characters.
+The diagnostic reports and `yafp-demo` preview size their frames to the
+rightmost occupied cell after wrapping. Each frame centers the icon and title by
+visible cell width above a `├─┤` separator. Only the title interior uses black
+on bright white, respecting `NO_COLOR`. The body canvas keeps cursor movements
+below the title. PowerShell exit statistics use the same layout through the direct
+console path.
 Bash 3.2 decodes the first UTF-8 byte returned by its `printf` to measure
 these characters in the preview. This follows YAFP's width model; it does not
 replace the editor's or terminal's grapheme calculations.
 
-The interior width is the terminal width minus five columns: four for the
+The maximum interior width is the terminal width minus five columns: four for the
 borders and their inner padding, and one free column at the right margin.
 The frame uses gray, with a color reset before the margins; terminals with
 fewer than seven columns retain normal output. Tests cover wrapping, colors,
@@ -832,6 +860,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-03 20:55:30 🍎 MBP02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-11-12 01:47:24 🪟 No expuesto |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

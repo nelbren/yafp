@@ -45,11 +45,26 @@ for interval in 0 -1 bad 0008 999999999999999999999; do
 done
 printf 'ok - disabled or invalid resource monitoring starts no workers\n'
 
+demo_body() {
+    local line yafp_plain_text
+    yafp_strip_terminal_styles "$1"
+    case "$yafp_plain_text" in ┌*│*'  yafp-demo-resources '*│*├*┤*┘) ;; *) fail 'Missing demo title or frame' ;; esac
+    while IFS= read -r line; do
+        case "$line" in
+            '│ '*)
+                line=${line#'│ '}; line=${line%' │'}
+                printf '%s\n' "${line%"${line##*[! ]}"}"
+                ;;
+        esac
+    done <<< "${yafp_plain_text#*┤}"
+}
+
 expected_all=''
 for resource in CPU MEMORY SWAP DISK; do
-    out="$(YAFP_RESOURCE_LABEL_STYLE=letters YAFP_RESOURCE_VALUE_STYLE=percent yafp-demo-resources "$resource")"
+    out="$(COLUMNS=100 YAFP_RESOURCE_LABEL_STYLE=letters YAFP_RESOURCE_VALUE_STYLE=percent yafp-demo-resources "$resource")"
+    body="$(demo_body "$out")"
     [ -z "$expected_all" ] || expected_all+=$'\n\n'
-    expected_all+="$out"
+    expected_all+="$body"
     for color in 97 93 91; do
         assert_contains "$out" "$(printf '\033[0;%sm' "$color")$SERVER_OS_EMOJI" "Demo icon color: $resource"
     done
@@ -62,14 +77,14 @@ for resource in CPU MEMORY SWAP DISK; do
     esac
     assert_contains "$yafp_plain_text" "↦[$expected]" "Demo varies only the selected resource"
 done
-out="$(YAFP_RESOURCE_LABEL_STYLE=letters YAFP_RESOURCE_VALUE_STYLE=percent yafp-demo-resources ALL)"
-[ "$out" = "$expected_all" ] || fail 'Demo ALL must separate the four resource groups'
-yafp_strip_terminal_styles "$out"
+out="$(COLUMNS=100 YAFP_RESOURCE_LABEL_STYLE=letters YAFP_RESOURCE_VALUE_STYLE=percent yafp-demo-resources ALL)"
+body="$(demo_body "$out")"
+[ "$body" = "$expected_all" ] || fail 'Demo ALL must separate the four resource groups inside one frame'
 while IFS= read -r line; do
     [ -n "$line" ] || continue
     prefix=${line%%"$SERVER_OS_EMOJI ↦["*}
     [ "${#prefix}" -eq 12 ] || fail "Demo prompt is not aligned: $line"
-done <<< "$yafp_plain_text"
+done <<< "$body"
 if yafp-demo-resources invalid >/dev/null 2>&1; then fail 'Invalid demo resource accepted'; fi
 yafp-demo-resources ALL >/dev/null
 [ -z "${YAFP_RESOURCE_DIR:-}${YAFP_RESOURCE_PID:-}$yafp_ctx_resources" ] || fail 'Demo changed the live sample'
@@ -105,12 +120,15 @@ done
 yafp_resources_context
 assert_contains "$yafp_ctx_resources" 'C25% R50% S50% D75% ' 'CPU first and swap between RAM and disk'
 case "$yafp_ctx_resources" in *'|'*) fail 'unexpected separator in compact summary' ;; esac
-assert_contains "$(yafp-resources)" '2048/4096 MiB' 'swap details'
+assert_contains "$(yafp-resources)" '2/4 GiB' 'swap details'
+[ "$(yafp_format_resource_capacity 0 1024 3072)" = '1/3 MiB' ] || fail 'Disk capacity in MiB'
+[ "$(yafp_format_resource_capacity 0 599579884 975664676)" = '571.8/930.47 GiB' ] || fail 'Disk capacity in GiB'
+[ "$(yafp_format_resource_capacity 0 1024 2147483648)" = '<0.01/2 TiB' ] || fail 'Small positive usage in TiB'
 check_resource_report() {
-    local original_sample state icon color out
+    local original_sample state icon color out sample_case swap_used cpu name size pid
     local YAFP_RESOURCE_PID='' YAFP_RESOURCE_ATTEMPT=$SECONDS
     local YAFP_RESOURCE_CHECK_INTERVAL=30 YAFP_RESOURCE_LABEL_STYLE=unicode YAFP_RESOURCE_VALUE_STYLE=symbols
-    local COLUMNS=80
+    local COLUMNS=160
     original_sample=$(< "$YAFP_RESOURCE_DIR/sample")
     while IFS='|' read -r state icon color; do
         YAFP_RESOURCE_CHECK_INTERVAL=30 YAFP_RESOURCE_PID=''
@@ -130,24 +148,60 @@ check_resource_report() {
         case "$state" in
             ok|refreshing)
                 assert_contains "$yafp_plain_text" '          CPU: 25%' 'CPU report is numeric in symbol mode'
-                assert_contains "$yafp_plain_text" '          RAM: 50% · 8192/16384 MiB' 'RAM details'
-                assert_contains "$yafp_plain_text" '         SWAP: 50% · 2048/4096 MiB' 'Swap details'
+                assert_contains "$yafp_plain_text" '          RAM: 50% · 8/16 GiB' 'RAM details'
+                assert_contains "$yafp_plain_text" '         SWAP: 50% · 2/4 GiB' 'Swap details'
                 assert_contains "$yafp_plain_text" '  Disk (HOME): 75% · 750/1000 KiB' 'HOME disk details'
-                assert_contains "$out" $'\033[91m50% · 2048/4096 MiB' 'Swap keeps its critical color'
+                assert_contains "$out" $'\033[91m50% · 2/4 GiB' 'Swap keeps its critical color'
                 ;;
             *)
                 assert_contains "$yafp_plain_text" '   Sample age: ' 'Unknown sample age'
                 assert_contains "$yafp_plain_text" '          RAM: ' 'Missing cache does not reuse old measurements'
-                case "$yafp_plain_text" in *8192*) fail 'Stale resource details in report' ;; esac
+                case "$yafp_plain_text" in *'8/16 GiB'*) fail 'Stale resource details in report' ;; esac
                 ;;
         esac
     done < "$ROOT_DIR/tests/resource_report_cases.txt"
     YAFP_RESOURCE_PID='' YAFP_RESOURCE_CHECK_INTERVAL=30
+    printf 'process-a\t1536\t123\nprocess-b\t256\t456\nprocess-c\t128\t789\n' > "$YAFP_RESOURCE_DIR/sample.processes"
+    printf 'cpu-a\t120.5\t321\ncpu-b\t105.2\t654\ncpu-c\t101.1\t987\n' > "$YAFP_RESOURCE_DIR/sample.cpu-processes"
+    for sample_case in '0 25 92' '1024 90 93' '2048 98 91' '- - 90'; do
+        read -r swap_used cpu color <<< "$sample_case"
+        printf '%s 8192 16384 %s 4096 %s 750 1000\n' "$SECONDS" "$swap_used" "$cpu" > "$YAFP_RESOURCE_DIR/sample"
+        out="$(yafp-resources)"
+        case "$out" in *''*|*'sudo kill'*) fail 'Resource report showed termination commands' ;; esac
+        yafp_strip_terminal_styles "$out"
+        case "$yafp_plain_text" in
+            *│*'  yafp-resources '*│*├*┤*CPU:*cpu-a*cpu-b*cpu-c*RAM:*SWAP:*process-a*process-b*process-c*) ;;
+            *) fail 'CPU and SWAP process groups are out of order' ;;
+        esac
+        yafp_plain_text=${yafp_plain_text#*┤}
+        case "$yafp_plain_text" in *[![:space:]]' │'*) ;; *) fail 'Resource frame did not fit its longest row' ;; esac
+        while IFS=$'\t' read -r name size _; do
+            assert_contains "$yafp_plain_text" "$name $size%" 'Process name and CPU percentage'
+            assert_contains "$out" "$(printf '\033[0;%sm' "$color")$size%" "Process usage uses CPU color $color"
+        done < "$YAFP_RESOURCE_DIR/sample.cpu-processes"
+        while IFS=$'\t' read -r name size _; do
+            if [ "$size" = 1536 ]; then size='1.5 GiB'; else size="$size MiB"; fi
+            assert_contains "$yafp_plain_text" "$name $size" 'Process name and RAM size'
+            assert_contains "$out" "$(printf '\033[0;%sm' "$color")$size" "Process RAM uses swap color $color"
+        done < "$YAFP_RESOURCE_DIR/sample.processes"
+    done
+    out="$(yafp-resources-fix)"
+    for pid in 321 654 987 123 456 789; do
+        assert_contains "$out" $'\033[0;91m sudo kill -9 '"$pid" 'Fix report shows the red command for each process'
+    done
+    yafp_strip_terminal_styles "$out"
+    case "$yafp_plain_text" in *│*'  yafp-resources-fix '*│*├*┤*) ;; *) fail 'Missing fix report title' ;; esac
+    yafp_plain_text=${yafp_plain_text#*┤}
+    case "$yafp_plain_text" in *[![:space:]]' │'*) ;; *) fail 'Fix frame did not fit its longest row' ;; esac
+    printf 'invalid\n' > "$YAFP_RESOURCE_DIR/sample"
+    out="$(yafp-resources)"
+    case "$out" in *process-a*|*cpu-a*) fail 'Invalid sample showed cached processes' ;; esac
+    rm "$YAFP_RESOURCE_DIR/sample.processes" "$YAFP_RESOURCE_DIR/sample.cpu-processes"
     printf '%s - 16384 0 0 - - 1000\n' "$SECONDS" > "$YAFP_RESOURCE_DIR/sample"
     out="$(yafp-resources)"
     yafp_strip_terminal_styles "$out"
     assert_contains "$yafp_plain_text" '          CPU: ' 'Unavailable CPU'
-    assert_contains "$yafp_plain_text" '          RAM:  · /16384 MiB' 'Partially known RAM'
+    assert_contains "$yafp_plain_text" '          RAM:  · /16 GiB' 'Partially known RAM'
     assert_contains "$yafp_plain_text" '         SWAP: 0% · 0/0 MiB' 'Unallocated swap remains zero'
     assert_contains "$yafp_plain_text" '  Disk (HOME):  · /1000 KiB' 'Partially known disk'
     printf '%s\n' "$original_sample" > "$YAFP_RESOURCE_DIR/sample"

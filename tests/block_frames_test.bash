@@ -292,4 +292,21 @@ out="$(yafp_preview_frame $'\033[31mred\033[0m\n$ ' 20)"
 contains "$out" $'\033[31m' 'Preview foreground color'
 out="$(yafp_preview_frame 'tiny' 6)"
 [ "$out" = tiny ] || fail 'Very narrow preview falls back to plain rendering'
+fixture=$'\033[31mab界cd\033[0m\nx'
+out="$(yafp_preview_frame "$fixture" 80 fit-content)"
+plain
+[ "${out%%$'\n'*}" = '┌────────┐' ] || fail 'Fitted frame must count visible cells only'
+contains "$out" '│ ab界cd │' 'Wide glyph fits in the compact frame'
+out="$(yafp_preview_frame "$fixture" 8 fit-content)"
+plain
+[ "${out%%$'\n'*}" = '┌─────┐' ] || fail 'Fitted frame must respect the terminal width'
+contains "$out" '│ 界c │' 'Wide glyph stays intact when the frame wraps'
+out="$(NO_COLOR='' yafp_preview_frame content 80 fit-content '界 A')"
+contains "$out" $'\033[90m│\033[0m\033[30;107m  界 A   \033[0m\033[90m│\033[0m' 'Icon and title are centered together in visible cells'
+contains "$out" $'\033[90m├─────────┤\033[0m' 'Title separator uses the border color'
+out="$(NO_COLOR=1 yafp_preview_frame $'\033[1Aok' 8 fit-content Title)"
+plain
+[ "$out" = $'┌─────┐\n│ Tit │\n│ le  │\n├─────┤\n│ ok  │\n└─────┘' ] || fail 'Title wraps and is protected from body cursor movement'
+out="$(NO_COLOR=1 yafp_preview_frame content 80 fit-content Title)"
+case "$out" in *$'\033[30;107m'*) fail 'NO_COLOR enabled title colors' ;; esac
 printf 'ok - uniform Git frames, compact countdowns, severity colors, and banner anchors in all themes\n'

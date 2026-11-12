@@ -134,10 +134,13 @@ check_codex_report() {
             pending) rm "$YAFP_CODEX_DIR/sample"; YAFP_CODEX_PID=$$ ;;
             disabled) YAFP_CODEX_CHECK_INTERVAL=0 ;;
         esac
-        out="$(yafp-codex)"
+        out="$(COLUMNS=160 yafp-codex)"
         contains "$out" "$(printf '\033[%sm' "$color")$icon $state" 'Report state color/icon'
         yafp_strip_terminal_styles "$out"
+        case "$yafp_plain_text" in *│*' ֍ yafp-codex '*│*├*┤*) ;; *) fail 'Missing Codex title' ;; esac
         contains "$yafp_plain_text" '┌' 'Diagnostic opening frame'
+        yafp_plain_text=${yafp_plain_text#*┤}
+        case "$yafp_plain_text" in *[![:space:]]' │'*) ;; *) fail 'Codex frame did not fit its longest row' ;; esac
         contains "$yafp_plain_text" '┘' 'Diagnostic closing frame'
         contains "$yafp_plain_text" "        State: $icon $state" 'Semantic report state'
         if [ "$state" = ok ]; then

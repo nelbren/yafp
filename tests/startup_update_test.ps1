@@ -30,7 +30,11 @@ $script:reloads = 0
 $script:answer = ''
 $previousUpdateSetting = $env:YAFP_UPDATE_CHECK
 $env:YAFP_UPDATE_CHECK = '1'
-function Invoke-YafpReload { $script:reloads++ }
+function Invoke-YafpReload {
+    param([switch]$Quiet)
+    if (-not $Quiet) { throw 'Startup reload requested a confirmation frame' }
+    $script:reloads++
+}
 function Read-Host {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSAvoidOverwritingBuiltInCmdlets', '',
@@ -52,7 +56,7 @@ function Start-TestCheck {
 
 }
 function Complete-TestCheck {
-    return (@(Complete-YafpUpdateCheck 6>&1) | ForEach-Object { "$_" }) -join ''
+    return (@(Complete-YafpUpdateCheck 6>&1) | ForEach-Object { "$_" }) -join "`n"
 }
 try {
     $remote = Join-Path $temporary 'remote.git'
@@ -65,6 +69,9 @@ try {
     $destination = Join-Path $seed 'scripts/windows/update'
     $null = New-Item -ItemType Directory $destination -Force
     Copy-Item (Join-Path $PSScriptRoot '../scripts/windows/update/collect.ps1') $destination
+    $preview = Join-Path $seed 'scripts/windows/preview/lib'
+    $null = New-Item -ItemType Directory $preview -Force
+    Copy-Item (Join-Path $PSScriptRoot '../scripts/windows/preview/lib/frame.ps1') $preview
     Set-Content (Join-Path $seed 'file.txt') 'one'
     $null = Invoke-TestGit @('-C', $seed, 'add', '.')
     $null = Invoke-TestGit @('-C', $seed, 'commit', '--quiet', '-m', 'initial')
@@ -81,6 +88,11 @@ try {
     $output = Complete-TestCheck
     if ($output -notmatch ' OUTDATED REPOSITORY: YAFP is 1 commit\(s\)' -or $script:reloads -ne 0) {
         throw "Default consent or behind count incorrect: $output"
+    }
+    $plain = $output -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
+    if ($plain -notmatch '(?s)^┌─+┐\n│ + YAFP startup update +│\n├─+┤\n│ YAFP startup check: .*└─+┘$' -or
+        [regex]::Matches($plain, '┌').Count -ne 1) {
+        throw "Startup path and notice must share a titled frame: $plain"
     }
     if ((Invoke-TestGit @('-C', $script:YafpRoot, 'rev-parse', 'HEAD')) -ne $initial) { throw 'Default answer pulled' }
     $script:answer = 'y'

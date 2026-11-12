@@ -384,25 +384,32 @@ with the default styles. A swap total of zero means
 no swap/pagefile is allocated: this appears as `S0%` or `0%`, or the
 minimum cell in symbolic mode.
 
-`yafp-resources` uses the same gray frame and width adjustment as `yafp-demo`
-and `yafp-codex`. It shows the sample state, its age in seconds, and all four
+`yafp-resources` and `yafp-resources-fix` size their gray frames to the longest
+visible row. Lines wrap when the terminal is narrower than the report.
+Each frame centers its icon and title together in black on a bright white
+background. The border and the `├─┤` separator use the normal border color.
+`yafp-resources` shows the sample state, its age in seconds, and all four
 resources, with numeric percentages even when the prompt uses Braille:
 
 ```text
-┌─────────────────────────────────────────────────┐
-│         State:  refreshing                    │
-│    Sample age: 30s                             │
-│           CPU: 25%                             │
-│           RAM: 75% · 12320/16384 MiB           │
-│          SWAP: 47% · 1444/3072 MiB             │
-│   Disk (HOME): 80% · 777110816/971350180 KiB   │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│             yafp-resources             │
+├─────────────────────────────────────────┤
+│         State:  refreshing            │
+│    Sample age: 30s                     │
+│           CPU: 25%                     │
+│           RAM: 75% · 12.03/16 GiB      │
+│          SWAP: 47% · 1.41/3 GiB        │
+│   Disk (HOME): 80% · 741.11/926.35 GiB │
+└─────────────────────────────────────────┘
 ```
 
 CPU, RAM, SWAP, and disk retain the prompt's colors and thresholds. Used/total
-details remain in MiB for RAM/SWAP and KiB for the volume containing `HOME`.
-Missing data appears as a gray ``, including within a partially available
-used/total pair. Swap without allocated capacity retains `0% · 0/0 MiB`.
+pairs share one binary unit based on the larger known value. RAM and SWAP
+start at MiB and the `HOME` volume starts at KiB. The report scales up to TiB
+and shows up to two decimals. A positive value that rounds to zero appears as
+`<0.01`. Missing values appear as ``, and unallocated swap shows
+`0% · 0/0 MiB`.
 
 ` State` describes sample availability: ` ok`, gray ` refreshing` if a
 previous sample remains available, ` pending` while waiting for the first,
@@ -411,18 +418,20 @@ previous sample remains available, ` pending` while waiting for the first,
 sample exists. When monitoring is disabled, the command retains the
 configuration hint below the frame. The report does not wait for the worker
 or reuse old details after an invalid cache read.
-When SWAP is yellow (>10%) or red (>30%), `yafp-resources` adds up to three
-processes with the highest physical RAM use directly below the SWAP row.
+On Linux, macOS, and Windows PowerShell, `yafp-resources` shows up to three
+processes below CPU ranked by processor use and up to three below SWAP ranked
+by physical RAM use whenever the sample includes process data.
 They are ordered from highest to lowest and use the tree branches `├──` and
-`└──`, aligned with the start of the SWAP percentage. RAM sizes share one
-column. Unix displays only the process executable name and a `💀 sudo kill -9`
-command with its PID; Windows displays the process name and an elevated
-`Stop-Process` command. Process names, RAM, and PIDs are collected by the
-background resource worker; they are not shown while SWAP is green or its
-sample is unavailable. The commands are informational and YAFP does not run
-them. Tree branches are gray, names use the normal text color, sizes inherit
-SWAP's yellow or red severity, and the `` Font Awesome skull plus termination
-command are intense red.
+`└──`, aligned with the percentage above each group. CPU usage is shown as a
+percentage, and each process's RAM usage scales from MiB up to TiB. The
+background worker gathers process data.
+All three systems measure the change in each process's CPU time over a window
+of about 200 ms. A process using multiple logical CPUs can exceed 100%.
+Tree branches are gray, names use the normal text color, and values match the
+color of their CPU or SWAP row (gray if its percentage is unavailable).
+Use `yafp-resources-fix` to add a red `` skull and the termination command for
+each process. Unix shows `sudo kill -9` with the PID, and PowerShell shows an
+elevated `Stop-Process` command. Both reports only display information.
 A worker starts during prompt rendering when the interval expires; a later
 prompt reads its result. There is no persistent timer, and the line is not
 redrawn while you type. The sample age identifies older data when a probe is
@@ -442,8 +451,9 @@ The command demonstrates CPU by default. It also accepts `MEMORY`, `SWAP`,
 yafp-demo-resources ALL
 ```
 
-The view shows three rows per resource with the system icon in white, yellow,
-and red. `ALL` groups all twelve rows in CPU, MEMORY, SWAP, and DISK order.
+The view uses one compact frame with the centered title ` yafp-demo-resources`.
+It shows three rows per resource with the system icon in white, yellow, and
+red. `ALL` groups all twelve rows in CPU, MEMORY, SWAP, and DISK order.
 A blank line separates the groups.
 The icon and resource block start in the same column on each row.
 The view uses the session's configured resource format and does not change
@@ -564,15 +574,17 @@ requested check starts after it finishes.
 On Unix, a missing temporary quota directory is recreated on the next
 scheduled refresh, after any active worker finishes.
 
-`yafp-codex` displays a frame in the same style as `yafp-demo`, without waiting
-for a pending refresh to finish:
+`yafp-codex` fits its frame to the longest visible line without waiting for a
+pending refresh to finish. Lines wrap inside the frame in narrow terminals:
 
 ```text
-┌─────────────────────────────────┐
-│         Reset: 1d8h            │
-│         State:  ok            │
-│     Remaining: 74%             │
-└─────────────────────────────────┘
+┌──────────────────────┐
+│     ֍ yafp-codex     │
+├──────────────────────┤
+│         Reset: 1d8h │
+│         State:  ok │
+│     Remaining: 74%  │
+└──────────────────────┘
 ```
 
 `Reset` shows the days and hours remaining until the limiting quota window
@@ -843,21 +855,23 @@ their compact status indicators remain visible.
 
 #### On-demand remote controls
 
-Use `yafp-status` in Bash or PowerShell to inspect the exact timer independently
-of the configured countdown style:
+Use `yafp-status` in Bash, zsh, or PowerShell to inspect the exact timer
+independently of the configured countdown style:
 
 ```text
-┌──────────────────────────────────────────────────────────────────────┐
-│        Remote:  Up to date                                         │
-│         Timer: ████░░░░░░ 42% · 125/300s elapsed · 175s remaining   │
-│  Current time: 14:32:25                                             │
-│    Next check: 14:35:20                                             │
-└──────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│                            yafp-status                            │
+├────────────────────────────────────────────────────────────────────┤
+│        Remote:  Up to date                                       │
+│         Timer: ████░░░░░░ 42% · 125/300s elapsed · 175s remaining │
+│  Current time: 14:32:25                                           │
+│    Next check: 14:35:20                                           │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
-`yafp-status` uses the same gray frame and terminal-width adjustment as
-`yafp-codex` and `yafp-resources`, including output without a repository,
-upstream, or Git. It preserves the state, timer bar, and both timestamps.
+`yafp-status` fits its gray frame to the longest visible line, including when
+the repository, upstream, or Git is unavailable. Narrow terminals wrap the
+state, timer bar, and timestamps inside the frame.
 `yafp-demo` shows that frame before the separate preview frame.
 
 The remote state text is intense green when up to date and intense red when
@@ -885,10 +899,9 @@ uses Braille cells for elapsed progress and spaces for the remaining area:
 ```
 
 Use `yafp-refresh` to set the countdown to zero and request an immediate
-background refresh. The command remains silent; the prompt displays ``
-touching the last known state until the worker finishes. Outside a repository or
-without an upstream, `yafp-status` reports that the timer is unavailable and
-`yafp-refresh` exits silently.
+background refresh. The compact ` yafp-refresh` frame reports whether the
+request was made or a refresh is unavailable. The prompt displays `` next
+to the last known state until the worker finishes.
 
 YAFP checks the configured Git remote, not general internet connectivity.
 Authentication, permissions, an invalid remote, DNS, or a restricted execution
@@ -904,14 +917,14 @@ After a remote check fails, use `yafp-ack` to acknowledge the current alert. The
 `(  REMOTE CHECK FAILED )` expansion then stays hidden while the compact
 `` remains intense red on a transparent background. A successful
 remote check resets the acknowledgement, so a later remote-check failure displays
-the expansion again. Outside a remote error state, `yafp-ack` leaves
-the prompt unchanged.
+the expansion again. The compact ` yafp-ack` frame reports whether an alert
+was acknowledged or there was no alert to acknowledge.
 
 The first interactive load in each shell session checks the YAFP installation
 before showing the prompt, regardless of the current directory. The startup
 check is silent when the installation matches its upstream. If a problem or
-update is found, the message identifies the installation path with an
-intense-white header. No success message is printed.
+update is found, a compact frame shows the installation path and the notice.
+Its centered title is ` YAFP startup update` in black on bright white.
 Startup messages have no enclosing parentheses and use YAFP severity colors:
 black on intense yellow for warnings and intense white on red for errors.
 Error backgrounds respect `YAFP_DARKC`.
@@ -928,14 +941,23 @@ It also explains when Git, a commit, a tracking branch, or a remote is missing,
 or when HEAD is detached. For example:
 
 ```text
-YAFP startup check: /home/user/yafp
- REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/master
+┌───────────────────────────────────────────────────────────────────────────┐
+│                            YAFP startup update                           │
+├───────────────────────────────────────────────────────────────────────────┤
+│ YAFP startup check: /home/user/yafp                                       │
+│  REMOTE NOT UPDATED: 1 local commit has not been pushed to origin/master │
+└───────────────────────────────────────────────────────────────────────────┘
 ```
 
 When only remote commits are missing, it shows their count and asks in English:
 
 ```text
- OUTDATED REPOSITORY: YAFP is 3 commit(s) behind its upstream.
+┌─────────────────────────────────────────────────────────────────┐
+│                       YAFP startup update                      │
+├─────────────────────────────────────────────────────────────────┤
+│ YAFP startup check: /home/user/yafp                             │
+│  OUTDATED REPOSITORY: YAFP is 3 commit(s) behind its upstream. │
+└─────────────────────────────────────────────────────────────────┘
 Update YAFP now? [y/N]
 ```
 
@@ -959,12 +981,13 @@ export YAFP_UPDATE_CHECK=0
 $env:YAFP_UPDATE_CHECK = '0'
 ```
 
-Use `yafp-reload` to reload the active Bash, zsh, or PowerShell prompt after changing
-its implementation or personal configuration. YAFP also records the commit
-from which it was loaded. After a successful `git pull`, it checks `HEAD` in
-the YAFP repository and reloads automatically when that hash changed. Pulling
-another repository does not reload YAFP because its recorded hash remains the
-same. Disable only the automatic behavior with:
+Use `yafp-reload` to reload the active Bash, zsh, or PowerShell prompt after
+changing its implementation or personal configuration. A successful manual
+reload displays a compact ` yafp-reload` confirmation. YAFP also records the
+commit from which it was loaded. After a successful `git pull`, it checks
+`HEAD` in the YAFP repository and reloads automatically when that hash changes.
+Pulling another repository leaves that hash unchanged. Disable only the
+automatic behavior with:
 
 ```bash
 YAFP_AUTO_RELOAD=0
@@ -977,22 +1000,25 @@ $global:YAFP_AUTO_RELOAD = 0
 Use `yafp-help` to list the main YAFP commands with a short description:
 
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│ yafp-status • Show remote status and refresh timer.                 │
-│ yafp-refresh • Request an immediate remote refresh.                 │
-│ yafp-ack • Acknowledge the current remote error alert.              │
-│ yafp-reload • Reload YAFP in the current shell.                     │
-│ yafp-stats • Show command execution statistics.                     │
-│ yafp-msgs • Show all prompt banners in severity order.              │
-│ yafp-help • Show available YAFP commands.                           │
-│ yafp-codex • Show cached Codex quota and authentication status.     │
-│ yafp-resources • Show the latest RAM, swap, CPU, and disk sample.   │
-│ yafp-demo-resources • Simulate resource load and colors.            │
-└─────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                             yafp-help                            │
+├───────────────────────────────────────────────────────────────────┤
+│ yafp-status • Show remote status and refresh timer.               │
+│ yafp-refresh • Request an immediate remote refresh.               │
+│ yafp-ack • Acknowledge the current remote error alert.            │
+│ yafp-reload • Reload YAFP in the current shell.                   │
+│ yafp-stats • Show command execution statistics.                   │
+│ yafp-msgs • Show all prompt banners in severity order.            │
+│ yafp-help • Show available YAFP commands.                         │
+│ yafp-codex • Show cached Codex quota and authentication status.   │
+│ yafp-resources • Show the latest RAM, swap, CPU, and disk sample. │
+│ yafp-resources-fix • Show process termination commands.           │
+│ yafp-demo-resources • Simulate resource load and colors.          │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
-`yafp-help` and `yafp-msgs` use the same gray frame and width adjustment as the
-other reports in Bash, zsh, and PowerShell. Help retains yellow names, neutral
+`yafp-help` and `yafp-msgs` fit their gray frames to the longest visible line
+in Bash, zsh, and PowerShell. Help retains yellow names, neutral
 separators, and white descriptions. The catalog preserves success, warning,
 and error order, parentheses, and each banner's background colors, including
 light/dark variants. Long lines wrap inside the frame; margins and borders
@@ -1015,17 +1041,18 @@ counters. A zero exit status counts as succeeded; every nonzero status,
 including an interrupted command, counts as failed:
 
 ```text
-┌──────────────────────────┐
-│  Succeeded: 38 (090%)   │
-│  Failed:     4 (010%)   │
-│ ━━━━━━━━━━━━━━━━━━━━━━   │
-│ ∑ Total:     42 (100%)   │
-└──────────────────────────┘
+┌────────────────────────┐
+│      ∑ yafp-stats      │
+├────────────────────────┤
+│  Succeeded: 38 (090%) │
+│  Failed:     4 (010%) │
+│ ━━━━━━━━━━━━━━━━━━━━━━ │
+│ ∑ Total:     42 (100%) │
+└────────────────────────┘
 ```
 
-`yafp-stats` uses the same gray frame. Columns, percentages, colors, and the
-inner separator are preserved; the automatic exit report includes the same
-frame. In a narrow terminal, lines wrap inside the frame.
+`yafp-stats` and the automatic exit report fit the gray frame to the longest
+visible line. In a narrow terminal, lines wrap inside the frame.
 
 The names use intense green, intense red, and intense white respectively; the
 separator uses normal white. YAFP prints the same report during a normal shell
@@ -1045,7 +1072,8 @@ Forced termination cannot run the exit report.
 
 Use `yafp-demo` to print a fresh `yafp-status` report and a live preview of the
 configured prompt every four seconds until you stop it with `Ctrl+C`. Each
-iteration renders the current theme and local context under ` Prompt preview:`,
+iteration renders the current theme and local context under the boxed title
+` yafp-demo · Prompt preview`,
 then displays `Control+C to break this  loop  (4s)` as a reminder. The
 preview omits OSC 133 lifecycle markers because it does not begin an interactive
 command block. In Bash, the preview expands PS1 display escapes before printing,
@@ -1054,8 +1082,8 @@ prompt instead of appearing as literal backslash sequences.
 
 The `yafp-demo` preview sits inside a Unicode `┌─┐│└─┘` frame, including
 prompt lines and the `$` or `#` mark. It preserves colors and wraps long lines
-across interior rows. The width follows the terminal, leaving one free column
-on the right to prevent the border from wrapping automatically.
+across interior rows. The frame fits the longest visible row and leaves at
+least one free column on the right to prevent automatic border wrapping.
 Git banners and erase controls are resolved inside the frame; cursor movements
 that could alter its borders are not emitted. Terminals narrower than seven
 columns use the unframed preview. The interactive prompt, key bindings, and
@@ -1475,6 +1503,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-03 20:54:35 🍎 MBP02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-11-12 01:47:24 🪟 No expuesto |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

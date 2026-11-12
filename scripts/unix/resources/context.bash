@@ -190,6 +190,13 @@ theme_render_resources() {
 }
 
 yafp-demo-resources() {
+    local report
+    report="$(yafp_demo_resource_rows "$@")" || return $?
+    . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
+    yafp_preview_frame "$report" '' fit-content ' yafp-demo-resources'
+}
+
+yafp_demo_resource_rows() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
     local resource="${1:-CPU}" selected load index rendered
     local values=(20 40 5 50) loads=(20 90 98)
@@ -202,7 +209,7 @@ yafp-demo-resources() {
         ALL|all)
             for resource in CPU MEMORY SWAP DISK; do
                 [ "$resource" = CPU ] || printf '\n'
-                yafp-demo-resources "$resource"
+                yafp_demo_resource_rows "$resource"
             done
             return
             ;;
@@ -240,11 +247,50 @@ yafp-demo-resources() {
 }
 
 yafp-resources() {
+    yafp_show_resources 0
+}
+
+yafp-resources-fix() {
+    yafp_show_resources 1
+}
+
+yafp_format_resource_capacity() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
+    local unit_index=$1 scale=1 largest=0 amount hundredths fraction text formatted=''
+    local units=(KiB MiB GiB TiB)
+    shift
+    for amount; do
+        if [ "$amount" != - ] && [ "$amount" -gt "$largest" ]; then largest=$amount; fi
+    done
+    while [ "$unit_index" -lt 3 ] && [ "$((largest / scale))" -ge 1024 ]; do
+        unit_index=$((unit_index + 1))
+        scale=$((scale * 1024))
+    done
+    for amount; do
+        if [ "$amount" = - ]; then
+            text=''
+        else
+            hundredths=$(((amount * 100 + scale / 2) / scale))
+            fraction=$((hundredths % 100))
+            text=$((hundredths / 100))
+            if [ "$hundredths" -eq 0 ] && [ "$amount" -gt 0 ]; then text='<0.01'
+            elif [ "$fraction" -ne 0 ]; then
+                printf -v fraction '%02d' "$fraction"
+                text+=.${fraction%0}
+            fi
+        fi
+        formatted+="${formatted:+/}$text"
+    done
+    printf '%s %s' "$formatted" "${units[$unit_index]}"
+}
+
+yafp_show_resources() {
+    if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
+    local show_termination_commands=$1
     local report line state_icon state_color age='' age_color=90
-    local index value color detail item used_text total_text unit process_line process_count process_indent
+    local index value color detail item used_amount total_amount unit_index process_line process_count process_indent
     local process_name process_size process_pid process_name_width=0 process_size_width=0
-    local process_index formatted_process
+    local process_index formatted_process process_file
     local process_names=() process_sizes=() process_pids=()
     local labels=('          CPU:' '          RAM:' '         SWAP:' '  Disk (HOME):')
     local used=('-' '-' '-') totals=('-' '-' '-')
@@ -271,29 +317,38 @@ yafp-resources() {
             *) if [ "$item" -le 100 ]; then value="${item}%"; color=${yafp_ctx_resource_colors[$index]}; fi ;;
         esac
         if [ "$index" -gt 0 ]; then
-            used_text=${used[$((index - 1))]} total_text=${totals[$((index - 1))]}
-            if [ "$used_text" != - ] || [ "$total_text" != - ]; then
-                [ "$used_text" != - ] || used_text=''
-                [ "$total_text" != - ] || total_text=''
-                unit=MiB; [ "$index" -ne 3 ] || unit=KiB
-                detail=" · ${used_text}/${total_text} ${unit}"
+            used_amount=${used[$((index - 1))]} total_amount=${totals[$((index - 1))]}
+            if [ "$used_amount" != - ] || [ "$total_amount" != - ]; then
+                unit_index=1; [ "$index" -ne 3 ] || unit_index=0
+                detail=" · $(yafp_format_resource_capacity "$unit_index" "$used_amount" "$total_amount")"
             fi
         fi
         printf -v line '%s \033[%sm%s%s\033[0m' "${labels[$index]}" "$color" "$value" "$detail"
         report+=$'\n'"$line"
-        if [ "$index" -eq 2 ] && { [ "$color" = 91 ] || [ "$color" = 93 ]; } &&
-           [ -r "${YAFP_RESOURCE_DIR:-}/sample.processes" ]; then
-            process_count=0
-            printf -v process_indent '%*s' "$(( ${#labels[2]} + 1 ))" ''
+        case "$index" in
+            0) process_file=sample.cpu-processes ;;
+            2) process_file=sample.processes ;;
+            *) continue ;;
+        esac
+        if [ "$yafp_ctx_resource_has_sample" = 1 ] && [ -r "$YAFP_RESOURCE_DIR/$process_file" ]; then
+            process_count=0 process_name_width=0 process_size_width=0
+            process_names=() process_sizes=() process_pids=()
+            printf -v process_indent '%*s' "$(( ${#labels[$index]} + 1 ))" ''
             while IFS=$'\t' read -r process_name process_size process_pid &&
                   [ "$process_count" -lt 3 ]; do
                 [ -n "$process_name" ] && [ -n "$process_size" ] &&
                     [ -n "$process_pid" ] || continue
+                if [ "$index" -eq 2 ]; then
+                    case "$process_size" in *[!0-9]*|0?*|?????????????*) continue ;; esac
+                    process_size=$(yafp_format_resource_capacity 1 "$process_size")
+                else
+                    process_size+=%
+                fi
                 process_names+=("$process_name") process_sizes+=("$process_size") process_pids+=("$process_pid")
                 [ "${#process_name}" -le "$process_name_width" ] || process_name_width=${#process_name}
                 [ "${#process_size}" -le "$process_size_width" ] || process_size_width=${#process_size}
                 process_count=$((process_count + 1))
-            done < "$YAFP_RESOURCE_DIR/sample.processes"
+            done < "$YAFP_RESOURCE_DIR/$process_file"
             for ((process_index = 0; process_index < process_count; process_index++)); do
                 if [ "$process_index" -eq "$((process_count - 1))" ]; then
                     process_line='└──'
@@ -301,16 +356,22 @@ yafp-resources() {
                     process_line='├──'
                 fi
                 printf -v formatted_process \
-                    '\033[0;90m%s%s\033[0m %-*s \033[0;%sm%*s MiB\033[0m  \033[0;91m sudo kill -9 %s\033[0m' \
+                    '\033[0;90m%s%s\033[0m %-*s \033[0;%sm%*s\033[0m' \
                     "$process_indent" "$process_line " "$process_name_width" \
                     "${process_names[$process_index]}" "$color" "$process_size_width" \
-                    "${process_sizes[$process_index]}" "${process_pids[$process_index]}"
+                    "${process_sizes[$process_index]}"
                 report+=$'\n'"${formatted_process}"
+                if [ "$show_termination_commands" = 1 ]; then
+                    printf -v line '  \033[0;91m sudo kill -9 %s\033[0m' "${process_pids[$process_index]}"
+                    report+="$line"
+                fi
             done
         fi
     done
     . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
-    yafp_preview_frame "$report"
+    local title=' yafp-resources'
+    [ "$show_termination_commands" != 1 ] || title=' yafp-resources-fix'
+    yafp_preview_frame "$report" '' fit-content "$title"
     if [ "$yafp_ctx_resource_state" = disabled ]; then
         printf '%s\n' 'Resources disabled. Set YAFP_RESOURCE_CHECK_INTERVAL=30.'
     fi
@@ -321,7 +382,8 @@ yafp_resources_cleanup() {
     [ -z "${YAFP_RESOURCE_PID:-}" ] || kill "$YAFP_RESOURCE_PID" 2>/dev/null || true
     if [ -n "${YAFP_RESOURCE_DIR:-}" ]; then
         rm -f -- "$YAFP_RESOURCE_DIR/sample" "$YAFP_RESOURCE_DIR/sample.tmp" \
-            "$YAFP_RESOURCE_DIR/sample.processes" "$YAFP_RESOURCE_DIR/sample.processes.tmp" 2>/dev/null
+            "$YAFP_RESOURCE_DIR/sample.processes" "$YAFP_RESOURCE_DIR/sample.processes.tmp" \
+            "$YAFP_RESOURCE_DIR/sample.cpu-processes" "$YAFP_RESOURCE_DIR/sample.cpu-processes.tmp" 2>/dev/null
         rmdir -- "$YAFP_RESOURCE_DIR" 2>/dev/null || true
     fi
     YAFP_RESOURCE_DIR='' YAFP_RESOURCE_PID='' YAFP_RESOURCE_ATTEMPT=''

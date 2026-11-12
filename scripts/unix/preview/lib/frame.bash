@@ -38,19 +38,38 @@ yafp_preview_character_width() {
 
 yafp_preview_frame() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
-    local text="$1" columns="${2:-${COLUMNS:-80}}"
+    local text="$1" columns="${2:-${COLUMNS:-80}}" sizing="${3:-}" title="${4:-}"
     local row=0 column=0 saved_row=0 saved_column=0 last_cell=-1 max_row=0
     local index=0 end char next sequence params final amount target position
-    local width cell_width code offset cell style='' output_style=''
+    local width frame_width cell_width code offset cell style='' output_style=''
     local border_style=$'\033[90m' reset=$'\033[0m'
+    local title_length=-1 title_rows=0 title_style='' row_style horizontal=''
+    local title_row_width left_padding
     local cells=() styles=()
 
     [[ "$columns" =~ ^[0-9]+$ ]] && [ "$columns" -gt 0 ] || columns=80
-    if [ "$columns" -lt 7 ]; then printf '%s\n' "$text"; return; fi
+    if [ "$columns" -lt 7 ]; then
+        [ -z "$title" ] || printf '%s\n' "$title"
+        printf '%s\n' "$text"
+        return
+    fi
     width=$((columns - 5))
     [ -z "${NO_COLOR:-}" ] || border_style=''
     while [[ "$text" == *$'\n' ]]; do text=${text%$'\n'}; done
+    if [ -n "$title" ]; then
+        title_length=${#title}
+        text="$title"$'\n'"$text"
+        [ -n "${NO_COLOR:-}" ] || title_style=$'\033[30;107m'
+    fi
     while [ "$index" -lt "${#text}" ]; do
+        if [ "$index" -eq "$title_length" ]; then
+            # Body cursor controls are relative to the first body row.
+            title_rows=$((row + 1))
+            row=$title_rows max_row=$title_rows saved_row=$title_rows
+            column=0 last_cell=-1 style=''
+            index=$((index + 1))
+            continue
+        fi
         char=${text:$index:1}
         index=$((index + 1))
         if [ "$char" = $'\033' ]; then
@@ -88,7 +107,7 @@ yafp_preview_frame() {
                 fi
                 [ "$amount" -gt 0 ] || amount=1
                 case "$final" in
-                    A) row=$((row - amount)); [ "$row" -ge 0 ] || row=0 ;;
+                    A) row=$((row - amount)); [ "$row" -ge "$title_rows" ] || row=$title_rows ;;
                     B) row=$((row + amount)) ;;
                     C) column=$((column + amount)); [ "$column" -le "$width" ] || column=$width ;;
                     D) column=$((column - amount)); [ "$column" -ge 0 ] || column=0 ;;
@@ -134,30 +153,60 @@ yafp_preview_frame() {
         [ "$row" -le "$max_row" ] || max_row=$row
     done
 
-    printf '%s%s┌' "$reset" "$border_style"
-    for ((column=0; column<width+2; column++)); do printf '─'; done
-    printf '┐%s\n' "$reset"
+    frame_width=$width
+    if [ "$sizing" = fit-content ]; then
+        frame_width=1
+        for ((row=0; row<=max_row && frame_width<width; row++)); do
+            for ((column=width-1; column>=frame_width; column--)); do
+                cell=$((row * width + column))
+                if [ -n "${cells[cell]:-}" ]; then
+                    frame_width=$((column + 1))
+                    break
+                fi
+            done
+        done
+    fi
+    for ((column=0; column<frame_width+2; column++)); do horizontal+='─'; done
+    printf '%s%s┌%s┐%s\n' "$reset" "$border_style" "$horizontal" "$reset"
     for ((row=0; row<=max_row; row++)); do
-        printf '%s│%s ' "$border_style" "$reset"
-        output_style=''
-        for ((column=0; column<width; column++)); do
+        row_style=''
+        left_padding=0
+        if [ "$row" -lt "$title_rows" ]; then
+            row_style=$title_style
+            for ((title_row_width=frame_width; title_row_width>0; title_row_width--)); do
+                cell=$((row * width + title_row_width - 1))
+                [ -z "${cells[cell]:-}" ] || break
+            done
+            left_padding=$(((frame_width - title_row_width) / 2))
+        fi
+        if [ "$row" -gt 0 ] && [ "$row" -eq "$title_rows" ]; then
+            printf '%s├%s┤%s\n' "$border_style" "$horizontal" "$reset"
+        fi
+        printf '%s│%s%s %*s' "$border_style" "$reset" "$row_style" "$left_padding" ''
+        output_style=$row_style
+        for ((column=0; column<frame_width-left_padding; column++)); do
             cell=$((row * width + column))
             if [ -n "${cells[cell]:-}" ]; then
                 # Distinguish a wide-character continuation from array holes.
                 [ "${cells[cell]}" != $'\001' ] || continue
-                style=${styles[cell]:-}
+                style=${styles[cell]:-$row_style}
                 if [ "$style" != "$output_style" ]; then
                     printf '%s%s' "$reset" "$style"; output_style=$style
                 fi
                 printf '%s' "${cells[cell]}"
             else
-                if [ -n "$output_style" ]; then printf '%s' "$reset"; output_style=''; fi
+                if [ "$output_style" != "$row_style" ]; then
+                    printf '%s%s' "$reset" "$row_style"
+                    output_style=$row_style
+                fi
                 printf ' '
             fi
         done
-        printf '%s %s│%s\n' "$reset" "$border_style" "$reset"
+        if [ "$row" -lt "$title_rows" ]; then
+            printf ' %s%s│%s\n' "$reset" "$border_style" "$reset"
+        else
+            printf '%s %s│%s\n' "$reset" "$border_style" "$reset"
+        fi
     done
-    printf '%s└' "$border_style"
-    for ((column=0; column<width+2; column++)); do printf '─'; done
-    printf '┘%s\n' "$reset"
+    printf '%s└%s┘%s\n' "$border_style" "$horizontal" "$reset"
 }

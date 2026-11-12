@@ -53,7 +53,7 @@ symbols.
 `yafp-status` and `yafp-demo` use `` (`U+F0AC`) for the remote, ``
 (`U+F058`) for up-to-date status, `` (`U+F017`) for the current time, and ``
 (`U+F274`) for the next check. Report labels stay aligned and preserve their
-colors and `unavailable` output. The preview is introduced by `` (`U+F120`);
+colors and `unavailable` output. The preview title uses `` (`U+F120`);
 the `Ctrl+C` reminder uses `` (`U+EDFE`, infinity remapped by Nerd Fonts) and
 `` (`U+F021`, refresh). The loop interval remains four seconds.
 
@@ -78,9 +78,17 @@ for RAM. CPU uses `` (`U+F2DB`), SWAP uses `` (`U+F0EC`), and disk uses
 `` (`U+F0A0`). State reuses `` (`U+F21E`), sample age uses ``
 (`U+F017`), and missing values use a gray `` (`U+F059`). The refresh icon
 `` and cached data retain their monitoring semantics. Process branches use
-gray, names use the normal text color, sizes inherit SWAP severity, and the
-`` skull and termination command use intense red. The skull is Font Awesome's
-`fa-skull`, remapped to `U+EE15` by Nerd Fonts.
+gray, names use the normal text color, and values inherit the CPU or SWAP
+color. `yafp-resources-fix` adds the `` skull and termination command in
+intense red. The skull is Font Awesome's `fa-skull`, remapped to `U+EE15` by
+Nerd Fonts.
+
+Each diagnostic title centers its icon with the command name. The title icons
+are `` for remote status, `֍` for Codex quota, `` for resources and their
+demo, `` (`U+F0AD`, wrench) for resource termination commands, `` for help,
+`` (`U+F0A1`, bullhorn) for messages, `∑` for statistics, and `` for the demo
+preview. Startup update, `yafp-refresh`, and `yafp-reload` use ``.
+`yafp-ack` uses ``.
 
 References: [Font Awesome][font-awesome] and the [Nerd Fonts catalog][nerd-glyphs].
 
@@ -421,6 +429,6 @@ $
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-03 20:54:35 🍎 MBP02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 Not exposed & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-11-12 01:47:24 🪟 No expuesto |
+֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

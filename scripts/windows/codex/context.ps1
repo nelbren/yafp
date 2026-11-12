@@ -172,7 +172,7 @@ function global:Show-YafpCodex {
         "    Remaining: $escape[$($remainingColor)m$remainingText$escape[0m"
     if ($Diagnostics) { $report += "`n" + (Get-YafpCodexDebugReport -Disabled ($state -eq 'disabled')) }
     . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
-    Write-YafpPreviewFrame -Text $report
+    Write-YafpPreviewFrame -Text $report -FitContent -Title '֍ yafp-codex'
     if ($state -eq 'disabled') {
         Write-Output 'Codex quota disabled. Set $global:YAFP_CODEX_CHECK_INTERVAL=300.'
     }

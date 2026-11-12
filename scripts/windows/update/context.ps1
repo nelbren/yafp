@@ -17,8 +17,7 @@ function global:Complete-YafpUpdateCheck {
     $sample = $script:YafpUpdateSample
     $script:YafpUpdateSample = $null
     if ($null -eq $sample -or $sample.State -eq 'error') {
-        Write-YafpUpdateMessage -Severity info -Text "YAFP startup check: $root"
-        Write-YafpUpdateMessage -Severity error -Text '🌐 REMOTE CHECK FAILED'
+        Write-YafpUpdateReport -Severity error -Text '🌐 REMOTE CHECK FAILED' -InstallRoot $root
         return
     }
     $messages = @{
@@ -30,35 +29,38 @@ function global:Complete-YafpUpdateCheck {
         'no-remote' = ' NO REMOTE: YAFP startup update unavailable'
     }
     if ($messages.ContainsKey($sample.State)) {
-        Write-YafpUpdateMessage -Severity info -Text "YAFP startup check: $root"
-        Write-YafpUpdateMessage -Severity warning -Text $messages[$sample.State]; return }
+        Write-YafpUpdateReport -Severity warning -Text $messages[$sample.State] -InstallRoot $root
+        return
+    }
     if ($sample.State -ne 'ok') { return }
     $head = & git -C $root rev-parse --verify HEAD 2>$null
     $branch = & git -C $root symbolic-ref --quiet HEAD 2>$null
     $upstream = & git -C $root rev-parse --symbolic-full-name '@{upstream}' 2>$null
     if ("$head" -ne $sample.Head -or "$branch" -ne $sample.Branch -or "$upstream" -ne $sample.Upstream) { return }
     if ($sample.Ahead -eq 0 -and $sample.Behind -eq 0) { return }
-    Write-YafpUpdateMessage -Severity info -Text "YAFP startup check: $root"
     $target = $sample.Upstream -replace '^refs/remotes/', ''
     if ($sample.Ahead -gt 0 -and $sample.Behind -gt 0) {
-        Write-YafpUpdateMessage -Severity error -Text " DIVERGED REPOSITORY: $($sample.Ahead) local commit(s), $($sample.Behind) remote commit(s) from $target"
+        Write-YafpUpdateReport -Severity error -InstallRoot $root `
+            -Text " DIVERGED REPOSITORY: $($sample.Ahead) local commit(s), $($sample.Behind) remote commit(s) from $target"
         return
     }
     if ($sample.Ahead -gt 0) {
         $unit = if ($sample.Ahead -eq 1) { 'commit' } else { 'commits' }
         $verb = if ($sample.Ahead -eq 1) { 'has' } else { 'have' }
-        Write-YafpUpdateMessage -Severity warning -Text " REMOTE NOT UPDATED: $($sample.Ahead) local $unit $verb not been pushed to $target"
+        Write-YafpUpdateReport -Severity warning -InstallRoot $root `
+            -Text " REMOTE NOT UPDATED: $($sample.Ahead) local $unit $verb not been pushed to $target"
         return
     }
-    Write-YafpUpdateMessage -Severity error -Text " OUTDATED REPOSITORY: YAFP is $($sample.Behind) commit(s) behind its upstream."
+    Write-YafpUpdateReport -Severity error -InstallRoot $root `
+        -Text " OUTDATED REPOSITORY: YAFP is $($sample.Behind) commit(s) behind its upstream."
     $answer = Read-Host 'Update YAFP now? [y/N]'
     if ($answer -cnotin @('y', 'Y')) { return }
     $result = & (Join-Path $root 'scripts/windows/update/collect.ps1') -Root $root -Pull $true
     if ($result.State -eq 'updated') {
-        try { Invoke-YafpReload }
-        catch { Write-YafpUpdateMessage -Severity error -Text ' RELOAD FAILED: restart YAFP after fixing its configuration.' }
+        try { Invoke-YafpReload -Quiet }
+        catch { Write-YafpUpdateReport -Severity error -Text ' RELOAD FAILED: restart YAFP after fixing its configuration.' }
     }
-    else { Write-YafpUpdateMessage -Severity error -Text ' UPDATE FAILED: YAFP was not reloaded.' }
+    else { Write-YafpUpdateReport -Severity error -Text ' UPDATE FAILED: YAFP was not reloaded.' }
 }
 
 function global:Invoke-YafpStartupUpdate {
@@ -68,6 +70,19 @@ function global:Invoke-YafpStartupUpdate {
     $script:YafpUpdateSessionId = $PID
     Start-YafpUpdateCheck -Interactive $true
     Complete-YafpUpdateCheck
+}
+
+function global:Write-YafpUpdateReport {
+    param([string]$Severity, [string]$Text, [string]$InstallRoot)
+
+    . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
+    $records = @(
+        if ($InstallRoot) {
+            Write-YafpUpdateMessage -Severity info -Text "YAFP startup check: $InstallRoot" 6>&1
+        }
+        Write-YafpUpdateMessage -Severity $Severity -Text $Text 6>&1
+    )
+    Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $records) -FitContent -Title ' YAFP startup update'
 }
 
 function global:Write-YafpUpdateMessage {

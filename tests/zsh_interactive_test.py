@@ -260,15 +260,31 @@ def main():
                 assert b"Control+C to break" in output, output
                 assert OSC.findall(output) == [b"C"], output
                 lines = ANSI.sub(b"", output).decode().splitlines()
-                framed = [line for line in lines if line.startswith(("┌", "│", "└"))]
+                framed = [line for line in lines if line.startswith(("┌", "├", "│", "└"))]
                 assert len(framed) >= 4, output
+                frame_width = None
+                completed_frames = 0
                 for line in framed:
                     width = sum(
                         0 if unicodedata.combining(char) else
                         2 if unicodedata.east_asian_width(char) in ("W", "F") else 1
                         for char in line
                     )
-                    assert width == columns - 1, (columns, width, line)
+                    if line.startswith("┌"):
+                        assert frame_width is None, output
+                        assert width <= columns - 1, (columns, width, line)
+                        if columns == 240:
+                            assert width < columns - 1, (columns, width, line)
+                        frame_width = width
+                    else:
+                        assert width == frame_width, (frame_width, width, line)
+                        if line.startswith("└"):
+                            completed_frames += 1
+                            frame_width = None
+                assert completed_frames == 2 and frame_width is None, output
+                assert sum(line.startswith("├") for line in framed) == 2, output
+                assert any(line.strip("│ ") == " yafp-status" for line in framed), output
+                assert any(line.strip("│ ") == " yafp-demo · Prompt preview" for line in framed), output
                 os.write(master, b"\x03")
                 output = read_output()
                 assert b"D;130" in OSC.findall(output), output

@@ -14,6 +14,20 @@ Write-Output 'ok - disabled or invalid PowerShell resource monitoring starts no 
 
 $global:YAFP_RESOURCE_LABEL_STYLE = 'letters'
 $global:YAFP_RESOURCE_VALUE_STYLE = 'percent'
+function Get-ResourceDemoBody {
+    param([string]$Text)
+    $lines = ($Text -replace '\x1b\[[0-?]*[ -/]*[@-~]', '') -split "`n"
+    if ($lines[0] -notmatch '^┌─+┐$' -or $lines[1] -notmatch '^│ + yafp-demo-resources +│$' -or
+        $lines[2] -notmatch '^├─+┤$' -or $lines[-1] -notmatch '^└─+┘$' -or
+        @($lines -match '^┌').Count -ne 1) {
+        throw 'Missing resource demo title or single frame'
+    }
+    $body = foreach ($line in $lines[3..($lines.Count - 2)]) {
+        $line.Substring(2, $line.Length - 4).TrimEnd()
+    }
+    $body -join "`n"
+}
+
 $expectedGroups = @()
 foreach ($case in @(
     @{ Resource = 'CPU'; Expected = 'C98% R40% S5% D50%' }
@@ -21,31 +35,21 @@ foreach ($case in @(
     @{ Resource = 'SWAP'; Expected = 'C20% R40% S40% D50%' }
     @{ Resource = 'DISK'; Expected = 'C20% R40% S5% D98%' }
 )) {
-    $demo = @(yafp-demo-resources $case.Resource 6>&1)
-    $iconColors = @(foreach ($record in $demo) {
-        if ($record.MessageData.Message -eq '') { $record.MessageData.ForegroundColor }
-    })
-    $text = ($demo | ForEach-Object {
-        if ($_.MessageData.NoNewLine) { "$_" } else { "$_`n" }
-    }) -join ''
+    $demo = (yafp-demo-resources $case.Resource 6>&1 | ForEach-Object { "$_" }) -join "`n"
+    $iconColors = [regex]::Matches($demo, '\x1b\[(97|93|91)m') | ForEach-Object { $_.Groups[1].Value }
+    $text = Get-ResourceDemoBody -Text $demo
     $expectedGroups += $text
-    if (($iconColors -join ',') -ne 'White,Yellow,Red' -or -not $text.Contains("↦[$($case.Expected)]")) {
+    if (($iconColors -join ',') -ne '97,93,91' -or -not $text.Contains("↦[$($case.Expected)]")) {
         throw "Incorrect demo output: $($case.Resource)"
     }
 }
-$demoAll = @(yafp-demo-resources ALL 6>&1)
-$allText = ($demoAll | ForEach-Object {
-    if ($_.MessageData.NoNewLine) { "$_" } else { "$_`n" }
-}) -join ''
-$allColors = @(foreach ($record in $demoAll) {
-    if ($record.MessageData.Message -eq '') { $record.MessageData.ForegroundColor }
-})
-if ($allText -ne ($expectedGroups -join "`n") -or ($allColors -join ',') -ne ('White,Yellow,Red,' * 4).TrimEnd(',')) {
+$demoAll = (yafp-demo-resources ALL 6>&1 | ForEach-Object { "$_" }) -join "`n"
+$allText = Get-ResourceDemoBody -Text $demoAll
+$allColors = [regex]::Matches($demoAll, '\x1b\[(97|93|91)m') | ForEach-Object { $_.Groups[1].Value }
+if ($allText -ne ($expectedGroups -join "`n`n") -or ($allColors -join ',') -ne ('97,93,91,' * 4).TrimEnd(',')) {
     throw 'Resource demo ALL must separate all four sets of colors in order'
 }
-$prefixes = @(foreach ($record in $demoAll) {
-    if ($record.MessageData.Message -match '^(CPU|MEMORY|SWAP|DISK) \d+% +$') { $record.MessageData.Message }
-})
+$prefixes = @([regex]::Matches($allText, '(?m)^(CPU|MEMORY|SWAP|DISK) \d+% +(?=)') | ForEach-Object { $_.Value })
 if ($prefixes.Count -ne 12 -or @($prefixes | Where-Object Length -NE 12).Count -ne 0) {
     throw 'Resource demo prompt is not aligned'
 }
@@ -75,10 +79,52 @@ function Get-CimInstance {
         }
     }
 }
+$script:processReads = 0
+function Get-Process {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidOverwritingBuiltInCmdlets', '', Justification = 'Local fixture for both process snapshots.'
+    )]
+    param([string]$ErrorAction)
+    if ($ErrorAction -ne 'Stop') { throw 'The probe must capture errors' }
+    $script:processReads++
+    $started = [datetime]'2026-01-01'
+    $rows = switch ($script:processReads) {
+        { $_ -in 1, 2 } {
+            @{ Id = 10; Name = 'old'; Cpu = 900 }
+            @{ Id = 13; Name = 'medium'; Cpu = 4 }
+            @{ Id = 14; Name = 'fast'; Cpu = 1 }
+            @{ Id = 15; Name = 'previous'; Cpu = 0 }
+            @{ Id = 16; Name = 'busy'; Cpu = 2 }
+            @{ Id = 17; Name = 'exiting'; Cpu = 500 }
+        }
+        3 {
+            @{ Id = 0; Name = 'Idle'; Cpu = 500 }
+            @{ Id = 10; Name = 'old'; Cpu = 900 }
+            @{ Id = 13; Name = 'medium'; Cpu = 4.05 }
+            @{ Id = 14; Name = 'fast'; Cpu = 1.3 }
+            @{ Id = 15; Name = 'reused'; Cpu = 5; Started = $started.AddSeconds(1) }
+            @{ Id = 16; Name = 'busy'; Cpu = 2.1 }
+            @{ Id = 18; Name = 'new'; Cpu = 300 }
+        }
+        default { throw 'Process probe unavailable' }
+    }
+    foreach ($row in $rows) {
+        [pscustomobject]@{
+            Id = $row.Id; ProcessName = $row.Name; WorkingSet64 = 1MB
+            StartTime = $row['Started'] ?? $started
+            TotalProcessorTime = [TimeSpan]::FromSeconds($row.Cpu)
+        }
+    }
+}
 $sample = & $script:YafpResourceCollector $HOME $true
 if ($sample.RamUsed -ne 12288 -or $sample.RamTotal -ne 16384 -or
     $sample.SwapUsed -ne 1536 -or $sample.SwapTotal -ne 3072 -or $sample.Cpu -ne 25) {
     throw 'Incorrect Windows probes'
+}
+if ($script:processReads -ne 3 -or ($sample.TopCpuProcesses.Name -join ',') -ne 'fast,busy,medium' -or
+    ($sample.TopCpuProcesses.Id -join ',') -ne '14,16,13' -or
+    @($sample.TopCpuProcesses | Where-Object CpuPercent -LE 0).Count -gt 0) {
+    throw 'Incorrect Windows recent CPU process ranking'
 }
 function Get-CimInstance {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
@@ -89,10 +135,12 @@ function Get-CimInstance {
     throw 'Probe unavailable'
 }
 $sample = & $script:YafpResourceCollector $HOME $true
-if ($null -ne $sample.RamUsed -or $null -ne $sample.SwapUsed -or $null -ne $sample.Cpu) {
+if ($null -ne $sample.RamUsed -or $null -ne $sample.SwapUsed -or $null -ne $sample.Cpu -or
+    $sample.TopCpuProcesses.Count -ne 0) {
     throw 'A failed probe invented metrics'
 }
 Remove-Item Function:Get-CimInstance
+Remove-Item Function:Get-Process
 Write-Output 'ok - Windows probes, summed pagefiles, and partial failures'
 
 foreach ($line in Get-Content (Join-Path $PSScriptRoot 'resource_display_cases.txt')) {
@@ -171,7 +219,12 @@ try {
     }
     if ($null -ne $script:YafpResourceJob) { throw 'Completed job was not removed' }
     if ((Get-Job -Id $job.Id -ErrorAction Ignore)) { throw 'Completed job remains registered' }
-    if ((Show-YafpResources 6>&1 | Out-String) -notmatch '2048/4096 MiB') { throw 'Missing details' }
+    if ((Show-YafpResources 6>&1 | Out-String) -notmatch '2/4 GiB') { throw 'Missing details' }
+    if ((Format-YafpResourceCapacity 0 @(1024, 3072)) -ne '1/3 MiB' -or
+        (Format-YafpResourceCapacity 0 @(599579884, 975664676)) -ne '571.8/930.47 GiB' -or
+        (Format-YafpResourceCapacity 0 @(1024, 2147483648)) -ne '<0.01/2 TiB') {
+        throw 'Incorrect disk capacity scaling'
+    }
 
     $savedSample = $script:YafpResourceSample; $savedAttempt = $script:YafpResourceAttempt
     $savedLabels = $global:YAFP_RESOURCE_LABEL_STYLE; $savedValues = $global:YAFP_RESOURCE_VALUE_STYLE
@@ -195,17 +248,74 @@ try {
             if (-not $plain.Contains('┌') -or -not $plain.Contains('┘') -or
                 -not $plain.Contains("        State: $icon $state")) { throw "Resource report framing/state: $state" }
             if ($state -in @('ok', 'refreshing')) {
-                foreach ($text in @('          CPU: 25%', '          RAM: 50% · 8192/16384 MiB',
-                    '         SWAP: 50% · 2048/4096 MiB', '  Disk (HOME): 75% · 750/1000 KiB')) {
+                foreach ($text in @('          CPU: 25%', '          RAM: 50% · 8/16 GiB',
+                    '         SWAP: 50% · 2/4 GiB', '  Disk (HOME): 75% · 750/1000 KiB')) {
                     if (-not $plain.Contains($text)) { throw "Resource report details missing: $text" }
                 }
-                if (-not $out.Contains("$([char]27)[91m50% · 2048/4096 MiB")) { throw 'Swap critical color changed' }
+                if (-not $out.Contains("$([char]27)[91m50% · 2/4 GiB")) { throw 'Swap critical color changed' }
+                if ($plain.Contains('')) { throw 'A sample without TopProcesses showed process details' }
             }
-            elseif (-not $plain.Contains('   Sample age: ') -or -not $plain.Contains('          RAM: ') -or $plain.Contains('8192')) {
+            elseif (-not $plain.Contains('   Sample age: ') -or -not $plain.Contains('          RAM: ') -or
+                $plain.Contains('8/16 GiB')) {
                 throw 'Unavailable resource report reused old data'
             }
         }
         $global:YAFP_RESOURCE_CHECK_INTERVAL = 30; $script:YafpResourceJob = $null
+        $script:YafpResourceSample = [pscustomobject]@{
+            CheckedAt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+            RamUsed = 8192; RamTotal = 16384; SwapUsed = 2048; SwapTotal = 4096
+            Cpu = 25; DiskUsed = 750; DiskTotal = 1000
+            TopProcesses = @(
+                [pscustomobject]@{ Name = 'process-a'; RamMiB = 1536; Id = 123 }
+                [pscustomobject]@{ Name = 'process-b'; RamMiB = 256; Id = 456 }
+                [pscustomobject]@{ Name = 'process-c'; RamMiB = 128; Id = 789 }
+            )
+            TopCpuProcesses = @(
+                [pscustomobject]@{ Name = 'cpu-a'; CpuPercent = 120; Id = 321 }
+                [pscustomobject]@{ Name = 'cpu-b'; CpuPercent = 105; Id = 654 }
+                [pscustomobject]@{ Name = 'cpu-c'; CpuPercent = 101; Id = 987 }
+            )
+        }
+        foreach ($case in @(
+            @{ SwapUsed = 2048; Cpu = 98; Color = 91 }
+            @{ SwapUsed = 1024; Cpu = 90; Color = 93 }
+            @{ SwapUsed = 0; Cpu = 25; Color = 92 }
+            @{ SwapUsed = $null; Cpu = $null; Color = 90 }
+        )) {
+            $script:YafpResourceSample.SwapUsed = $case.SwapUsed
+            $script:YafpResourceSample.Cpu = $case.Cpu
+            $out = (@(& 'yafp-resources' 6>&1) | ForEach-Object { "$_" }) -join "`n"
+            if ($out -match '|Start-Process|Stop-Process') { throw 'Resource report showed termination commands' }
+            if (($out -replace '\x1b\[[0-?]*[ -/]*[@-~]', '') -notmatch '(?s)│ + yafp-resources +│\r?\n├─+┤.*\S │(?:\r?\n|$)') {
+                throw 'Resource frame omitted its title or did not fit its longest row'
+            }
+            if ($out -notmatch '(?s)CPU:.*cpu-a.*cpu-b.*cpu-c.*RAM:.*SWAP:.*process-a.*process-b.*process-c') {
+                throw 'CPU and SWAP process groups are out of order'
+            }
+            foreach ($process in $script:YafpResourceSample.TopCpuProcesses) {
+                if (-not $out.Contains("$([char]27)[$($case.Color)m$($process.CpuPercent)%")) {
+                    throw "Missing $($process.Name) CPU usage with CPU color $($case.Color)"
+                }
+            }
+            foreach ($process in $script:YafpResourceSample.TopProcesses) {
+                $size = if ($process.RamMiB -eq 1536) { '1.5 GiB' } else { "$($process.RamMiB) MiB" }
+                if (-not $out.Contains($process.Name) -or
+                    -not $out.Contains("$([char]27)[$($case.Color)m$size")) {
+                    throw "Missing $($process.Name) or its RAM size with swap color $($case.Color)"
+                }
+            }
+        }
+        $out = (@(& 'yafp-resources-fix' 6>&1) | ForEach-Object { "$_" }) -join "`n"
+        if (-not $out.Contains("$([char]27)[91m")) { throw 'Fix report omitted the red skull' }
+        $plain = $out -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
+        if ($plain -notmatch '(?s)│ + yafp-resources-fix +│\r?\n├─+┤.*\S │(?:\r?\n|$)') {
+            throw 'Fix frame omitted its title or did not fit its longest row'
+        }
+        $plain = $plain -replace ' │\r?\n│ ', ''
+        foreach ($processId in @(321, 654, 987, 123, 456, 789)) {
+            $command = "Start-Process pwsh -Verb RunAs -ArgumentList '-NoProfile -Command `"Stop-Process -Id $processId -Force`"'"
+            if (-not $plain.Contains($command)) { throw "Fix report omitted the command for process $processId" }
+        }
         $script:YafpResourceSample = [pscustomobject]@{
             CheckedAt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
             RamUsed = $null; RamTotal = 16384; SwapUsed = 0; SwapTotal = 0
@@ -213,7 +323,7 @@ try {
         }
         $out = (@(Show-YafpResources 6>&1) | ForEach-Object { "$_" }) -join "`n"
         $plain = $out -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
-        foreach ($text in @('          CPU: ', '          RAM:  · /16384 MiB',
+        foreach ($text in @('          CPU: ', '          RAM:  · /16 GiB',
             '         SWAP: 0% · 0/0 MiB', '  Disk (HOME):  · /1000 KiB')) {
             if (-not $plain.Contains($text)) { throw "Partial resource report missing: $text" }
         }

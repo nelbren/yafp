@@ -26,10 +26,18 @@ assert_eq() {
 }
 
 framed_output() {
-    local output line content=''
+    local output line title=$1 content=''
     output="$("$@")"
     case "$output" in *┌*┘*) ;; *) fail 'Missing diagnostic frame' ;; esac
     yafp_strip_terminal_styles "$output"
+    case "$title" in
+        yafp-help) title=' yafp-help' ;;
+        yafp-msgs) title=' yafp-msgs' ;;
+        yafp-stats|yafp_exit_trap) title='∑ yafp-stats' ;;
+    esac
+    case "$yafp_plain_text" in *│*" $title "*│*├*┤*) ;; *) fail "Missing title: $title" ;; esac
+    yafp_plain_text=${yafp_plain_text#*┤}
+    case "$yafp_plain_text" in *[![:space:]]' │'*) ;; *) fail "Frame did not fit its longest row: $1" ;; esac
     while IFS= read -r line; do
         case "$line" in
             '│ '*)
@@ -244,6 +252,12 @@ yafp_ctx_git_remote_state=current
 yafp_ctx_git_staged=0
 
 status_report="$(yafp_remote_status_report current 0 0 0 175 300 0)"
+framed_status="$(COLUMNS=160 yafp_remote_status_report current 0 0 0 175 300 0 frame)"
+yafp_strip_terminal_styles "$framed_status"
+case "$yafp_plain_text" in
+    *│*'  yafp-status '*│*├*┤*'175s remaining │'*) ;;
+    *) fail 'Remote status frame did not fit the timer row' ;;
+esac
 case "$status_report" in
     *'       Remote:  Up to date'*) ;;
     *) fail 'detailed status omitted the remote state' ;;
@@ -310,6 +324,7 @@ expected_help="$(printf '%s\n' \
     'yafp-help • Show available YAFP commands.' \
     'yafp-codex • Show cached Codex quota and authentication status.' \
     'yafp-resources • Show the latest RAM, swap, CPU, and disk sample.' \
+    'yafp-resources-fix • Show process termination commands.' \
     'yafp-demo-resources • Simulate resource load and colors.')"
 assert_eq "$expected_help" "$(framed_output yafp-help)" 'yafp-help output'
 
@@ -338,9 +353,22 @@ YAFP_REMOTE_OFFLINE_ACKNOWLEDGED=0
 yafp-ack > "$TEST_ROOT/yafp-ack-output"
 assert_eq 1 "$YAFP_REMOTE_OFFLINE_ACKNOWLEDGED" \
     'yafp-ack acknowledges the current remote error alert'
-assert_eq 'Remote error alert acknowledged.' \
-    "$(< "$TEST_ROOT/yafp-ack-output")" 'yafp-ack confirmation'
+yafp_strip_terminal_styles "$(< "$TEST_ROOT/yafp-ack-output")"
+case "$yafp_plain_text" in
+    ┌*│*'  yafp-ack '*│*├*┤*'│ Remote error alert acknowledged. │'*┘) ;;
+    *) fail 'Missing compact yafp-ack confirmation' ;;
+esac
 eval "$original_remote_context"
+
+for action in yafp-ack yafp-refresh; do
+    output="$(cd "$TEST_ROOT" && "$action")"
+    yafp_strip_terminal_styles "$output"
+    case "$action:$yafp_plain_text" in
+        yafp-ack:┌*'  yafp-ack '*├*┤*'No remote error alert to acknowledge.'*┘) ;;
+        yafp-refresh:┌*'  yafp-refresh '*├*┤*'Remote refresh unavailable.'*┘) ;;
+        *) fail "Missing framed unavailable result: $action" ;;
+    esac
+done
 
 YAFP_COMMANDS_TOTAL=0
 YAFP_COMMANDS_SUCCEEDED=0
@@ -395,8 +423,13 @@ assert_eq "$expected_stats" "$(framed_output yafp_exit_trap)" 'exit statistics o
 set +u
 # Loaded from yafp-ps1.bash above; a later definition is an intentional test double.
 # shellcheck disable=SC2218
-yafp-reload
+yafp-reload > "$TEST_ROOT/yafp-reload-output"
 set -u
+yafp_strip_terminal_styles "$(< "$TEST_ROOT/yafp-reload-output")"
+case "$yafp_plain_text" in
+    ┌*│*'  yafp-reload '*│*├*┤*'│ YAFP reloaded in the current shell. │'*┘) ;;
+    *) fail 'Missing compact yafp-reload confirmation' ;;
+esac
 assert_eq 2 "$YAFP_COMMANDS_TOTAL" 'total preserved after reload'
 assert_eq 1 "$YAFP_COMMANDS_SUCCEEDED" 'succeeded preserved after reload'
 assert_eq 1 "$YAFP_COMMANDS_FAILED" 'failed preserved after reload'
@@ -451,16 +484,40 @@ case "$preview_output" in
     *"${preview_host%%.*}"*) ;;
     *) fail 'Bash prompt preview omitted the current host' ;;
 esac
+demo_output="$(
+    COLUMNS=200
+    USER="$preview_user" HOSTNAME="$preview_host" SSH_CLIENT="${SSH_CLIENT:-}"
+    YAFP_REPOS=0 YAFP_PVENV=0 YAFP_ERROR=0 YAFP_CLOCK=0
+    yafp-status() { :; }
+    sleep() { exit 0; }
+    yafp-demo
+)"
+yafp_strip_terminal_styles "$demo_output"
+case "$yafp_plain_text" in
+    *│*'  yafp-demo · Prompt preview '*│*├*┤*"$preview_user"*) ;;
+    *) fail 'Demo omitted the title or prompt content' ;;
+esac
+demo_border=''
+while IFS= read -r line; do
+    case "$line" in ┌*) demo_border=$line; break ;; esac
+done <<< "$yafp_plain_text"
+[ -n "$demo_border" ] && [ "${#demo_border}" -lt 199 ] || fail 'Demo prompt preview did not fit its content'
 
 refresh_args="$TEST_ROOT/refresh-args"
 (
     # shellcheck disable=SC2317,SC2329
     yafp_remote_context() {
         printf '%s|%s|%s' "$1" "$2" "$3" > "$refresh_args"
+        yafp_ctx_git_remote_state=checking
     }
     cd "$TEST_ROOT/local"
     yafp-refresh
-)
+) > "$TEST_ROOT/yafp-refresh-output"
+yafp_strip_terminal_styles "$(< "$TEST_ROOT/yafp-refresh-output")"
+case "$yafp_plain_text" in
+    ┌*│*'  yafp-refresh '*│*├*┤*'│ Background remote refresh requested. │'*┘) ;;
+    *) fail 'Missing compact yafp-refresh confirmation' ;;
+esac
 case "$(< "$refresh_args")" in
     *'/local|main|1') ;;
     *) fail 'manual refresh command did not force the cached context' ;;
@@ -631,6 +688,7 @@ yafp_current_commit() {
     printf '%s\n' 'new-commit'
 }
 yafp-reload() {
+    [ "${1:-}" = --quiet ] || fail 'Automatic reload requested a confirmation frame'
     yafp_reload_called=1
     YAFP_LOADED_COMMIT=new-commit
 }
@@ -888,7 +946,7 @@ esac
 # Exercise the public refresh command and recovery with an unexpired cache.
 git -C "$TEST_ROOT/local" remote set-url origin "$TEST_ROOT/missing.git"
 cd "$TEST_ROOT/local"
-yafp-refresh
+yafp-refresh >/dev/null
 for _ in {1..100}; do
     [ ! -d "${cache_file}.lock" ] && break
     sleep 0.05
@@ -899,7 +957,7 @@ assert_eq error "$yafp_ctx_git_remote_state" 'invalid remote is a check error'
 assert_eq ' Remote check failed' "$(yafp_remote_state_label error 0 0)" \
     'fetch failure does not diagnose internet connectivity'
 git -C "$TEST_ROOT/local" remote set-url origin "$TEST_ROOT/origin.git"
-yafp-refresh
+yafp-refresh >/dev/null
 for _ in {1..100}; do
     [ ! -d "${cache_file}.lock" ] && break
     sleep 0.05

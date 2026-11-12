@@ -46,7 +46,10 @@ function Get-YafpPreviewCharacterWidth {
 }
 
 function Write-YafpPreviewFrame {
-    param([AllowEmptyString()][string]$Text, [int]$Columns = 0, [switch]$DirectConsole)
+    param(
+        [AllowEmptyString()][string]$Text, [int]$Columns = 0,
+        [switch]$DirectConsole, [switch]$FitContent, [string]$Title
+    )
 
     $emit = {
         param([string]$Line, [bool]$UseConsole)
@@ -59,7 +62,11 @@ function Write-YafpPreviewFrame {
         catch { $Columns = 80 }
     }
     if ($Columns -le 0) { $Columns = 80 }
-    if ($Columns -lt 7) { & $emit $Text ([bool]$DirectConsole); return }
+    if ($Columns -lt 7) {
+        if ($Title) { & $emit $Title ([bool]$DirectConsole) }
+        & $emit $Text ([bool]$DirectConsole)
+        return
+    }
     $width = $Columns - 5
     $Text = $Text.TrimEnd("`r", "`n")
     $cells = @{}; $styles = @{}
@@ -67,7 +74,21 @@ function Write-YafpPreviewFrame {
     $lastCell = -1; $style = ''; $index = 0
     $reset = "$([char]27)[0m"
     $borderStyle = if ($env:NO_COLOR) { '' } else { "$([char]27)[90m" }
+    $titleLength = -1; $titleRows = 0; $titleStyle = ''
+    if ($Title) {
+        $titleLength = $Title.Length
+        $Text = "$Title`n$Text"
+        if (-not $env:NO_COLOR) { $titleStyle = "$([char]27)[30;107m" }
+    }
     while ($index -lt $Text.Length) {
+        if ($index -eq $titleLength) {
+            # Body cursor controls are relative to the first body row.
+            $titleRows = $row + 1
+            $row = $titleRows; $maxRow = $titleRows; $savedRow = $titleRows
+            $column = 0; $lastCell = -1; $style = ''
+            $index++
+            continue
+        }
         $character = [string]$Text[$index]
         $index++
         if ($character -eq [string][char]27) {
@@ -97,7 +118,7 @@ function Write-YafpPreviewFrame {
                 }
                 $amount = [Math]::Max(1, $amount)
                 switch -CaseSensitive ($final) {
-                    A { $row = [Math]::Max(0, $row - $amount) }
+                    A { $row = [Math]::Max($titleRows, $row - $amount) }
                     B { $row += $amount }
                     C { $column = [Math]::Min($width, $column + $amount) }
                     D { $column = [Math]::Max(0, $column - $amount) }
@@ -141,28 +162,52 @@ function Write-YafpPreviewFrame {
         $column += $cellWidth
         $maxRow = [Math]::Max($maxRow, $row)
     }
-    $horizontal = '─' * ($width + 2)
+    $frameWidth = $width
+    if ($FitContent) {
+        $frameWidth = 1
+        foreach ($cell in $cells.Keys) {
+            $frameWidth = [Math]::Max($frameWidth, ($cell % $width) + 1)
+        }
+    }
+    $horizontal = '─' * ($frameWidth + 2)
     & $emit "${reset}${borderStyle}┌${horizontal}┐${reset}" ([bool]$DirectConsole)
     for ($row = 0; $row -le $maxRow; $row++) {
+        if ($row -gt 0 -and $row -eq $titleRows) {
+            & $emit "${borderStyle}├${horizontal}┤${reset}" ([bool]$DirectConsole)
+        }
+        $rowStyle = ''
+        $leftPadding = 0
+        if ($row -lt $titleRows) {
+            $rowStyle = $titleStyle
+            for ($titleRowWidth = $frameWidth; $titleRowWidth -gt 0; $titleRowWidth--) {
+                if ($cells.ContainsKey($row * $width + $titleRowWidth - 1)) { break }
+            }
+            $leftPadding = [int][Math]::Floor(($frameWidth - $titleRowWidth) / 2)
+        }
         $line = [Text.StringBuilder]::new()
-        $null = $line.Append("${borderStyle}│${reset} ")
-        $outputStyle = ''
-        for ($column = 0; $column -lt $width; $column++) {
+        $null = $line.Append("${borderStyle}│${reset}${rowStyle} ").Append(' ' * $leftPadding)
+        $outputStyle = $rowStyle
+        for ($column = 0; $column -lt $frameWidth - $leftPadding; $column++) {
             $cell = $row * $width + $column
             if ($cells.ContainsKey($cell)) {
                 if ($cells[$cell] -eq '') { continue }
                 $style = $styles[$cell]
+                if (-not $style) { $style = $rowStyle }
                 if ($style -ne $outputStyle) {
                     $null = $line.Append($reset).Append($style); $outputStyle = $style
                 }
                 $null = $line.Append($cells[$cell])
             }
             else {
-                if ($outputStyle) { $null = $line.Append($reset); $outputStyle = '' }
+                if ($outputStyle -ne $rowStyle) {
+                    $null = $line.Append($reset).Append($rowStyle)
+                    $outputStyle = $rowStyle
+                }
                 $null = $line.Append(' ')
             }
         }
-        $null = $line.Append("${reset} ${borderStyle}│${reset}")
+        if ($row -lt $titleRows) { $null = $line.Append(" ${reset}${borderStyle}│${reset}") }
+        else { $null = $line.Append("${reset} ${borderStyle}│${reset}") }
         & $emit $line.ToString() ([bool]$DirectConsole)
     }
     & $emit "${borderStyle}└${horizontal}┘${reset}" ([bool]$DirectConsole)

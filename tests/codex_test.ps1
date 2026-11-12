@@ -234,8 +234,11 @@ try {
             $out = (@(Show-YafpCodex 6>&1) | ForEach-Object { "$_" }) -join "`n"
             if (-not $out.Contains("$([char]27)[$($color)m$icon $state")) { throw "Report state color/icon: $state" }
             $plain = $out -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
+            if ($plain -notmatch '│ +֍ yafp-codex +│\r?\n├─+┤') { throw "Missing Codex title: $state" }
             if (-not $plain.Contains('┌') -or -not $plain.Contains('┘') -or
                 -not $plain.Contains("        State: $icon $state")) { throw "Diagnostic framing/state: $state" }
+            $body = $plain.Substring($plain.IndexOf('┤') + 1)
+            if ($body -notmatch '\S │(?:\r?\n|$)') { throw "Codex frame did not fit its longest row: $state" }
             $remaining = if ($state -eq 'ok') { '74%' } else { '' }
             $reset = if ($state -eq 'ok') { '1d8h' } else { '' }
             if (-not $plain.Contains("    Remaining: $remaining") -or

@@ -1898,8 +1898,14 @@ yafp_current_commit() {
 
 
 yafp-reload() {
+    local reload_mode="${1:-}" reload_status
     # shellcheck source=/dev/null
     . "$YAFP_SCRIPT_PATH"
+    reload_status=$?
+    [ "$reload_status" -eq 0 ] || return "$reload_status"
+    [ "$reload_mode" != --quiet ] || return 0
+    . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
+    yafp_preview_frame 'YAFP reloaded in the current shell.' '' fit-content ' yafp-reload'
 }
 
 
@@ -1917,7 +1923,7 @@ yafp_maybe_auto_reload() {
     [ -n "$current_commit" ] || return 1
     [ "$current_commit" != "$YAFP_LOADED_COMMIT" ] || return 1
 
-    yafp-reload
+    yafp-reload --quiet
 }
 
 
@@ -2181,7 +2187,7 @@ yafp_remote_status_report() {
         local report
         . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
         report="$(YAFP_DIAGNOSTIC_COLOR=1 yafp_remote_status_report "$1" "${2:-0}" "${3:-0}" "${4:-0}" "${5:-}" "${6:-0}" "${7:-0}")"
-        yafp_preview_frame "$report"
+        yafp_preview_frame "$report" '' fit-content ' yafp-status'
         return
     fi
     local state="$1"
@@ -2302,39 +2308,38 @@ yafp-status() {
 
 
 yafp-refresh() {
-    local branch
-    local repo_root
+    local branch repo_root message='Remote refresh unavailable.'
 
-    command -v git >/dev/null 2>&1 || return 0
-    repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || return 0
-    branch="$(git symbolic-ref --short HEAD 2>/dev/null)" || return 0
-    yafp_remote_context "$repo_root" "$branch" 1
+    if command -v git >/dev/null 2>&1 &&
+       repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" &&
+       branch="$(git symbolic-ref --short HEAD 2>/dev/null)"; then
+        yafp_remote_context "$repo_root" "$branch" 1
+        if [ "${yafp_ctx_git_remote_refreshing:-0}" = 1 ] ||
+           [ "${yafp_ctx_git_remote_state:-}" = checking ]; then
+            message='Background remote refresh requested.'
+        fi
+    fi
+
+    . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
+    yafp_preview_frame "$message" '' fit-content ' yafp-refresh'
 }
 
 
 yafp-ack() {
-    local branch
-    local repo_root
+    local branch repo_root message='No remote error alert to acknowledge.'
 
-    command -v git >/dev/null 2>&1 || {
-        printf '%s\n' 'No remote error alert to acknowledge.'
-        return 0
-    }
-    repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || repo_root=""
-    branch="$(git symbolic-ref --short HEAD 2>/dev/null)" || branch=""
-    if [ -z "$repo_root" ] || [ -z "$branch" ]; then
-        printf '%s\n' 'No remote error alert to acknowledge.'
-        return 0
+    if command -v git >/dev/null 2>&1 &&
+       repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" &&
+       branch="$(git symbolic-ref --short HEAD 2>/dev/null)"; then
+        yafp_remote_context "$repo_root" "$branch"
+        if [ "${yafp_ctx_git_remote_state:-}" = error ]; then
+            YAFP_REMOTE_OFFLINE_ACKNOWLEDGED=1
+            message='Remote error alert acknowledged.'
+        fi
     fi
 
-    yafp_remote_context "$repo_root" "$branch"
-    if [ "${yafp_ctx_git_remote_state:-}" != error ]; then
-        printf '%s\n' 'No remote error alert to acknowledge.'
-        return 0
-    fi
-
-    YAFP_REMOTE_OFFLINE_ACKNOWLEDGED=1
-    printf '%s\n' 'Remote error alert acknowledged.'
+    . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
+    yafp_preview_frame "$message" '' fit-content ' yafp-ack'
 }
 
 
@@ -2343,7 +2348,7 @@ yafp-msgs() {
         local report
         . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
         report="$(YAFP_DIAGNOSTIC_COLOR=1 yafp-msgs plain)"
-        yafp_preview_frame "$report"
+        yafp_preview_frame "$report" '' fit-content ' yafp-msgs'
         return
     fi
     local color
@@ -2377,7 +2382,7 @@ yafp-help() {
         local report
         . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
         report="$(YAFP_DIAGNOSTIC_COLOR=1 yafp-help plain)"
-        yafp_preview_frame "$report"
+        yafp_preview_frame "$report" '' fit-content ' yafp-help'
         return
     fi
     local description
@@ -2404,6 +2409,7 @@ yafp-msgs|Show all prompt banners in severity order.
 yafp-help|Show available YAFP commands.
 yafp-codex|Show cached Codex quota and authentication status.
 yafp-resources|Show the latest RAM, swap, CPU, and disk sample.
+yafp-resources-fix|Show process termination commands.
 yafp-demo-resources|Simulate resource load and colors.
 EOF
 }
@@ -2438,7 +2444,7 @@ yafp-stats() {
         "$separator_color" "$separator" "$reset" \
         "$total_color" 'Total:' "$count_width" "$YAFP_COMMANDS_TOTAL" "$reset"
     . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
-    yafp_preview_frame "$report"
+    yafp_preview_frame "$report" '' fit-content '∑ yafp-stats'
 }
 
 
@@ -2493,7 +2499,7 @@ yafp-demo() {
     . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
     while true; do
         yafp-status
-        printf '\n Prompt preview:\n'
+        printf '\n'
         yafp_prompt_preview frame
         printf '\nControl+C to break this  loop  (%ss)\n\n' \
             "$sleep_segs"
@@ -2839,7 +2845,7 @@ yafp_prompt_preview() {
     preview=${preview//\\h/${yafp_ctx_host%%.*}}
     preview=${preview//\\w/$preview_path}
     if [ "${1:-}" = frame ]; then
-        yafp_preview_frame "$preview" "$preview_columns"
+        yafp_preview_frame "$preview" "$preview_columns" fit-content ' yafp-demo · Prompt preview'
     else
         printf '%s\n' "$preview"
     fi

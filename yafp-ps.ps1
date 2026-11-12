@@ -579,6 +579,8 @@ function Get-YafpCurrentCommit {
 }
 
 function Invoke-YafpReload {
+    param([switch]$Quiet)
+
     $tokens = $null
     $parseErrors = $null
     $ast = [Management.Automation.Language.Parser]::ParseFile(
@@ -607,6 +609,10 @@ function Invoke-YafpReload {
                 -Value $function.ScriptBlock -Force
         }
     }
+    if (-not $Quiet) {
+        . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
+        Write-YafpPreviewFrame -Text 'YAFP reloaded in the current shell.' -FitContent -Title ' yafp-reload'
+    }
 }
 
 function Invoke-YafpAutoReload {
@@ -628,7 +634,7 @@ function Invoke-YafpAutoReload {
         return $false
     }
 
-    Invoke-YafpReload
+    Invoke-YafpReload -Quiet
     return $true
 }
 
@@ -959,7 +965,7 @@ function Write-YafpStatusReport {
         $plainParameters = @{} + $PSBoundParameters
         $null = $plainParameters.Remove('Framed')
         $records = @(Write-YafpStatusReport @plainParameters 6>&1)
-        Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $records)
+        Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $records) -FitContent -Title ' yafp-status'
         return
     }
 
@@ -1053,41 +1059,38 @@ function Show-YafpStatus {
 }
 
 function Invoke-YafpRefresh {
-    if (-not (Get-Command git -ErrorAction Ignore)) {
-        return
+    $message = 'Remote refresh unavailable.'
+    if (Get-Command git -ErrorAction Ignore) {
+        $top = git rev-parse --show-toplevel 2>$null
+        $branch = git symbolic-ref --short HEAD 2>$null
+        if ($top -and $branch) {
+            $remote = Get-YafpRemoteContext -RepoRoot "$top" -Branch "$branch" -ForceRefresh
+            if ($remote -and ($remote.State -eq 'checking' -or $remote.Refreshing)) {
+                $message = 'Background remote refresh requested.'
+            }
+        }
     }
 
-    $top = git rev-parse --show-toplevel 2>$null
-    $branch = git symbolic-ref --short HEAD 2>$null
-    if (-not $top -or -not $branch) {
-        return
-    }
-
-    $null = Get-YafpRemoteContext -RepoRoot "$top" -Branch "$branch" `
-        -ForceRefresh
+    . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
+    Write-YafpPreviewFrame -Text $message -FitContent -Title ' yafp-refresh'
 }
 
 function Confirm-YafpRemoteAlert {
-    if (-not (Get-Command git -ErrorAction Ignore)) {
-        Write-Host 'No remote error alert to acknowledge.'
-        return
+    $message = 'No remote error alert to acknowledge.'
+    if (Get-Command git -ErrorAction Ignore) {
+        $top = git rev-parse --show-toplevel 2>$null
+        $branch = git symbolic-ref --short HEAD 2>$null
+        if ($top -and $branch) {
+            $remote = Get-YafpRemoteContext -RepoRoot "$top" -Branch "$branch"
+            if ($remote -and $remote.State -eq 'error') {
+                $script:YafpRemoteOfflineAcknowledged = $true
+                $message = 'Remote error alert acknowledged.'
+            }
+        }
     }
 
-    $top = git rev-parse --show-toplevel 2>$null
-    $branch = git symbolic-ref --short HEAD 2>$null
-    if (-not $top -or -not $branch) {
-        Write-Host 'No remote error alert to acknowledge.'
-        return
-    }
-
-    $remote = Get-YafpRemoteContext -RepoRoot "$top" -Branch "$branch"
-    if (-not $remote -or $remote.State -ne 'error') {
-        Write-Host 'No remote error alert to acknowledge.'
-        return
-    }
-
-    $script:YafpRemoteOfflineAcknowledged = $true
-    Write-Host 'Remote error alert acknowledged.'
+    . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
+    Write-YafpPreviewFrame -Text $message -FitContent -Title ' yafp-ack'
 }
 
 function Show-YafpMessages {
@@ -1096,7 +1099,7 @@ function Show-YafpMessages {
     if (-not $Plain) {
         . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
         $records = @(Show-YafpMessages -Plain 6>&1)
-        Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $records)
+        Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $records) -FitContent -Title ' yafp-msgs'
         return
     }
     foreach ($group in @(
@@ -1131,7 +1134,7 @@ function Show-YafpHelp {
     if (-not $Plain) {
         . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
         $records = @(Show-YafpHelp -Plain 6>&1)
-        Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $records)
+        Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $records) -FitContent -Title ' yafp-help'
         return
     }
     foreach ($entry in @(
@@ -1144,6 +1147,7 @@ function Show-YafpHelp {
         @{ Name = 'yafp-help'; Description = 'Show available YAFP commands.' }
         @{ Name = 'yafp-codex'; Description = 'Show cached Codex quota and authentication state.' }
         @{ Name = 'yafp-resources'; Description = 'Show the latest RAM, swap, CPU, and disk sample.' }
+        @{ Name = 'yafp-resources-fix'; Description = 'Show process termination commands.' }
         @{ Name = 'yafp-demo-resources'; Description = 'Simulate resource load and colors.' }
     )) {
         Write-YafpText -Text $entry.Name -ForegroundColor Yellow `
@@ -1188,7 +1192,7 @@ function Show-YafpStats {
             $escape = [char]27
             $report = "$escape[92m$succeededText$escape[0m`n$escape[91m$failedText$escape[0m`n" +
                 "$escape[37m$separator$escape[0m`n$escape[97m$totalText$escape[0m"
-            Write-YafpPreviewFrame -Text $report -DirectConsole
+            Write-YafpPreviewFrame -Text $report -DirectConsole -FitContent -Title '∑ yafp-stats'
         }
         finally {
             if ([int]$originalColor -ge 0) { [Console]::ForegroundColor = $originalColor }
@@ -1207,7 +1211,7 @@ function Show-YafpStats {
         Write-YafpText -Text $totalText `
             -ForegroundColor White -BackgroundColor $null
     } 6>&1)
-    Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $records)
+    Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $records) -FitContent -Title '∑ yafp-stats'
 }
 
 function Install-YafpExitEvent {
@@ -1233,9 +1237,10 @@ function Show-YafpDemo {
     . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
     while ($true) {
         Show-YafpStatus
-        Write-Host "`n Prompt preview:"
+        Write-Host ''
         $previewRecords = @(Show-YafpPromptPreview 6>&1)
-        Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $previewRecords)
+        Write-YafpPreviewFrame -Text (ConvertTo-YafpPreviewText -Records $previewRecords) `
+            -FitContent -Title ' yafp-demo · Prompt preview'
         Write-Host "`nControl+C to break this  loop  ($($sleepSecs)s)`n"
         Start-Sleep -Seconds $sleepSecs
     }
@@ -1798,6 +1803,7 @@ Set-Alias -Name yafp-stats -Value Show-YafpStats -Scope Global -Force
 Set-Alias -Name yafp-msgs -Value Show-YafpMessages -Scope Global -Force
 Set-Alias -Name yafp-codex -Value Show-YafpCodex -Scope Global -Force
 Set-Alias -Name yafp-resources -Value Show-YafpResources -Scope Global -Force
+Set-Alias -Name yafp-resources-fix -Value Show-YafpResourcesFix -Scope Global -Force
 Set-Alias -Name yafp-demo-resources -Value Show-YafpDemoResources -Scope Global -Force
 
 Import-YafpTheme
