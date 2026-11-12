@@ -85,8 +85,22 @@ yafp_collect_resources() {
         "${swap_total:--}" "${cpu:--}" "${disk_used:--}" "${disk_total:--}"
 }
 
+yafp_collect_top_processes() {
+    local platform
+    platform=$(uname -s)
+    case "$platform" in
+        Darwin|Linux)
+            ps -axo rss=,pid=,comm= 2>/dev/null | awk '
+                NF >= 3 { name=$0; sub(/^[[:space:]]*[0-9]+[[:space:]]+[0-9]+[[:space:]]+/, "", name); sub(/^.*\//, "", name); gsub(/[\t]/, " ", name); rss=$1+0
+                    if (name !~ /^ps$/) printf "%.0f\t%s\t%s\n", rss, $2, name }
+            ' | sort -t $'\t' -k1,1nr | head -n 3 | awk -F '\t' '{ printf "%s\t%.0f\t%s\n", $3, $1/1024, $2 }'
+            ;;
+    esac
+}
+
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     # Atomic publication; cache contents are never executed.
     umask 077
     yafp_collect_resources "$2" "$3" > "$1.tmp" && mv -f -- "$1.tmp" "$1"
+    yafp_collect_top_processes > "$1.processes.tmp" && mv -f -- "$1.processes.tmp" "$1.processes"
 fi

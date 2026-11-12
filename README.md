@@ -411,6 +411,18 @@ previous sample remains available, ` pending` while waiting for the first,
 sample exists. When monitoring is disabled, the command retains the
 configuration hint below the frame. The report does not wait for the worker
 or reuse old details after an invalid cache read.
+When SWAP is yellow (>10%) or red (>30%), `yafp-resources` adds up to three
+processes with the highest physical RAM use directly below the SWAP row.
+They are ordered from highest to lowest and use the tree branches `├──` and
+`└──`, aligned with the start of the SWAP percentage. RAM sizes share one
+column. Unix displays only the process executable name and a `💀 sudo kill -9`
+command with its PID; Windows displays the process name and an elevated
+`Stop-Process` command. Process names, RAM, and PIDs are collected by the
+background resource worker; they are not shown while SWAP is green or its
+sample is unavailable. The commands are informational and YAFP does not run
+them. Tree branches are gray, names use the normal text color, sizes inherit
+SWAP's yellow or red severity, and the `` Font Awesome skull plus termination
+command are intense red.
 A worker starts during prompt rendering when the interval expires; a later
 prompt reads its result. There is no persistent timer, and the line is not
 redrawn while you type. The sample age identifies older data when a probe is

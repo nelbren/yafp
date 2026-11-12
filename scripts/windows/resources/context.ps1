@@ -23,8 +23,21 @@ $script:YafpResourceCollector = {
         RamUsed = $null; RamTotal = $null
         SwapUsed = $null; SwapTotal = $null
         Cpu = $null; DiskUsed = $null; DiskTotal = $null
+        TopProcesses = @()
     }
     if ($Windows) {
+        try {
+            $sample.TopProcesses = @(Get-Process -ErrorAction Stop |
+                Sort-Object -Property WorkingSet64 -Descending |
+                Select-Object -First 3 | ForEach-Object {
+                    [pscustomobject]@{
+                        Name = $_.ProcessName
+                        RamMiB = [long][Math]::Floor($_.WorkingSet64 / 1MB)
+                        Id = $_.Id
+                    }
+                })
+        }
+        catch { $sample.TopProcesses = @() }
         try {
             $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
             $sample.RamTotal = [long]($os.TotalVisibleMemorySize / 1024)
@@ -301,6 +314,30 @@ function global:Show-YafpResources {
             $detail = " · $usedText/$totalText $unit"
         }
         $report += "`n$($labels[$index]) $escape[$($color)m$value$detail$escape[0m"
+        if ($index -eq 2 -and $color -in @(93, 91) -and $null -ne $sample -and
+            $sample.TopProcesses.Count -gt 0) {
+            $processes = @($sample.TopProcesses | Where-Object {
+                $null -ne $_.PSObject.Properties['Name'] -and
+                $null -ne $_.PSObject.Properties['RamMiB'] -and
+                $null -ne $_.PSObject.Properties['Id']
+            } | Select-Object -First 3)
+            $processCount = $processes.Count
+            if ($processCount -eq 0) { continue }
+            $processIndent = ' ' * ($labels[$index].Length + 1)
+            $processNameWidth = ($processes | ForEach-Object { $_.Name.Length } |
+                Measure-Object -Maximum).Maximum
+            $processSizeWidth = ($processes | ForEach-Object { "$($_.RamMiB)".Length } |
+                Measure-Object -Maximum).Maximum
+            for ($processIndex = 0; $processIndex -lt $processCount; $processIndex++) {
+                $branch = if ($processIndex -eq $processCount - 1) { '└──' } else { '├──' }
+                $process = $processes[$processIndex]
+                $processName = $process.Name.PadRight($processNameWidth)
+                $processSize = "$($process.RamMiB)".PadLeft($processSizeWidth)
+                $report += "`n$escape[90m${processIndent}${branch}$escape[0m $processName " +
+                    "$escape[$($color)m$processSize MiB$escape[0m  $escape[91m " +
+                    "Start-Process pwsh -Verb RunAs -ArgumentList '-NoProfile -Command `"Stop-Process -Id $($process.Id) -Force`"'$escape[0m"
+            }
+        }
     }
     . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
     Write-YafpPreviewFrame -Text $report

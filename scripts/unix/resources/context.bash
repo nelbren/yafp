@@ -242,7 +242,10 @@ yafp-demo-resources() {
 yafp-resources() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
     local report line state_icon state_color age='' age_color=90
-    local index value color detail item used_text total_text unit
+    local index value color detail item used_text total_text unit process_line process_count process_indent
+    local process_name process_size process_pid process_name_width=0 process_size_width=0
+    local process_index formatted_process
+    local process_names=() process_sizes=() process_pids=()
     local labels=('          CPU:' '          RAM:' '         SWAP:' '  Disk (HOME):')
     local used=('-' '-' '-') totals=('-' '-' '-')
     yafp_resources_context
@@ -278,6 +281,33 @@ yafp-resources() {
         fi
         printf -v line '%s \033[%sm%s%s\033[0m' "${labels[$index]}" "$color" "$value" "$detail"
         report+=$'\n'"$line"
+        if [ "$index" -eq 2 ] && { [ "$color" = 91 ] || [ "$color" = 93 ]; } &&
+           [ -r "${YAFP_RESOURCE_DIR:-}/sample.processes" ]; then
+            process_count=0
+            printf -v process_indent '%*s' "$(( ${#labels[2]} + 1 ))" ''
+            while IFS=$'\t' read -r process_name process_size process_pid &&
+                  [ "$process_count" -lt 3 ]; do
+                [ -n "$process_name" ] && [ -n "$process_size" ] &&
+                    [ -n "$process_pid" ] || continue
+                process_names+=("$process_name") process_sizes+=("$process_size") process_pids+=("$process_pid")
+                [ "${#process_name}" -le "$process_name_width" ] || process_name_width=${#process_name}
+                [ "${#process_size}" -le "$process_size_width" ] || process_size_width=${#process_size}
+                process_count=$((process_count + 1))
+            done < "$YAFP_RESOURCE_DIR/sample.processes"
+            for ((process_index = 0; process_index < process_count; process_index++)); do
+                if [ "$process_index" -eq "$((process_count - 1))" ]; then
+                    process_line='└──'
+                else
+                    process_line='├──'
+                fi
+                printf -v formatted_process \
+                    '\033[0;90m%s%s\033[0m %-*s \033[0;%sm%*s MiB\033[0m  \033[0;91m sudo kill -9 %s\033[0m' \
+                    "$process_indent" "$process_line " "$process_name_width" \
+                    "${process_names[$process_index]}" "$color" "$process_size_width" \
+                    "${process_sizes[$process_index]}" "${process_pids[$process_index]}"
+                report+=$'\n'"${formatted_process}"
+            done
+        fi
     done
     . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
     yafp_preview_frame "$report"
@@ -290,7 +320,8 @@ yafp_resources_cleanup() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
     [ -z "${YAFP_RESOURCE_PID:-}" ] || kill "$YAFP_RESOURCE_PID" 2>/dev/null || true
     if [ -n "${YAFP_RESOURCE_DIR:-}" ]; then
-        rm -f -- "$YAFP_RESOURCE_DIR/sample" "$YAFP_RESOURCE_DIR/sample.tmp" 2>/dev/null
+        rm -f -- "$YAFP_RESOURCE_DIR/sample" "$YAFP_RESOURCE_DIR/sample.tmp" \
+            "$YAFP_RESOURCE_DIR/sample.processes" "$YAFP_RESOURCE_DIR/sample.processes.tmp" 2>/dev/null
         rmdir -- "$YAFP_RESOURCE_DIR" 2>/dev/null || true
     fi
     YAFP_RESOURCE_DIR='' YAFP_RESOURCE_PID='' YAFP_RESOURCE_ATTEMPT=''

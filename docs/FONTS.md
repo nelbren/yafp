@@ -28,6 +28,7 @@ code points.
 | 16  | General debugging context       | ``         | `F013`               |
 | 17  | Git debugging context           | ``         | `F1D3`               |
 | 18  | Urgency of the next check       | ``         | `F111`               |
+| 19  | Process termination             | ``         | `EE15`               |
 
 The catalog lists the approved replacements; each theme keeps the labels it
 already displayed. For example, the Bash/zsh `default` environment keeps its
@@ -76,7 +77,10 @@ The `yafp-resources` report adds `` (`U+EFC5`, memory remapped by Nerd Fonts)
 for RAM. CPU uses `` (`U+F2DB`), SWAP uses `` (`U+F0EC`), and disk uses
 `` (`U+F0A0`). State reuses `` (`U+F21E`), sample age uses ``
 (`U+F017`), and missing values use a gray `` (`U+F059`). The refresh icon
-`` and cached data retain their monitoring semantics.
+`` and cached data retain their monitoring semantics. Process branches use
+gray, names use the normal text color, sizes inherit SWAP severity, and the
+`` skull and termination command use intense red. The skull is Font Awesome's
+`fa-skull`, remapped to `U+EE15` by Nerd Fonts.
 
 References: [Font Awesome][font-awesome] and the [Nerd Fonts catalog][nerd-glyphs].
 
