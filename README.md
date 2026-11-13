@@ -228,6 +228,26 @@ transparent background. Each count sits directly beside its icon.
 The remote frame precedes the Git icon and branch with no spaces between them.
 A repository without a remote omits the frame.
 
+Run `yafp-git` inside a repository in Bash, zsh, or PowerShell to list the
+paths behind the Git counters in a box:
+
+```text
+┌─────────────┐
+│  yafp-git  │
+├─────────────┤
+│  old.txt   │
+│  README.md │
+│  notes.txt │
+│  ready.txt │
+└─────────────┘
+```
+
+Each path uses the color of its status icon. The `` icon marks staged
+changes. A file changed again after staging has a row for each state.
+The report also flags unresolved conflicts with ``.
+Paths are relative to the repository root. Git may show an untracked
+directory as a single entry, just as it does for the prompt counter.
+
 `` marks a background refresh in Git and machine resources. `⟳` is a
 placeholder for the first pending values in machine resources and Codex quota.
 Resource refresh icons and initial placeholders are gray; Git refresh icons
@@ -1004,6 +1024,7 @@ Use `yafp-help` to list the main YAFP commands with a short description:
 │                             yafp-help                            │
 ├───────────────────────────────────────────────────────────────────┤
 │ yafp-status • Show remote status and refresh timer.               │
+│ yafp-git • List files behind the Git counters.                     │
 │ yafp-refresh • Request an immediate remote refresh.               │
 │ yafp-ack • Acknowledge the current remote error alert.            │
 │ yafp-reload • Reload YAFP in the current shell.                   │
@@ -1503,6 +1524,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-12 01:47:24 🪟 No expuesto |
+📆 2026-11-13 02:38:27 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

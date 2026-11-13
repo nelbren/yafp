@@ -278,6 +278,9 @@ try {
         [pscustomobject]@{ Text = 'yafp-status'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Show remote status and refresh timer.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'yafp-git'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'List files behind the Git counters.'; Color = 'White'; NoNewline = $false }
         [pscustomobject]@{ Text = 'yafp-refresh'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Request an immediate remote refresh.'; Color = 'White'; NoNewline = $false }

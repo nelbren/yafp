@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared Bash/zsh presentation contract, without Git or network probes.
+# Shared Bash/zsh presentation contract, with a local Git fixture.
 if [ -n "${ZSH_VERSION:-}" ]; then emulate -LR zsh -o KSH_ARRAYS; fi
 set -eo pipefail
 ROOT_DIR="$(cd -- "$(dirname -- "$0")/.." && pwd)"
@@ -259,6 +259,46 @@ contains "$out" '┘' 'Help closing frame'
 contains "$out" $'\033[93myafp-status' 'Help command color'
 plain
 contains "$out" 'yafp-resources • Show the latest RAM, swap, CPU, and disk sample.' 'Help entries retained'
+contains "$out" 'yafp-git • List files behind the Git counters.' 'Git help entry'
+out="$(cd "$TEST_ROOT" && yafp-git)"
+contains "$out" 'Git status unavailable in this directory.' 'Git report outside a repo'
+(
+    mkdir -p "$TEST_ROOT/repo/subdir"
+    cd "$TEST_ROOT/repo"
+    git init -q
+    printf 'original\n' > 'modify me.txt'
+    printf 'delete\n' > deleted.txt
+    printf 'tracked\n' > subdir/tracked.txt
+    git add .
+    git -c user.name=YAFP -c user.email=yafp@example.test -c commit.gpgsign=false commit -qm fixture
+    out="$(yafp-git)"
+    contains "$out" ' Working tree clean.' 'Clean Git report'
+    rm -- deleted.txt
+    printf 'staged\n' >> 'modify me.txt'
+    git add 'modify me.txt'
+    printf 'unstaged\n' >> 'modify me.txt'
+    printf 'new\n' > 'subdir/ñ.txt'
+    if [ "$CLIENT_OS" = LINUX ] || [ "$CLIENT_OS" = MACOS ]; then
+        printf 'literal\n' > $'subdir/name\n\033[2K.txt'
+    fi
+    cd subdir
+    out="$(NO_COLOR=1 yafp-git)"
+    contains "$out" ' yafp-git' 'Git frame title'
+    contains "$out" ' deleted.txt' 'Deleted Git path'
+    contains "$out" ' "modify me.txt"' 'Modified Git path'
+    contains "$out" ' "modify me.txt"' 'Staged Git path'
+    contains "$out" ' subdir/ñ.txt' 'Root-relative untracked Git path'
+    if [ "$CLIENT_OS" = LINUX ] || [ "$CLIENT_OS" = MACOS ]; then
+        contains "$out" 'name\n\033[2K.txt' 'Git quotes terminal controls in paths'
+    fi
+    out=${out//$'\033[0m'/}
+    case "$out" in *$'\033'*) fail 'Git report must respect NO_COLOR' ;; esac
+    out="$(NO_COLOR='' yafp-git)"
+    contains "$out" $'\033[91m deleted.txt' 'Deleted Git path color'
+    contains "$out" $'\033[93m "modify me.txt"' 'Modified Git path color'
+    contains "$out" $'\033[96m subdir/ñ.txt' 'New Git path color'
+    contains "$out" $'\033[0;48;2;255;255;0;38;2;0;0;0m "modify me.txt"' 'Staged Git path color'
+)
 out="$(yafp-msgs)"
 contains "$out" '┌' 'Message catalog opening frame'
 contains "$out" '┘' 'Message catalog closing frame'

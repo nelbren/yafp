@@ -254,6 +254,10 @@ foreground:
   chains an earlier `EXIT` trap and PowerShell uses the engine exit event.
 - `yafp-status` reads the same cached context for an exact, on-demand timer
   report, while `yafp-refresh` requests a background refresh without blocking.
+- `yafp-git` reads local porcelain v1 status on demand and lists the paths
+  behind the worktree and staged counters in the shared diagnostic frame.
+  Conflicts get a warning row. Git quotes paths containing control characters
+  before they reach the frame renderer. The report uses no remote context.
 - `yafp-ack` acknowledges the current remote-check failure for the session. It
   suppresses the error expansion and keeps the compact indicator intense
   red on a transparent background until a successful check resets it.
@@ -860,6 +864,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-12 01:47:24 🪟 No expuesto |
+📆 2026-11-13 02:15:05 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

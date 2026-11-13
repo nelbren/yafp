@@ -316,6 +316,7 @@ declare -F yafp-stats >/dev/null || fail 'yafp-stats command is unavailable'
 declare -F yafp-msgs >/dev/null || fail 'yafp-msgs command is unavailable'
 expected_help="$(printf '%s\n' \
     'yafp-status • Show remote status and refresh timer.' \
+    'yafp-git • List files behind the Git counters.' \
     'yafp-refresh • Request an immediate remote refresh.' \
     'yafp-ack • Acknowledge the current remote error alert.' \
     'yafp-reload • Reload YAFP in the current shell.' \

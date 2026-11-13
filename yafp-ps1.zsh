@@ -2286,6 +2286,13 @@ EOF
 }
 
 
+yafp-git() {
+    . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
+    . "$YAFP_ROOT/scripts/unix/preview/lib/git.bash" || return
+    yafp_git_report
+}
+
+
 yafp-help() {
     emulate -L zsh -o KSH_ARRAYS
     if [ "${1:-}" != plain ]; then
@@ -2311,6 +2318,7 @@ yafp-help() {
         printf '\n'
     done <<'EOF'
 yafp-status|Show remote status and refresh timer.
+yafp-git|List files behind the Git counters.
 yafp-refresh|Request an immediate remote refresh.
 yafp-ack|Acknowledge the current remote error alert.
 yafp-reload|Reload YAFP in the current shell.

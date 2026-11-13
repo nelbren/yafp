@@ -1128,6 +1128,66 @@ function Show-YafpMessages {
     }
 }
 
+function Show-YafpGit {
+    . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
+
+    $report = if (-not (Get-Command git -ErrorAction Ignore)) {
+        'Git is unavailable.'
+    }
+    else {
+        try {
+            $lines = git --no-optional-locks -c core.quotePath=false status --porcelain=v1 2>$null
+            if ($LASTEXITCODE -ne 0) { throw 'Git status failed.' }
+            if (-not $lines) {
+                ' Working tree clean.'
+            }
+            else {
+                $deleted = ''
+                $changed = ''
+                $new = ''
+                $staged = ''
+                $conflict = ''
+                $reset = ''
+                if (-not $env:NO_COLOR) {
+                    $esc = [char]27
+                    $reset = "$esc[0m"
+                    $deleted = "$esc[91m$deleted"
+                    $changed = "$esc[93m$changed"
+                    $new = "$esc[96m$new"
+                    $staged = "$esc[0;48;2;255;255;0;38;2;0;0;0m$staged"
+                    $conflict = "$esc[93m$conflict"
+                }
+                $rows = foreach ($line in $lines) {
+                    $xy = $line.Substring(0, 2)
+                    $path = $line.Substring(3)
+                    if ($xy -eq '??') {
+                        "$new $path$reset"
+                        continue
+                    }
+                    if ($xy -in @('DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU')) {
+                        "$conflict $path$reset (conflict)"
+                        continue
+                    }
+                    if ($xy[1] -eq 'D') {
+                        "$deleted $path$reset"
+                    }
+                    elseif ($xy[1] -in @('M', 'T')) {
+                        "$changed $path$reset"
+                    }
+                    if ($xy[0] -in @('A', 'C', 'D', 'M', 'R', 'T')) {
+                        "$staged $path$reset"
+                    }
+                }
+                $rows -join "`n"
+            }
+        }
+        catch {
+            'Git status unavailable in this directory.'
+        }
+    }
+    Write-YafpPreviewFrame -Text $report -FitContent -Title ' yafp-git'
+}
+
 function Show-YafpHelp {
     param([switch]$Plain)
 
@@ -1139,6 +1199,7 @@ function Show-YafpHelp {
     }
     foreach ($entry in @(
         @{ Name = 'yafp-status'; Description = 'Show remote status and refresh timer.' }
+        @{ Name = 'yafp-git'; Description = 'List files behind the Git counters.' }
         @{ Name = 'yafp-refresh'; Description = 'Request an immediate remote refresh.' }
         @{ Name = 'yafp-ack'; Description = 'Acknowledge the current remote error alert.' }
         @{ Name = 'yafp-reload'; Description = 'Reload YAFP in the current shell.' }
@@ -1794,6 +1855,7 @@ function Test-YafpAdministrator {
 }
 
 Set-Alias -Name yafp-status -Value Show-YafpStatus -Scope Global -Force
+Set-Alias -Name yafp-git -Value Show-YafpGit -Scope Global -Force
 Set-Alias -Name yafp-refresh -Value Invoke-YafpRefresh -Scope Global -Force
 Set-Alias -Name yafp-ack -Value Confirm-YafpRemoteAlert -Scope Global -Force
 Set-Alias -Name yafp-demo -Value Show-YafpDemo -Scope Global -Force

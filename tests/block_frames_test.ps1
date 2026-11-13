@@ -350,4 +350,48 @@ try {
     }
 }
 finally { $env:NO_COLOR = $savedNoColor }
+$gitFixture = New-Item -ItemType Directory -Path (Join-Path ([IO.Path]::GetTempPath()) "yafp-git-$([guid]::NewGuid())")
+$gitReport = Get-Alias -Name yafp-git
+Push-Location $gitFixture.FullName
+try {
+    $outside = & $gitReport 6>&1 | Out-String
+    if ($outside -notmatch 'Git status unavailable in this directory\.') { throw 'Expected report outside Git' }
+    git init -q
+    New-Item -ItemType Directory -Path subdir | Out-Null
+    Set-Content -LiteralPath 'modify me.txt' -Value original
+    Set-Content -LiteralPath deleted.txt -Value delete
+    Set-Content -LiteralPath subdir/tracked.txt -Value tracked
+    git add .
+    git -c user.name=YAFP -c user.email=yafp@example.test -c commit.gpgsign=false commit -qm fixture
+    if ($LASTEXITCODE -ne 0) { throw 'Could not commit Git report fixture' }
+    $clean = & $gitReport 6>&1 | Out-String
+    if ($clean -notmatch ' Working tree clean\.') { throw 'Expected a clean Git report' }
+    Remove-Item -LiteralPath deleted.txt
+    Add-Content -LiteralPath 'modify me.txt' -Value staged
+    git add 'modify me.txt'
+    Add-Content -LiteralPath 'modify me.txt' -Value unstaged
+    Set-Content -LiteralPath subdir/ñ.txt -Value new
+    Set-Location -LiteralPath subdir
+    $env:NO_COLOR = '1'
+    $report = & $gitReport 6>&1 | Out-String
+    foreach ($fragment in @(' yafp-git', ' deleted.txt', ' "modify me.txt"',
+            ' "modify me.txt"', ' subdir/ñ.txt')) {
+        if (-not $report.Contains($fragment)) { throw "Missing Git report entry [$fragment] in [$report]" }
+    }
+    if ($report.Replace("$([char]27)[0m", '').Contains([char]27)) {
+        throw 'Git report must respect NO_COLOR'
+    }
+    $env:NO_COLOR = $null
+    $esc = [char]27
+    $report = (@(& $gitReport 6>&1) | ForEach-Object { "$_" }) -join "`n"
+    foreach ($fragment in @("$esc[91m deleted.txt", "$esc[93m `"modify me.txt`"",
+            "$esc[96m subdir/ñ.txt", "$esc[0;48;2;255;255;0;38;2;0;0;0m `"modify me.txt`"")) {
+        if (-not $report.Contains($fragment)) { throw "Missing Git path color [$fragment]" }
+    }
+}
+finally {
+    Pop-Location
+    $env:NO_COLOR = $savedNoColor
+    Remove-Item -LiteralPath $gitFixture.FullName -Recurse -Force
+}
 Write-Output 'ok - PowerShell frames, compact countdowns, states, and existing colors across all themes'
