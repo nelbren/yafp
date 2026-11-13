@@ -258,6 +258,8 @@ foreground:
   behind the worktree and staged counters in the shared diagnostic frame.
   Conflicts get a warning row. Git quotes paths containing control characters
   before they reach the frame renderer. The report uses no remote context.
+  The Unix report builds its rows outside command substitution for macOS
+  Bash 3.2 compatibility.
 - `yafp-ack` acknowledges the current remote-check failure for the session. It
   suppresses the error expansion and keeps the compact indicator intense
   red on a transparent background until a successful check resets it.
@@ -864,6 +866,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-13 02:15:05 🪟 NDEV-DPC-02 |
+📆 2026-11-13 03:23:45 🪟 NDEV-DPC-02 |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

@@ -23,21 +23,24 @@ yafp_git_report() {
     elif [ -z "$gitstatus" ]; then
         report=' Working tree clean.'
     else
-        report="$(while IFS= read -r line; do
+        # Keep case patterns outside command substitution for macOS Bash 3.2.
+        report=''
+        while IFS= read -r line; do
             xy=${line:0:2}
             file_path=${line:3}
             case "$xy" in
-                '??') printf '%s %s%s\n' "$new" "$file_path" "$reset"; continue ;;
-                DD|AU|UD|UA|DU|AA|UU) printf '%s %s%s (conflict)\n' "$conflict" "$file_path" "$reset"; continue ;;
+                '??') report+="$new $file_path$reset"$'\n'; continue ;;
+                DD|AU|UD|UA|DU|AA|UU) report+="$conflict $file_path$reset (conflict)"$'\n'; continue ;;
             esac
             case "${xy:1:1}" in
-                D) printf '%s %s%s\n' "$deleted" "$file_path" "$reset" ;;
-                M|T) printf '%s %s%s\n' "$changed" "$file_path" "$reset" ;;
+                D) report+="$deleted $file_path$reset"$'\n' ;;
+                M|T) report+="$changed $file_path$reset"$'\n' ;;
             esac
             case "${xy:0:1}" in
-                A|C|D|M|R|T) printf '%s %s%s\n' "$staged" "$file_path" "$reset" ;;
+                A|C|D|M|R|T) report+="$staged $file_path$reset"$'\n' ;;
             esac
-        done <<< "$gitstatus")"
+        done <<< "$gitstatus"
+        report=${report%$'\n'}
     fi
     yafp_preview_frame "$report" '' fit-content ' yafp-git'
 }
