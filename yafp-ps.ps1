@@ -1872,8 +1872,14 @@ function global:Show-YafpScreen {
         Write-Error 'yafp-screen requiere una terminal compatible con pantalla alternativa.' -ErrorAction Continue
         return
     }
-    $python = Get-Command python3, python -CommandType Application -ErrorAction Ignore |
-        Select-Object -First 1
+    $python = $null
+    foreach ($candidate in Get-Command python, python3, py -CommandType Application -ErrorAction Ignore) {
+        $major = & $candidate.Source -c 'import sys; print(sys.version_info[0])' 2>$null
+        if ($LASTEXITCODE -eq 0 -and "$major" -eq '3') {
+            $python = $candidate
+            break
+        }
+    }
     if ($null -eq $python) {
         Write-Error 'yafp-screen requiere Python 3.' -ErrorAction Continue
         return
@@ -1883,14 +1889,17 @@ function global:Show-YafpScreen {
     try {
         $Host.UI.Write("`e7`e[?1049h`e[?25l")
         while ($true) {
-            $arguments = @($renderer, '--view', $View, '--plain', '--columns', [Console]::WindowWidth,
+            $arguments = @($renderer, '--view', $View, '--frame', '--columns', [Console]::WindowWidth,
                 '--lines', [Console]::WindowHeight)
             $codexColor = '90'
             if ($View -ne 'resources') {
                 $codex = Get-YafpCodexContext
-                $codexText = if ($null -ne $codex) { $codex.Text } else { '֍OFF' }
-                $codexColor = switch ($codex.Foreground) {
-                    Green { '92' }; Yellow { '93' }; Red { '91' }; default { '90' }
+                $codexText = '֍OFF'
+                if ($null -ne $codex) {
+                    $codexText = $codex.Text
+                    $codexColor = switch ($codex.Foreground) {
+                        Green { '92' }; Yellow { '93' }; Red { '91' }; default { '90' }
+                    }
                 }
                 $arguments += @('--codex', $codexText)
             }
@@ -1909,16 +1918,19 @@ function global:Show-YafpScreen {
                 $arguments += @('--resources') + $values
             }
             $arguments += @('--colors', $codexColor) + $resourceColors
-            $art = @(& $python.Source @arguments)
-            $Host.UI.Write("`e[H")
-            foreach ($line in $art) { $Host.UI.Write("`e[2K$line`n") }
-            $Host.UI.Write("`e[J")
-            if ([Console]::KeyAvailable) {
-                $key = [Console]::ReadKey($true)
-                if ($key.Key -in @('Q', 'Escape') -or $key.Key -eq 'C' -and
-                    ($key.Modifiers -band [ConsoleModifiers]::Control)) { break }
+            & $python.Source @arguments
+            if ($LASTEXITCODE -ne 0) {
+                throw "yafp-screen: el renderizador terminó con código $LASTEXITCODE."
             }
-            Start-Sleep -Seconds 1
+            $wait = [Diagnostics.Stopwatch]::StartNew()
+            do {
+                while ([Console]::KeyAvailable) {
+                    $key = [Console]::ReadKey($true)
+                    if ($key.KeyChar -in @('q', 'Q', [char]27, [char]3) -or
+                        $key.Key -in @('Q', 'Escape')) { return }
+                }
+                [Threading.Thread]::Sleep(40)
+            } while ($wait.ElapsedMilliseconds -lt 1000)
         }
     }
     finally {

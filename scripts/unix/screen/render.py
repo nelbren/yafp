@@ -417,6 +417,14 @@ def compose(view, codex, resources, cols, lines=24, colors=(None,) * 5):
     return center_vertically(draw(compact, cols, gap=gap), lines)
 
 
+def write_frame(art, lines):
+    sys.stdout.write("\x1b[H")
+    for line in art[:max(1, lines - 1)]:
+        sys.stdout.write("\x1b[2K" + line + "\n")
+    sys.stdout.write("\x1b[J")
+    sys.stdout.flush()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--view", choices=("all", "codex", "resources"), default="all")
@@ -425,16 +433,21 @@ def main():
     parser.add_argument("--colors", nargs=5, default=("90", "90", "90", "90", "90"))
     parser.add_argument("--columns", type=int)
     parser.add_argument("--lines", type=int)
-    parser.add_argument("--plain", action="store_true")
+    output = parser.add_mutually_exclusive_group()
+    output.add_argument("--plain", action="store_true")
+    output.add_argument("--frame", action="store_true")
     args = parser.parse_args()
     if not args.plain and (not sys.stdin.isatty() or not sys.stdout.isatty()):
         print("yafp-screen requiere una terminal interactiva.", file=sys.stderr)
         return 1
     colors = tuple(args.colors) if os.environ.get("NO_COLOR") is None else (None,) * 5
-    if args.plain:
+    if args.plain or args.frame:
         size = terminal_size(args)
         art = compose(args.view, args.codex, args.resources, size.columns, size.lines, colors)
-        print("\n".join(art))
+        if args.frame:
+            write_frame(art, size.lines)
+        else:
+            print("\n".join(art))
         return 0
     stream = sys.stdin
     fd = stream.fileno()
@@ -451,11 +464,7 @@ def main():
         while True:
             size = terminal_size(args)
             art = compose(args.view, args.codex, args.resources, size.columns, size.lines, colors)
-            sys.stdout.write("\x1b[H")
-            for line in art[:max(1, size.lines - 1)]:
-                sys.stdout.write("\x1b[2K" + line + "\n")
-            sys.stdout.write("\x1b[J")
-            sys.stdout.flush()
+            write_frame(art, size.lines)
             import select
             ready, _, _ = select.select([fd], [], [], 1)
             if ready:

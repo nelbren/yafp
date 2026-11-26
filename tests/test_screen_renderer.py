@@ -1,8 +1,10 @@
 import importlib.util
+import io
 import re
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +17,19 @@ SPEC.loader.exec_module(RENDER)
 
 
 class ScreenRendererTests(unittest.TestCase):
+    def test_single_console_frame(self):
+        output = io.StringIO()
+        with patch.object(sys, "argv", ["render.py", "--frame", "--columns", "80",
+                                        "--lines", "24"]), patch.object(sys, "stdout", output), \
+                patch.object(sys.stdin, "isatty", return_value=True), \
+                patch.object(output, "isatty", return_value=True):
+            self.assertEqual(RENDER.main(), 0)
+        frame = output.getvalue()
+        self.assertTrue(frame.startswith("\x1b[H\x1b[2K"))
+        self.assertIn("█", frame)
+        self.assertTrue(frame.endswith("\x1b[J"))
+        self.assertLess(frame.count("\n"), 24)
+
     def test_braille_cells_use_bottom_row_positions(self):
         expected = {
             "⡀": ("  ", "  ", "  ", "█ "),
