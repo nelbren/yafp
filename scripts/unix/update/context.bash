@@ -15,6 +15,14 @@ yafp_update_start() {
     return 0
 }
 
+yafp_update_version() {
+    local line
+    line=$(git -C "$1" grep -I -h -m 1 -E '^YAFP_VERSION=[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$' \
+        "$2" -- yafp-ps1.bash 2>/dev/null) || { printf 'unknown'; return; }
+    line=${line%$'\r'}
+    printf 'v%s' "${line#YAFP_VERSION=}"
+}
+
 yafp_update_notice() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
     [ -n "${YAFP_UPDATE_DIR:-}" ] || return 0
@@ -59,7 +67,8 @@ yafp_update_notice() {
         return 0
     fi
     yafp_update_report error " OUTDATED REPOSITORY: YAFP is $behind commit(s) behind its upstream." "$root"
-    printf 'Update YAFP now? [y/N] '
+    printf 'Update YAFP from %s to %s now? [y/N] ' \
+        "$(yafp_update_version "$root" "$head")" "$(yafp_update_version "$root" "$upstream")"
     IFS= read -r answer || answer=''
     case "$answer" in y|Y) ;; *) return 0 ;; esac
     local saved_this_command="${this_command:-}" saved_previous_command="${previous_command:-}"

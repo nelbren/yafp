@@ -10,6 +10,15 @@ function global:Start-YafpUpdateCheck {
     $script:YafpUpdateRoot = $script:YafpRoot
     $script:YafpUpdateSample = & (Join-Path $script:YafpRoot 'scripts/windows/update/collect.ps1') -Root $script:YafpRoot
 }
+function global:Get-YafpUpdateVersion {
+    param([string]$Root, [string]$Revision)
+    $line = & git -C $Root grep -I -h -m 1 -E '^YAFP_VERSION=[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$' $Revision -- yafp-ps1.bash 2>$null
+    if ($LASTEXITCODE -eq 0 -and $line -match '^YAFP_VERSION=(\d+\.\d+\.\d+)\s*$') {
+        return "v$($Matches[1])"
+    }
+    return 'unknown'
+}
+
 function global:Complete-YafpUpdateCheck {
     param()
     if ($null -eq $script:YafpUpdateSample) { return }
@@ -53,7 +62,9 @@ function global:Complete-YafpUpdateCheck {
     }
     Write-YafpUpdateReport -Severity error -InstallRoot $root `
         -Text " OUTDATED REPOSITORY: YAFP is $($sample.Behind) commit(s) behind its upstream."
-    $answer = Read-Host 'Update YAFP now? [y/N]'
+    $installed = Get-YafpUpdateVersion -Root $root -Revision $head
+    $available = Get-YafpUpdateVersion -Root $root -Revision $upstream
+    $answer = Read-Host "Update YAFP from $installed to $available now? [y/N]"
     if ($answer -cnotin @('y', 'Y')) { return }
     $result = & (Join-Path $root 'scripts/windows/update/collect.ps1') -Root $root -Pull $true
     if ($result.State -eq 'updated') {

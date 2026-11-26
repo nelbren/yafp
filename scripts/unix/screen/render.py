@@ -546,7 +546,7 @@ MATRIX_WORDS = {"codex": ("CODEX",), "resources": RESOURCE_WORDS,
 
 
 def matrix_frames(art, frames, columns, lines, first_step, density="low", color="green",
-                  text="random", view="all"):
+                  text="random", view="all", speed="normal"):
     if "NO_COLOR" in os.environ or not any("█" in row for row in art):
         return frames
     protected = matrix_margins(art)
@@ -554,6 +554,7 @@ def matrix_frames(art, frames, columns, lines, first_step, density="low", color=
     rng = random.Random(133)
     streams = []
     spacing = MATRIX_SPACING.get(density, MATRIX_SPACING["low"])
+    numerator, denominator = {"slow": (1, 2), "fast": (2, 1)}.get(speed, (1, 1))
     head_color, trail_color = MATRIX_COLORS.get(color, MATRIX_COLORS["green"])
     for start in range(1, columns, spacing):
         x = start + rng.randrange(spacing - 1)
@@ -569,8 +570,8 @@ def matrix_frames(art, frames, columns, lines, first_step, density="low", color=
         cycle_length = lines + max(map(len, words)) + 3
     for index in range(10):
         current = {}
-        for x, speed, length, offset in streams:
-            tick = (first_step + index) // speed + offset
+        for x, lane_delay, length, offset in streams:
+            tick = (first_step + index) * numerator // (lane_delay * denominator) + offset
             if words:
                 descent, head = divmod(tick, cycle_length)
                 word = words[(offset + descent) % len(words)]
@@ -610,6 +611,7 @@ def main():
     parser.add_argument("--shine", default="off")
     parser.add_argument("--background", default="off")
     parser.add_argument("--matrix-density", default="low")
+    parser.add_argument("--matrix-speed", default="normal")
     parser.add_argument("--matrix-color", default="green")
     parser.add_argument("--matrix-text", default="random")
     parser.add_argument("--step", type=int, default=0)
@@ -629,7 +631,7 @@ def main():
             if args.background == "matrix":
                 frames = matrix_frames(art, frames, size.columns, size.lines, args.step,
                                        args.matrix_density, args.matrix_color,
-                                       args.matrix_text, args.view)
+                                       args.matrix_text, args.view, args.matrix_speed)
             if args.shine == "random":
                 frames.insert(0, f"{state[0]}:{state[1]}")
             print(json.dumps(frames) if args.frames == "json" else "\n".join(frames))

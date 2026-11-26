@@ -58,6 +58,15 @@ class ScreenRendererTests(unittest.TestCase):
                                 .replace("\x1b[32m", f"\x1b[{trail}m") for frame in original]
                     self.assertEqual(expected, RENDER.matrix_frames(*args, "low", hue))
 
+    def test_matrix_speed_scales_only_elapsed_rain_time(self):
+        args = (["█"], ["base"], 121, 40)
+        with patch.dict(RENDER.os.environ, clear=True):
+            normal = RENDER.matrix_frames(*args, 12)
+            self.assertEqual(normal, RENDER.matrix_frames(*args, 12, speed="unknown"))
+            self.assertEqual(normal[0], RENDER.matrix_frames(*args, 24, speed="slow")[0])
+            self.assertEqual(normal[0], RENDER.matrix_frames(*args, 6, speed="fast")[0])
+            self.assertNotEqual(normal[0], RENDER.matrix_frames(*args, 12, speed="fast")[0])
+
     def test_matrix_labels_match_view_and_keep_word_order(self):
         vocabularies = {"codex": {"CODEX"}, "resources": {"CPU", "MEMORY", "SWAP", "DISK"},
                         "all": {"CODEX", "CPU", "MEMORY", "SWAP", "DISK"}}

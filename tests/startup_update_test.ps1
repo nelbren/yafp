@@ -41,7 +41,7 @@ function Read-Host {
         Justification = 'Supply explicit consent without reading the test runner terminal.'
     )]
     param([string]$Prompt)
-    if ($Prompt -ne 'Update YAFP now? [y/N]') { throw 'Missing English consent prompt' }
+    if ($Prompt -ne 'Update YAFP from v0.3.5 to v0.4.0 now? [y/N]') { throw "Incorrect consent prompt: $Prompt" }
     return $script:answer
 }
 function Invoke-TestGit {
@@ -73,6 +73,7 @@ try {
     $null = New-Item -ItemType Directory $preview -Force
     Copy-Item (Join-Path $PSScriptRoot '../scripts/windows/preview/lib/frame.ps1') $preview
     Set-Content (Join-Path $seed 'file.txt') 'one'
+    Set-Content (Join-Path $seed 'yafp-ps1.bash') 'YAFP_VERSION=0.3.5'
     $null = Invoke-TestGit @('-C', $seed, 'add', '.')
     $null = Invoke-TestGit @('-C', $seed, 'commit', '--quiet', '-m', 'initial')
     $null = Invoke-TestGit @('-C', $seed, 'push', '--quiet', 'origin', 'HEAD')
@@ -80,6 +81,7 @@ try {
     $initial = Invoke-TestGit @('-C', $script:YafpRoot, 'rev-parse', 'HEAD')
     $initialBranch = Invoke-TestGit @('-C', $script:YafpRoot, 'symbolic-ref', '--short', 'HEAD')
     Add-Content (Join-Path $seed 'file.txt') 'two'
+    Set-Content (Join-Path $seed 'yafp-ps1.bash') 'YAFP_VERSION=0.4.0'
     $null = Invoke-TestGit @('-C', $seed, 'commit', '--quiet', '-am', 'second')
     $null = Invoke-TestGit @('-C', $seed, 'push', '--quiet', 'origin', 'HEAD')
     Start-YafpUpdateCheck -Interactive $false

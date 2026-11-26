@@ -32,6 +32,7 @@ mkdir -p "$TEST_ROOT/seed/scripts/unix/update" "$TEST_ROOT/seed/scripts/unix/pre
 cp "$ROOT_DIR/scripts/unix/update/collect.bash" "$TEST_ROOT/seed/scripts/unix/update/"
 cp "$ROOT_DIR/scripts/unix/preview/lib/frame.bash" "$TEST_ROOT/seed/scripts/unix/preview/lib/"
 printf 'one\n' > "$TEST_ROOT/seed/file.txt"
+printf 'YAFP_VERSION=0.3.5\n' > "$TEST_ROOT/seed/yafp-ps1.bash"
 git -C "$TEST_ROOT/seed" add .
 git -C "$TEST_ROOT/seed" commit --quiet -m initial
 git -C "$TEST_ROOT/seed" push --quiet origin HEAD
@@ -40,6 +41,7 @@ YAFP_ROOT="$TEST_ROOT/YAFP install"
 initial=$(git -C "$YAFP_ROOT" rev-parse HEAD)
 initial_branch=$(git -C "$YAFP_ROOT" symbolic-ref --short HEAD)
 printf 'two\n' >> "$TEST_ROOT/seed/file.txt"
+printf 'YAFP_VERSION=0.4.0\n' > "$TEST_ROOT/seed/yafp-ps1.bash"
 git -C "$TEST_ROOT/seed" commit --quiet -am second
 git -C "$TEST_ROOT/seed" push --quiet origin HEAD
 
@@ -55,7 +57,7 @@ grep -q ' OUTDATED REPOSITORY: YAFP is 1 commit(s)' "$TEST_ROOT/output" || fa
 grep -q 'YAFP startup check:' "$TEST_ROOT/output" || fail 'Missing installation label for a problem'
 grep -q ' YAFP startup update' "$TEST_ROOT/output" || fail 'Missing startup update title'
 [ "$(grep -c '┌' "$TEST_ROOT/output")" = 1 ] || fail 'Startup path and notice must share one frame'
-grep -q '^Update YAFP now? \[y/N\]' "$TEST_ROOT/output" || fail 'Missing consent prompt outside the frame'
+grep -Fq 'Update YAFP from v0.3.5 to v0.4.0 now? [y/N]' "$TEST_ROOT/output" || fail 'Missing versions in consent prompt'
 start_check
 yafp_update_notice < /dev/null > "$TEST_ROOT/output"
 [ "$reloads" = 0 ] || fail 'EOF was accepted'

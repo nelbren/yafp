@@ -191,7 +191,9 @@ was independently tested.
 Startup notices group the installation path and severity message in one
 compact frame. The interactive consent prompt appears below the frame.
 
-Only a behind-only checkout offers `Update YAFP now? [y/N]`. Enter, EOF, and
+Only a behind-only checkout offers an update. The question shows the versions
+declared in `yafp-ps1.bash` at HEAD and at the fetched upstream revision.
+A revision without a readable version appears as `unknown`. Enter, EOF, and
 answers other than `y`/`Y` decline. Accepted updates use `git pull --ff-only` in
 the installation and reload only after success. Divergence never creates an
 automatic merge or push. HEAD, branch, and upstream are checked against the

@@ -10,7 +10,7 @@
 [badge-zsh]: https://img.shields.io/badge/Made%20with-Zsh-1f425f
 [zsh]: https://zsh.sourceforge.io/
 [badge-powershell]: https://img.shields.io/badge/Made%20with-PowerShell-5391FE.svg?logo=powershell
-[badge-version]: https://img.shields.io/badge/version-0.3.5-green
+[badge-version]: https://img.shields.io/badge/version-0.4.0-green
 [badge-themes]: https://img.shields.io/badge/themes-8A2BE2?logo=educative
 [bash]: https://www.gnu.org/software/bash/
 [powershell]: https://docs.microsoft.com/powershell/
@@ -691,6 +691,10 @@ defaults to `off`. The compact text view and `NO_COLOR` disable the rain.
 uses the terminal's bright shade and the trail uses its standard shade.
 Unrecognized values fall back to the respective defaults.
 
+`YAFP_SCREEN_MATRIX_SPEED` controls how fast the rain falls. Use `slow` for
+half speed, `normal` (default), or `fast` for double speed. The shine and
+metric refresh intervals are independent of this setting.
+
 Set `YAFP_SCREEN_MATRIX_TEXT=labels` (PowerShell:
 `$global:YAFP_SCREEN_MATRIX_TEXT = 'labels'`) to make words fall in the rain.
 The Codex view shows `CODEX`, the resources view cycles through `CPU`,
@@ -1060,7 +1064,7 @@ When only remote commits are missing, it shows their count and asks in English:
 │ YAFP startup check: /home/user/yafp                             │
 │  OUTDATED REPOSITORY: YAFP is 3 commit(s) behind its upstream. │
 └─────────────────────────────────────────────────────────────────┘
-Update YAFP now? [y/N]
+Update YAFP from v0.3.5 to v0.4.0 now? [y/N]
 ```
 
 Enter, `N`, EOF, or any answer other than `y`/`Y` leaves the checkout alone.

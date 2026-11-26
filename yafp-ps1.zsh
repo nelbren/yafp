@@ -5,7 +5,7 @@
 # Main engine of YAFP
 #
 
-YAFP_VERSION=0.3.5
+YAFP_VERSION=0.4.0
 
 # Customize in themes...
 

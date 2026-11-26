@@ -115,7 +115,7 @@ class ScreenPtyTests(unittest.TestCase):
                                      ("bash", ["--noprofile", "--norc"], "random"),
                                      ("zsh", ["-df"], "random")):
             if shutil.which(shell):
-                with self.subTest(shell=shell):
+                with self.subTest(shell=shell, mode=mode):
                     self._run_installed_screen(shell, options, mode)
 
     def _run_installed_screen(self, shell, options, mode="off"):

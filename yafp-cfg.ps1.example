@@ -28,6 +28,8 @@ $global:YAFP_SCREEN_SHINE = 'off'
 $global:YAFP_SCREEN_BACKGROUND = 'off'
 # Matrix stream density: low, medium, or high.
 $global:YAFP_SCREEN_MATRIX_DENSITY = 'low'
+# Matrix falling speed: slow, normal, or fast.
+$global:YAFP_SCREEN_MATRIX_SPEED = 'normal'
 # Matrix rain color: green, cyan, blue, magenta, yellow, or red.
 $global:YAFP_SCREEN_MATRIX_COLOR = 'green'
 # Matrix rain text: random (characters), labels (active view), or ai (AI terms).

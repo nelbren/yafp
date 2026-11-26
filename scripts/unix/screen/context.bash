@@ -3,6 +3,8 @@ yafp-screen() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
     local view=${1:-all} key old_tty screen_status=0 codex='֍dh' codex_color=90 args=() rendered
     local frames=() frame delay step=0 shine=${YAFP_SCREEN_SHINE:-off} sweep_state=:0
+    local legacy_bash=0 tty_timeout=10 next_timeout
+    if [ -z "${ZSH_VERSION:-}" ] && [ "${BASH_VERSINFO[0]}" -lt 4 ]; then legacy_bash=1; fi
     case "$#:$view" in 0:all|1:all|1:resources|1:codex) ;; *)
         printf '%s\n' 'Usage: yafp-screen [resources|codex]' >&2
         return 2 ;;
@@ -62,6 +64,7 @@ yafp-screen() {
             --frames lines --shine="$shine" --step "$step" --sweep-state="$sweep_state" \
             --background="${YAFP_SCREEN_BACKGROUND:-off}" \
             --matrix-density="${YAFP_SCREEN_MATRIX_DENSITY:-low}" \
+            --matrix-speed="${YAFP_SCREEN_MATRIX_SPEED:-normal}" \
             --matrix-color="${YAFP_SCREEN_MATRIX_COLOR:-green}" \
             --matrix-text="${YAFP_SCREEN_MATRIX_TEXT:-random}") || {
             screen_status=$?; break;
@@ -75,15 +78,23 @@ yafp-screen() {
         while IFS= read -r frame; do frames+=("$frame"); done <<< "$rendered"
         delay=1
         if [ "${#frames[@]}" -gt 1 ]; then delay=0.1; fi
+        if [ "$legacy_bash" = 1 ]; then
+            next_timeout=10
+            if [ "$delay" != 1 ]; then next_timeout=1; fi
+            if [ "$tty_timeout" != "$next_timeout" ]; then
+                stty time "$next_timeout" || { screen_status=1; break; }
+                tty_timeout=$next_timeout
+            fi
+        fi
         for frame in "${frames[@]}"; do
             printf '%s' "$frame"
             key=''
             if [ -n "${ZSH_VERSION:-}" ]; then
                 IFS= read -r -s -k 1 -t "$delay" key || true
-            elif [ "${BASH_VERSINFO[0]}" -lt 4 ] && [ "$delay" != 1 ]; then
-                # Bash 3.2 accepts only whole seconds for read -t.
-                sleep "$delay"
-                if read -r -t 0; then IFS= read -r -s -n 1 key || true; fi
+            elif [ "$legacy_bash" = 1 ]; then
+                # VTIME sets the frame delay. Read once so a readiness probe
+                # cannot consume the exit key on macOS Bash 3.2.
+                key=$(dd bs=1 count=1 2>/dev/null) || true
             else
                 IFS= read -r -s -n 1 -t "$delay" key || true
             fi

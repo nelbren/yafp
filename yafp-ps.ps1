@@ -1,6 +1,6 @@
 # Yet Another Fancy Prompt for PowerShell
 #
-# v0.3.5 - 2026-10-17 - nelbren@nelbren.com
+# v0.4.0 - 2026-11-26 - nelbren@nelbren.com
 #
 # Provides a themed prompt with Git and Python virtual environment information.
 
@@ -1888,6 +1888,7 @@ function global:Show-YafpScreen {
     $shine = Get-Variable YAFP_SCREEN_SHINE -Scope Global -ValueOnly -ErrorAction Ignore
     $background = Get-Variable YAFP_SCREEN_BACKGROUND -Scope Global -ValueOnly -ErrorAction Ignore
     $matrixDensity = Get-Variable YAFP_SCREEN_MATRIX_DENSITY -Scope Global -ValueOnly -ErrorAction Ignore
+    $matrixSpeed = Get-Variable YAFP_SCREEN_MATRIX_SPEED -Scope Global -ValueOnly -ErrorAction Ignore
     $matrixColor = Get-Variable YAFP_SCREEN_MATRIX_COLOR -Scope Global -ValueOnly -ErrorAction Ignore
     $matrixText = Get-Variable YAFP_SCREEN_MATRIX_TEXT -Scope Global -ValueOnly -ErrorAction Ignore
     $sweepState = ':0'
@@ -1927,6 +1928,7 @@ function global:Show-YafpScreen {
             $arguments += @('--colors', $codexColor) + $resourceColors
             $arguments += @("--background=$background", "--matrix-density=$matrixDensity", "--matrix-color=$matrixColor")
             $arguments += "--matrix-text=$matrixText"
+            $arguments += "--matrix-speed=$matrixSpeed"
             $batch = & $python.Source @arguments --frames json "--shine=$shine" --step $step "--sweep-state=$sweepState"
             if ($LASTEXITCODE -ne 0) {
                 throw "yafp-screen: the renderer exited with code $LASTEXITCODE."
