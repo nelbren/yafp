@@ -1865,11 +1865,11 @@ function global:Show-YafpScreen {
     param([ValidateSet('all', 'resources', 'codex')][string]$View = 'all')
     if ($args.Count -gt 0) { throw 'Usage: yafp-screen [resources|codex]' }
     if ([Console]::IsInputRedirected -or [Console]::IsOutputRedirected) {
-        Write-Error 'yafp-screen requiere una terminal interactiva.' -ErrorAction Continue
+        Write-Error 'yafp-screen requires an interactive terminal.' -ErrorAction Continue
         return
     }
     if ($env:TERM -eq 'dumb') {
-        Write-Error 'yafp-screen requiere una terminal compatible con pantalla alternativa.' -ErrorAction Continue
+        Write-Error 'yafp-screen requires a terminal that supports the alternate screen.' -ErrorAction Continue
         return
     }
     $python = $null
@@ -1881,15 +1881,22 @@ function global:Show-YafpScreen {
         }
     }
     if ($null -eq $python) {
-        Write-Error 'yafp-screen requiere Python 3.' -ErrorAction Continue
+        Write-Error 'yafp-screen requires Python 3.' -ErrorAction Continue
         return
     }
     $renderer = Join-Path $script:YafpRoot 'scripts/unix/screen/render.py'
+    $shine = Get-Variable YAFP_SCREEN_SHINE -Scope Global -ValueOnly -ErrorAction Ignore
+    $background = Get-Variable YAFP_SCREEN_BACKGROUND -Scope Global -ValueOnly -ErrorAction Ignore
+    $matrixDensity = Get-Variable YAFP_SCREEN_MATRIX_DENSITY -Scope Global -ValueOnly -ErrorAction Ignore
+    $matrixColor = Get-Variable YAFP_SCREEN_MATRIX_COLOR -Scope Global -ValueOnly -ErrorAction Ignore
+    $matrixText = Get-Variable YAFP_SCREEN_MATRIX_TEXT -Scope Global -ValueOnly -ErrorAction Ignore
+    $sweepState = ':0'
+    $step = 0
     $oldColors = [Console]::ForegroundColor
     try {
         $Host.UI.Write("`e7`e[?1049h`e[?25l")
         while ($true) {
-            $arguments = @($renderer, '--view', $View, '--frame', '--columns', [Console]::WindowWidth,
+            $arguments = @($renderer, '--view', $View, '--columns', [Console]::WindowWidth,
                 '--lines', [Console]::WindowHeight)
             $codexColor = '90'
             if ($View -ne 'resources') {
@@ -1918,19 +1925,32 @@ function global:Show-YafpScreen {
                 $arguments += @('--resources') + $values
             }
             $arguments += @('--colors', $codexColor) + $resourceColors
-            & $python.Source @arguments
+            $arguments += @("--background=$background", "--matrix-density=$matrixDensity", "--matrix-color=$matrixColor")
+            $arguments += "--matrix-text=$matrixText"
+            $batch = & $python.Source @arguments --frames json "--shine=$shine" --step $step "--sweep-state=$sweepState"
             if ($LASTEXITCODE -ne 0) {
-                throw "yafp-screen: el renderizador terminó con código $LASTEXITCODE."
+                throw "yafp-screen: the renderer exited with code $LASTEXITCODE."
+            }
+            $frames = @(ConvertFrom-Json -InputObject $batch)
+            if ($shine -ceq 'random') {
+                $sweepState = $frames[0]
+                $frames = @($frames[1..($frames.Count - 1)])
             }
             $wait = [Diagnostics.Stopwatch]::StartNew()
-            do {
-                while ([Console]::KeyAvailable) {
-                    $key = [Console]::ReadKey($true)
-                    if ($key.KeyChar -in @('q', 'Q', [char]27, [char]3) -or
-                        $key.Key -in @('Q', 'Escape')) { return }
-                }
-                [Threading.Thread]::Sleep(40)
-            } while ($wait.ElapsedMilliseconds -lt 1000)
+            $deadline = 0
+            foreach ($frame in $frames) {
+                [Console]::Write($frame)
+                $step++
+                $deadline += 1000 / $frames.Count
+                do {
+                    while ([Console]::KeyAvailable) {
+                        $key = [Console]::ReadKey($true)
+                        if ($key.KeyChar -in @('q', 'Q', [char]27, [char]3) -or
+                            $key.Key -in @('Q', 'Escape')) { return }
+                    }
+                    [Threading.Thread]::Sleep(20)
+                } while ($wait.ElapsedMilliseconds -lt $deadline)
+            }
         }
     }
     finally {

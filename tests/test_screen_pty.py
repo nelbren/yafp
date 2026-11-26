@@ -108,7 +108,17 @@ class ScreenPtyTests(unittest.TestCase):
     def test_zsh_command_loads_and_renders_disabled_samples(self):
         self._run_installed_screen("zsh", ["-df"])
 
-    def _run_installed_screen(self, shell, options):
+    @unittest.skipIf(pty is None, "requires Unix pseudo-terminal")
+    def test_live_shine_advances_in_bash_and_zsh(self):
+        for shell, options, mode in (("bash", ["--noprofile", "--norc"], "point"),
+                                     ("zsh", ["-df"], "diagonal"),
+                                     ("bash", ["--noprofile", "--norc"], "random"),
+                                     ("zsh", ["-df"], "random")):
+            if shutil.which(shell):
+                with self.subTest(shell=shell):
+                    self._run_installed_screen(shell, options, mode)
+
+    def _run_installed_screen(self, shell, options, mode="off"):
         with tempfile.TemporaryDirectory() as directory:
             install = Path(directory)
             entrypoint = install / f"yafp-ps1.{shell}"
@@ -119,19 +129,24 @@ class ScreenPtyTests(unittest.TestCase):
             config.write_text(
                 (ROOT / f"{config.name}.example").read_text()
                 + "\nYAFP_REPOS=0 YAFP_REMOTE_CHECK_INTERVAL=0 YAFP_STATS_ON_EXIT=0\n"
+                + f"YAFP_SCREEN_SHINE={mode}\n"
+                + ("YAFP_SCREEN_BACKGROUND=matrix\nYAFP_SCREEN_MATRIX_COLOR=cyan\n"
+                   "YAFP_SCREEN_MATRIX_DENSITY=medium\n" if mode == "random" else "")
             )
             for name in ("scripts", "themes"):
                 (install / name).symlink_to(ROOT / name, target_is_directory=True)
 
+            cols, rows = (18, 8) if mode == "off" else (80, 24)
             environment = {
                 **os.environ, "YAFP_NO_INSTALL_HOOKS": "1", "TERM": "xterm-256color",
                 "YAFP_CONFIG_FILE": str(config), "YAFP_METRICS_DISABLED": "1",
-                "COLUMNS": "18", "LINES": "8",
+                "COLUMNS": str(cols), "LINES": str(rows),
             }
+            environment.pop("NO_COLOR", None)
             script = f"source {shlex.quote(str(entrypoint))} && yafp-screen"
             pid, master = pty.fork()
             if pid == 0:
-                fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 8, 18, 0, 0))
+                fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
                 os.execvpe(shell, [shell, *options, "-ic", script], environment)
 
             output = bytearray()
@@ -156,8 +171,15 @@ class ScreenPtyTests(unittest.TestCase):
 
             try:
                 read_until(b"?1049h")
-                for expected in (b"Codex OFF", b"CPU OFF", b"RAM OFF", b"SWAP OFF", b"DISK OFF"):
-                    read_until(expected)
+                if mode == "off":
+                    for expected in (b"Codex OFF", b"CPU OFF", b"RAM OFF", b"SWAP OFF", b"DISK OFF"):
+                        read_until(expected)
+                else:
+                    if mode == "random":
+                        read_until(b"\x1b[36m")
+                    read_until(b"\x1b[97m")
+                    output.clear()
+                    read_until(b"\x1b[97m")
                 os.write(master, b"q")
                 read_until(b"?1049l")
                 deadline = time.monotonic() + 5

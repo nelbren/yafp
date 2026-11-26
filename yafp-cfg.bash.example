@@ -22,6 +22,19 @@ YAFP_DARKC=1
 # Display prompt timestamps; set to 0 to hide them.
 YAFP_CLOCK=1
 
+# Metallic shine: off, point, diagonal-45, diagonal-135 (alias: diagonal),
+# vertical-right, vertical-left, horizontal-down, horizontal-up, or random.
+YAFP_SCREEN_SHINE=off
+
+# Background behind the screen artwork: off or matrix.
+YAFP_SCREEN_BACKGROUND=off
+# Matrix stream density: low, medium, or high.
+YAFP_SCREEN_MATRIX_DENSITY=low
+# Matrix rain color: green, cyan, blue, magenta, yellow, or red.
+YAFP_SCREEN_MATRIX_COLOR=green
+# Matrix rain text: random (characters), labels (active view), or ai (AI terms).
+YAFP_SCREEN_MATRIX_TEXT=random
+
 # --- Shell integration ---
 # Emit OSC 133 markers so compatible terminals can group command blocks.
 # Set to 0 if your terminal misbehaves.

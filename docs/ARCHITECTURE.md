@@ -606,13 +606,23 @@ renderer retains every glyph's full width until positioning is complete,
 including empty cells, and decodes Braille dots from the Unicode bit pattern.
 The Python file keeps its terminal-specific Unix loop behind the interactive
 entry point. PowerShell verifies the Python major version once before opening
-the screen. Each tick invokes the renderer in single-frame mode with stdout
-attached to the Windows console so block glyphs keep their Unicode encoding.
-Between frames PowerShell polls the keyboard every 40 ms and drains queued
-events so a single `q` or `Esc` returns to the prompt without pressing Enter.
+the screen. Each sample produces a complete drawing. When
+`YAFP_SCREEN_SHINE` selects a point or stripe animation, the renderer records the
+original color of each `█` cell and prepares ten frames per sample. After
+the first frame, it redraws only the cells that light up or return to their
+original color. The shell tracks the animation step across samples and
+checks for input between frames. Bash and zsh receive one frame per line.
+In `random` mode the batch starts with the stripe name and next phase.
+The shell passes them back on the next sample to continue the same sweep.
+The optional Matrix layer uses the shell's frame counter to advance streams
+between samples. It writes only outside the padded artwork and clears cells
+as the tails pass. It shares the foreground frame batch and sampling cadence.
+PowerShell decodes a JSON array with Unicode escapes to preserve the block
+characters across code pages. It polls the keyboard every 20 ms and drains
+queued keys so pressing `q` or `Esc` closes the screen without pressing Enter.
 The shell loops use the alternate screen and restore input mode, colors, and
 cursor in a `finally`/trap path. Terminal dimensions are read for
-each frame so resize changes the layout without starting another collector.
+each sample so resize changes the layout without starting another collector.
 Tests cover fixed Braille cells, views, missing values, narrow layouts, PTY
 resize, and terminal restoration. The Bash and zsh startup tests load YAFP
 from a temporary installation using the example configuration for each shell.

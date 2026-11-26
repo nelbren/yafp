@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Render block-character art for yafp-screen."""
 import argparse
+from itertools import groupby
+import json
 import os
+import random
+import re
 import shutil
 import sys
 
@@ -425,6 +429,172 @@ def write_frame(art, lines):
     sys.stdout.flush()
 
 
+# Coefficients of the sweep step (column * dx + row * dy).
+# Terminal row numbers increase downward.
+SHINE_SWEEPS = {
+    "diagonal-45": (1, 1),
+    "diagonal-135": (1, -1),
+    "diagonal": (1, -1),
+    "vertical-right": (1, 0),
+    "vertical-left": (-1, 0),
+    "horizontal-down": (0, 1),
+    "horizontal-up": (0, -1),
+}
+
+
+def stripe_phases(cells, mode):
+    dx, dy = SHINE_SWEEPS[mode]
+    bands = {}
+    for y, x in cells:
+        bands.setdefault(x * dx + y * dy, []).append((y, x))
+    phases = [bands.get(step, ()) for step in range(min(bands), max(bands) + 1)]
+    return phases + [()] * 10  # One second between sweeps.
+
+
+def shine_frames(art, mode, first_step, sweep_state=None):
+    # Each record fits on one transport line. Absolute positions also avoid
+    # scrolling at the bottom margin. Start each new sample from its true colors.
+    base = "\x1b[H" + "".join(
+        f"\x1b[{y};1H{row}\x1b[K" for y, row in enumerate(art, 1)
+    ) + "\x1b[J"
+    if (mode not in ("point", "random") and mode not in SHINE_SWEEPS) or "NO_COLOR" in os.environ:
+        return [base]
+    cells = {}
+    for y, row in enumerate(art, 1):
+        x, color = 1, "0"
+        for part in re.split(r"(\x1b\[\d+m)", row):
+            if part.startswith("\x1b["):
+                color = part[2:-1]
+                continue
+            for offset, char in enumerate(part):
+                if char == "█":
+                    cells[y, x + offset] = color
+            x += len(part)
+    if not cells:
+        return [base]
+
+    if mode == "random":
+        stripe, phase = sweep_state or ("", 0)
+        phases = stripe_phases(cells, stripe) if stripe in SHINE_SWEEPS else []
+    elif mode == "point":
+        path = sorted(cells, key=lambda pos: (pos[0], pos[1] if pos[0] % 2 else -pos[1]))
+        phases = [[pos] for pos in path]
+    else:
+        phases = stripe_phases(cells, mode)
+
+    records = []
+    previous = ()
+    for step in range(first_step, first_step + 10):
+        if mode == "random":
+            if phase >= len(phases):
+                stripe = random.choice([name for name in SHINE_SWEEPS
+                                        if name not in ("diagonal", stripe)])
+                phases = stripe_phases(cells, stripe)
+                phase = 0
+            current = phases[phase]
+            phase += 1
+        else:
+            current = phases[step % len(phases)]
+        changes = [base] if not records else []
+        for positions, highlight in ((previous, False), (current, True)):
+            for y, x in positions:
+                color = "97" if highlight else cells[y, x]
+                changes.append(f"\x1b[{y};{x}H\x1b[{color}m█")
+        records.append("".join(changes) + "\x1b[0m")
+        previous = current
+    if mode == "random" and sweep_state is not None:
+        sweep_state[:] = [stripe, phase]
+    return records
+
+
+def matrix_margins(art):
+    """Reserve each drawing's bounding box, including its interior holes."""
+    rows = [re.sub(r"\x1b\[\d+m", "", row) for row in art]
+    protected = set()
+    for occupied, band in groupby(enumerate(rows, 1), key=lambda item: bool(item[1].strip())):
+        if not occupied:
+            continue
+        band = list(band)
+        columns = sorted({x for _, row in band for x, char in enumerate(row, 1)
+                          if not char.isspace()})
+        for _, run in groupby(enumerate(columns), key=lambda item: item[1] - item[0]):
+            xs = [x for _, x in run]
+            protected.update((y, x) for y in range(band[0][0] - 1, band[-1][0] + 2)
+                             for x in range(xs[0] - 2, xs[-1] + 3))
+    return protected
+
+
+MATRIX_SPACING = {"low": 5, "medium": 3, "high": 2}
+MATRIX_COLORS = {
+    "green": (92, 32), "cyan": (96, 36), "blue": (94, 34),
+    "magenta": (95, 35), "yellow": (93, 33), "red": (91, 31),
+}
+
+
+RESOURCE_WORDS = ("CPU", "MEMORY", "SWAP", "DISK")
+AI_WORDS = (
+    "TOKENS", "PROMPT", "CONTEXT", "MODEL", "CHAT", "REPLY",
+    "NEURAL", "LAYER", "WEIGHT", "BIAS", "TENSOR", "ATTENTION",
+    "TRAIN", "LEARN", "BATCH", "EPOCH", "LOSS", "GRADIENT",
+    "INFER", "DECODE", "SAMPLE", "LOGITS", "TOPK", "SEED",
+    "EMBED", "VECTOR", "QUERY", "INDEX", "RANK", "RETRIEVE",
+    "AGENT", "TOOL", "PLAN", "REASON", "ACTION", "MEMORY",
+    "AI", "ML", "LLM", "NLP", "RAG", "GPU", "MOE", "RLHF",
+)
+MATRIX_WORDS = {"codex": ("CODEX",), "resources": RESOURCE_WORDS,
+                "all": ("CODEX",) + RESOURCE_WORDS}
+
+
+def matrix_frames(art, frames, columns, lines, first_step, density="low", color="green",
+                  text="random", view="all"):
+    if "NO_COLOR" in os.environ or not any("█" in row for row in art):
+        return frames
+    protected = matrix_margins(art)
+    # The same lanes and offsets survive the next sample's renderer process.
+    rng = random.Random(133)
+    streams = []
+    spacing = MATRIX_SPACING.get(density, MATRIX_SPACING["low"])
+    head_color, trail_color = MATRIX_COLORS.get(color, MATRIX_COLORS["green"])
+    for start in range(1, columns, spacing):
+        x = start + rng.randrange(spacing - 1)
+        if x < columns:
+            streams.append((x, rng.randrange(2, 5), rng.randrange(3, 7), rng.randrange(1000)))
+
+    records = []
+    previous = {}
+    alphabet = "01ABCDEFGHIJKLMNOPQRSTUVWXYZ:;+=*"
+    words = {"ai": AI_WORDS, "labels": MATRIX_WORDS[view]}.get(text, ())
+    if words:
+        # Let even the longest word leave the screen before starting the next.
+        cycle_length = lines + max(map(len, words)) + 3
+    for index in range(10):
+        current = {}
+        for x, speed, length, offset in streams:
+            tick = (first_step + index) // speed + offset
+            if words:
+                descent, head = divmod(tick, cycle_length)
+                word = words[(offset + descent) % len(words)]
+                length = len(word)
+            else:
+                head = tick % (lines + length + 3)
+            for depth in range(length):
+                y = head - depth
+                if 1 <= y < lines and (y, x) not in protected:
+                    char = (word[-1 - depth] if words else
+                            alphabet[(tick * 7 + depth * 11 + x) % len(alphabet)])
+                    current[y, x] = (head_color if depth == 0 else trail_color, char)
+        updates = [frames[index]] if index < len(frames) else []
+        for y, x in previous.keys() - current.keys():
+            updates.append(f"\x1b[{y};{x}H ")
+        for (y, x), style in current.items():
+            if previous.get((y, x)) != style:
+                color, char = style
+                updates.append(f"\x1b[{y};{x}H\x1b[{color}m{char}")
+        records.append("".join(updates) + "\x1b[0m")
+        previous = current
+    return records
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--view", choices=("all", "codex", "resources"), default="all")
@@ -436,15 +606,34 @@ def main():
     output = parser.add_mutually_exclusive_group()
     output.add_argument("--plain", action="store_true")
     output.add_argument("--frame", action="store_true")
+    output.add_argument("--frames", choices=("lines", "json"))
+    parser.add_argument("--shine", default="off")
+    parser.add_argument("--background", default="off")
+    parser.add_argument("--matrix-density", default="low")
+    parser.add_argument("--matrix-color", default="green")
+    parser.add_argument("--matrix-text", default="random")
+    parser.add_argument("--step", type=int, default=0)
+    parser.add_argument("--sweep-state", default=":0")
     args = parser.parse_args()
-    if not args.plain and (not sys.stdin.isatty() or not sys.stdout.isatty()):
-        print("yafp-screen requiere una terminal interactiva.", file=sys.stderr)
+    if not (args.plain or args.frames) and (not sys.stdin.isatty() or not sys.stdout.isatty()):
+        print("yafp-screen requires an interactive terminal.", file=sys.stderr)
         return 1
     colors = tuple(args.colors) if os.environ.get("NO_COLOR") is None else (None,) * 5
-    if args.plain or args.frame:
+    if args.plain or args.frame or args.frames:
         size = terminal_size(args)
         art = compose(args.view, args.codex, args.resources, size.columns, size.lines, colors)
-        if args.frame:
+        if args.frames:
+            stripe, phase = args.sweep_state.split(":")
+            state = [stripe, int(phase)]
+            frames = shine_frames(art, args.shine, args.step, state)
+            if args.background == "matrix":
+                frames = matrix_frames(art, frames, size.columns, size.lines, args.step,
+                                       args.matrix_density, args.matrix_color,
+                                       args.matrix_text, args.view)
+            if args.shine == "random":
+                frames.insert(0, f"{state[0]}:{state[1]}")
+            print(json.dumps(frames) if args.frames == "json" else "\n".join(frames))
+        elif args.frame:
             write_frame(art, size.lines)
         else:
             print("\n".join(art))

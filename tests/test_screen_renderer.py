@@ -17,6 +17,161 @@ SPEC.loader.exec_module(RENDER)
 
 
 class ScreenRendererTests(unittest.TestCase):
+    def test_matrix_rain_preserves_holes_margins_and_shine(self):
+        art = [""] * 4 + ["          \x1b[93m█████\x1b[0m"] + [
+            "          \x1b[93m█   █\x1b[0m"] * 3 + ["          \x1b[93m█████\x1b[0m"]
+        with patch.dict(RENDER.os.environ, clear=True):
+            foreground = RENDER.shine_frames(art, "random", 0, ["", 0])
+            records = RENDER.matrix_frames(art, foreground, 65, 24, 0)
+            static = RENDER.shine_frames(art, "off", 0)
+            rain_only = RENDER.matrix_frames(art, static, 65, 24, 0)
+        self.assertEqual(len(records), 10)
+        self.assertEqual(len(rain_only), 10)
+        self.assertTrue(any("\x1b[92m" in frame for frame in rain_only))
+        self.assertTrue(any("\x1b[32m" in frame for frame in rain_only))
+        for index, (frame, shine) in enumerate(zip(records, foreground)):
+            self.assertTrue(frame.startswith(shine))
+            rain = frame[len(shine):]
+            self.assertEqual(rain, rain_only[index][len(static[0]) if index == 0 else 0:])
+            for row, col in re.findall(r"\x1b\[(\d+);(\d+)H", rain):
+                y, x = int(row), int(col)
+                self.assertTrue(1 <= y < 24 and 1 <= x < 65)
+                self.assertFalse(4 <= y <= 10 and 9 <= x <= 17)
+        self.assertTrue(any(re.search(r"H ", frame) for frame in rain_only[1:]))
+
+    def test_matrix_density_color_and_fallbacks(self):
+        args = (["█"], ["base"], 121, 40, 0)
+        with patch.dict(RENDER.os.environ, clear=True):
+            original = RENDER.matrix_frames(*args)
+            self.assertEqual(original, RENDER.matrix_frames(*args, "low", "green"))
+            self.assertEqual(original, RENDER.matrix_frames(*args, "unknown", "unknown"))
+            lanes = []
+            for density in ("low", "medium", "high"):
+                batch = "".join(RENDER.matrix_frames(*args, density, "green"))
+                lanes.append(len(set(re.findall(r"\x1b\[\d+;(\d+)H\x1b\[", batch))))
+            self.assertLess(lanes[0], lanes[1])
+            self.assertLess(lanes[1], lanes[2])
+            for hue, head, trail in (("cyan", 96, 36), ("blue", 94, 34),
+                                     ("magenta", 95, 35), ("yellow", 93, 33), ("red", 91, 31)):
+                with self.subTest(hue=hue):
+                    expected = [frame.replace("\x1b[92m", f"\x1b[{head}m")
+                                .replace("\x1b[32m", f"\x1b[{trail}m") for frame in original]
+                    self.assertEqual(expected, RENDER.matrix_frames(*args, "low", hue))
+
+    def test_matrix_labels_match_view_and_keep_word_order(self):
+        vocabularies = {"codex": {"CODEX"}, "resources": {"CPU", "MEMORY", "SWAP", "DISK"},
+                        "all": {"CODEX", "CPU", "MEMORY", "SWAP", "DISK"}}
+        args = (["█"], ["base"], 121, 40)
+        cell = re.compile(r"\x1b\[(\d+);(\d+)H\x1b\[(92|32)m(.)")
+        with patch.dict(RENDER.os.environ, clear=True):
+            original = RENDER.matrix_frames(*args, 0)
+            for setting in ("random", "unknown"):
+                self.assertEqual(original, RENDER.matrix_frames(*args, 0, text=setting))
+            for view, words in vocabularies.items():
+                seen = set()
+                for step in (0, 10, 20):
+                    frame = RENDER.matrix_frames(*args, step, text="labels", view=view)[0]
+                    lanes = {}
+                    for y, x, color, char in cell.findall(frame):
+                        lanes.setdefault(x, []).append((int(y), color, char))
+                    for lane in lanes.values():
+                        lane.sort()
+                        if lane[0][0] <= 2 or lane[-1][0] == 39:
+                            continue  # Ignore partially clipped words.
+                        self.assertEqual([c for _, c, _ in lane], ["32"] * (len(lane) - 1) + ["92"])
+                        seen.add("".join(char for _, _, char in lane))
+                self.assertEqual(seen, words)
+
+    def test_matrix_respects_compact_text_and_no_color(self):
+        base = ["static frame"]
+        self.assertEqual(RENDER.matrix_frames(["CPU OFF"], base, 15, 4, 0), base)
+        with patch.dict(RENDER.os.environ, {"NO_COLOR": ""}):
+            self.assertEqual(RENDER.matrix_frames(["█"], base, 80, 24, 0), base)
+
+    def test_matrix_ai_words_fall_in_every_view(self):
+        args = (["█"], ["base"], 121, 40, 0)
+        with patch.dict(RENDER.os.environ, clear=True):
+            frames = RENDER.matrix_frames(*args, text="ai")
+            for view in ("codex", "resources"):
+                self.assertEqual(frames, RENDER.matrix_frames(*args, text="ai", view=view))
+        lanes = {}
+        for y, x, color, char in re.findall(r"\x1b\[(\d+);(\d+)H\x1b\[(92|32)m(.)", frames[0]):
+            lanes.setdefault(x, []).append((int(y), color, char))
+        words = set()
+        for lane in lanes.values():
+            lane.sort()
+            if lane[0][0] <= 2 or lane[-1][0] == 39:
+                continue
+            self.assertEqual(lane[-1][1], "92")
+            words.add("".join(char for _, _, char in lane))
+        self.assertGreater(len(words), 1)
+        self.assertTrue(words.issubset(RENDER.AI_WORDS))
+        self.assertIn("TOKENS", RENDER.AI_WORDS)
+
+    def test_point_moves_across_rows_and_restores_each_color(self):
+        art = ["\x1b[91m██\x1b[0m", " \x1b[93m█\x1b[0m"]
+        with patch.dict(RENDER.os.environ, clear=True):
+            frames = RENDER.shine_frames(art, "point", 0)
+            next_batch = RENDER.shine_frames(art, "point", len(frames))
+        self.assertEqual(len(frames), 10)
+        self.assertTrue(all(frame.count("\x1b[97m") == 1 for frame in frames))
+        self.assertIn("\x1b[1;1H\x1b[91m█\x1b[1;2H\x1b[97m█", frames[1])
+        self.assertIn("\x1b[2;2H\x1b[97m█", frames[2])
+        self.assertIn("\x1b[2;2H\x1b[93m█", frames[3])
+        self.assertIn("\x1b[1;2H\x1b[97m█", next_batch[0])
+
+    def test_diagonal_highlights_only_ink_then_pauses(self):
+        art = ["\x1b[92m███\x1b[0m", " \x1b[91m█ █\x1b[0m"]
+        with patch.dict(RENDER.os.environ, clear=True):
+            frames = RENDER.shine_frames(art, "diagonal", 0)
+            self.assertEqual(len(RENDER.shine_frames(art, "off", 0)), 1)
+            self.assertEqual(len(RENDER.shine_frames(["CPU OFF"], "point", 0)), 1)
+        self.assertIn("\x1b[1;1H\x1b[97m█\x1b[2;2H\x1b[97m█", frames[0])
+        self.assertIn("\x1b[2;2H\x1b[91m█", frames[1])
+        self.assertEqual(frames[1].count("\x1b[97m"), 1)
+        self.assertTrue(all("\x1b[97m" not in frame for frame in frames[3:]))
+        with patch.dict(RENDER.os.environ, {"NO_COLOR": ""}):
+            self.assertEqual(len(RENDER.shine_frames(art, "diagonal", 0)), 1)
+
+    def test_stripe_orientation_and_travel(self):
+        art = ["██", "██"]
+        expected = {
+            "diagonal-45": [["11"], ["12", "21"], ["22"]],
+            "diagonal-135": [["21"], ["11", "22"], ["12"]],
+            "vertical-right": [["11", "21"], ["12", "22"]],
+            "vertical-left": [["12", "22"], ["11", "21"]],
+            "horizontal-down": [["11", "12"], ["21", "22"]],
+            "horizontal-up": [["21", "22"], ["11", "12"]],
+        }
+        with patch.dict(RENDER.os.environ, clear=True):
+            for mode, sweep in expected.items():
+                with self.subTest(mode=mode):
+                    frames = RENDER.shine_frames(art, mode, 0)
+                    positions = [
+                        [y + x for y, x in re.findall(r"\x1b\[(\d+);(\d+)H\x1b\[97m█", frame)]
+                        for frame in frames
+                    ]
+                    self.assertEqual(positions, sweep + [[]] * (len(frames) - len(sweep)))
+            self.assertEqual(RENDER.shine_frames(art, "diagonal", 0),
+                             RENDER.shine_frames(art, "diagonal-135", 0))
+
+    def test_random_finishes_sweep_and_pause_across_batches(self):
+        art = ["██", "██"]
+        state = ["", 0]
+        with patch.dict(RENDER.os.environ, clear=True), patch.object(
+            RENDER.random, "choice", side_effect=["vertical-right", "horizontal-up"]
+        ) as choose:
+            first = RENDER.shine_frames(art, "random", 0, state)
+            self.assertEqual(first, RENDER.shine_frames(art, "vertical-right", 0))
+            self.assertEqual(state, ["vertical-right", 10])
+            second = RENDER.shine_frames(art, "random", 10, state)
+            self.assertTrue(all("\x1b[97m" not in frame for frame in second[:2]))
+            self.assertIn("\x1b[2;1H\x1b[97m█", second[2])
+            self.assertEqual(state, ["horizontal-up", 8])
+            options = set(RENDER.SHINE_SWEEPS) - {"diagonal"}
+            self.assertEqual(set(choose.call_args_list[0][0][0]), options)
+            self.assertEqual(set(choose.call_args_list[1][0][0]), options - {"vertical-right"})
+
     def test_single_console_frame(self):
         output = io.StringIO()
         with patch.object(sys, "argv", ["render.py", "--frame", "--columns", "80",
