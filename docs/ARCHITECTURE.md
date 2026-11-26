@@ -610,7 +610,8 @@ The shell loops use the alternate screen and restore input mode, colors, and
 cursor in a `finally`/trap path. Terminal dimensions are read for
 each frame so resize changes the layout without starting another collector.
 Tests cover fixed Braille cells, views, missing values, narrow layouts, PTY
-resize, and terminal restoration.
+resize, and terminal restoration. The Bash and zsh startup tests load YAFP
+from a temporary installation using the example configuration for each shell.
 
 ## Uniform indicator frames
 
@@ -892,6 +893,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-26 00:04:28 🍎 No expuesto |
+📆 2026-11-26 00:28:37 🍎 No expuesto |
 ֎ OpenAI 🤖 Codex 🧠 GPT-6.2 Sol No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

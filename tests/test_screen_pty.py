@@ -1,6 +1,8 @@
+import errno
 import os
 import select
 import shlex
+import signal
 import struct
 import subprocess
 import tempfile
@@ -100,81 +102,81 @@ class ScreenPtyTests(unittest.TestCase):
 
     @unittest.skipIf(pty is None or shutil.which("bash") is None, "Bash PTY is unavailable")
     def test_bash_command_loads_and_renders_disabled_samples(self):
-        master, slave = pty.openpty()
-        pid = os.fork()
-        if pid == 0:
-            os.setsid()
-            fcntl.ioctl(slave, termios.TIOCSCTTY, 0)
-            os.dup2(slave, 0)
-            os.dup2(slave, 1)
-            os.dup2(slave, 2)
-            script = f"source {ROOT / 'yafp-ps1.bash'}; yafp-screen"
-            environment = {
-                **os.environ, "YAFP_NO_INSTALL_HOOKS": "1", "TERM": "xterm-256color",
-                "YAFP_RESOURCE_CHECK_INTERVAL": "0", "YAFP_CODEX_CHECK_INTERVAL": "0",
-            }
-            os.execvpe("bash", ["bash", "--noprofile", "--norc", "-ic", script], environment)
-        output = bytearray()
-        try:
-            fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 100, 0, 0))
-            deadline = time.monotonic() + 8
-            while b"?1049h" not in output and time.monotonic() < deadline:
-                ready, _, _ = select.select([master], [], [], 0.2)
-                if ready:
-                    output.extend(os.read(master, 8192))
-            self.assertIn(b"?1049h", output)
-            self.assertNotIn("".encode(), output)
-            os.write(master, b"q")
-            deadline = time.monotonic() + 8
-            while b"?1049l" not in output and time.monotonic() < deadline:
-                ready, _, _ = select.select([master], [], [], 0.2)
-                if ready:
-                    output.extend(os.read(master, 8192))
-            self.assertIn(b"?1049l", output)
-            _, status = os.waitpid(pid, 0)
-            self.assertEqual(os.waitstatus_to_exitcode(status), 0)
-        finally:
-            os.close(slave)
-            os.close(master)
+        self._run_installed_screen("bash", ["--noprofile", "--norc"])
 
     @unittest.skipIf(pty is None or shutil.which("zsh") is None, "zsh PTY is unavailable")
     def test_zsh_command_loads_and_renders_disabled_samples(self):
-        master, slave = pty.openpty()
-        pid = os.fork()
-        if pid == 0:
-            os.setsid()
-            fcntl.ioctl(slave, termios.TIOCSCTTY, 0)
-            os.dup2(slave, 0)
-            os.dup2(slave, 1)
-            os.dup2(slave, 2)
-            script = f"source {ROOT / 'yafp-ps1.zsh'}; yafp-screen"
+        self._run_installed_screen("zsh", ["-df"])
+
+    def _run_installed_screen(self, shell, options):
+        with tempfile.TemporaryDirectory() as directory:
+            install = Path(directory)
+            entrypoint = install / f"yafp-ps1.{shell}"
+            config = install / f"yafp-cfg.{shell}"
+            # Bash finds its config next to the entrypoint. Copy the script
+            # so neither shell can resolve it back to a developer checkout.
+            shutil.copyfile(ROOT / entrypoint.name, entrypoint)
+            config.write_text(
+                (ROOT / f"{config.name}.example").read_text()
+                + "\nYAFP_REPOS=0 YAFP_REMOTE_CHECK_INTERVAL=0 YAFP_STATS_ON_EXIT=0\n"
+            )
+            for name in ("scripts", "themes"):
+                (install / name).symlink_to(ROOT / name, target_is_directory=True)
+
             environment = {
                 **os.environ, "YAFP_NO_INSTALL_HOOKS": "1", "TERM": "xterm-256color",
-                "YAFP_RESOURCE_CHECK_INTERVAL": "0", "YAFP_CODEX_CHECK_INTERVAL": "0",
+                "YAFP_CONFIG_FILE": str(config), "YAFP_METRICS_DISABLED": "1",
+                "COLUMNS": "18", "LINES": "8",
             }
-            os.execvpe("zsh", ["zsh", "-df", "-ic", script], environment)
-        output = bytearray()
-        try:
-            fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 100, 0, 0))
-            deadline = time.monotonic() + 8
-            while b"?1049h" not in output and time.monotonic() < deadline:
-                ready, _, _ = select.select([master], [], [], 0.2)
-                if ready:
-                    output.extend(os.read(master, 8192))
-            self.assertIn(b"?1049h", output)
-            self.assertNotIn("".encode(), output)
-            os.write(master, b"q")
-            deadline = time.monotonic() + 8
-            while b"?1049l" not in output and time.monotonic() < deadline:
-                ready, _, _ = select.select([master], [], [], 0.2)
-                if ready:
-                    output.extend(os.read(master, 8192))
-            self.assertIn(b"?1049l", output)
-            _, status = os.waitpid(pid, 0)
-            self.assertEqual(os.waitstatus_to_exitcode(status), 0)
-        finally:
-            os.close(slave)
-            os.close(master)
+            script = f"source {shlex.quote(str(entrypoint))} && yafp-screen"
+            pid, master = pty.fork()
+            if pid == 0:
+                fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 8, 18, 0, 0))
+                os.execvpe(shell, [shell, *options, "-ic", script], environment)
+
+            output = bytearray()
+            reaped = False
+
+            def read_until(expected):
+                deadline = time.monotonic() + 8
+                while expected not in output and time.monotonic() < deadline:
+                    ready, _, _ = select.select([master], [], [], 0.2)
+                    if not ready:
+                        continue
+                    try:
+                        chunk = os.read(master, 8192)
+                    except OSError as error:
+                        if error.errno != errno.EIO:  # Linux reports EIO on PTY EOF.
+                            raise
+                        break
+                    if not chunk:
+                        break
+                    output.extend(chunk)
+                self.assertIn(expected, output)
+
+            try:
+                read_until(b"?1049h")
+                for expected in (b"Codex OFF", b"CPU OFF", b"RAM OFF", b"SWAP OFF", b"DISK OFF"):
+                    read_until(expected)
+                os.write(master, b"q")
+                read_until(b"?1049l")
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline:
+                    exited, status = os.waitpid(pid, os.WNOHANG)
+                    if exited:
+                        reaped = True
+                        self.assertEqual(os.waitstatus_to_exitcode(status), 0)
+                        break
+                    time.sleep(0.02)
+                self.assertTrue(reaped, "shell did not exit after restoring the screen")
+            finally:
+                os.close(master)
+                if not reaped:
+                    try:
+                        os.kill(pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    os.waitpid(pid, 0)
 
     def _run_screen(self, exit_key, expected_code):
         master, slave = pty.openpty()
