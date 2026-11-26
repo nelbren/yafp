@@ -273,6 +273,11 @@ try {
             NoNewline = [bool]$NoNewline
         })
     }
+    & {
+        function Show-YafpScreen { param([string]$View) $View }
+        Assert-Equal 'codex' (yafp-screen-codex) 'Codex screen shortcut'
+        Assert-Equal 'resources' (yafp-screen-resources) 'Resources screen shortcut'
+    }
     yafp-help 6>$null
     $expectedHelpWrites = @(
         [pscustomobject]@{ Text = 'yafp-status'; Color = 'Yellow'; NoNewline = $true }
@@ -305,6 +310,15 @@ try {
         [pscustomobject]@{ Text = 'yafp-resources'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Show the latest RAM, swap, CPU, and disk sample.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'yafp-screen'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'Show live Codex quota and machine resources.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'yafp-screen-codex'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'Show only the live Codex quota screen.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'yafp-screen-resources'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'Show only the live machine resources screen.'; Color = 'White'; NoNewline = $false }
         [pscustomobject]@{ Text = 'yafp-resources-fix'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Show process termination commands.'; Color = 'White'; NoNewline = $false }

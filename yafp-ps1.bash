@@ -2417,6 +2417,9 @@ yafp-msgs|Show all prompt banners in severity order.
 yafp-help|Show available YAFP commands.
 yafp-codex|Show cached Codex quota and authentication status.
 yafp-resources|Show the latest RAM, swap, CPU, and disk sample.
+yafp-screen|Show live Codex quota and machine resources.
+yafp-screen-codex|Show only the live Codex quota screen.
+yafp-screen-resources|Show only the live machine resources screen.
 yafp-resources-fix|Show process termination commands.
 yafp-demo-resources|Simulate resource load and colors.
 EOF
@@ -2957,6 +2960,10 @@ fi
 if [ -r "$YAFP_ROOT/scripts/unix/codex/context.bash" ]; then
     # shellcheck source=scripts/unix/codex/context.bash
     . "$YAFP_ROOT/scripts/unix/codex/context.bash"
+fi
+if [ -r "$YAFP_ROOT/scripts/unix/screen/context.bash" ]; then
+    # shellcheck source=scripts/unix/screen/context.bash
+    . "$YAFP_ROOT/scripts/unix/screen/context.bash"
 fi
 load_theme || return 1
 theme_build

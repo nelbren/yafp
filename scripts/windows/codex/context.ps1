@@ -55,8 +55,11 @@ function global:Format-YafpCodexSegment {
         $color = if ($Value -ge 50) { 'Green' } elseif ($Value -ge 25) { 'Yellow' } else { 'Red' }
         $text = "֍$Value%"
         if ($global:YAFP_CODEX_VALUE_STYLE -eq 'symbols') {
-            $cells = @('⡀', '⣀', '⣄', '⣤', '⣦', '⣶', '⣷', '⣿')
-            $text = '֍' + $cells[[Math]::Min(7, [int][Math]::Floor($Value * 8 / 100))]
+            $threshold = [string](Get-Variable -Name YAFP_CODEX_PERCENT_AT_OR_BELOW -Scope Global -ValueOnly -ErrorAction Ignore)
+            if ($threshold -cnotmatch '\A(?:0|[1-9][0-9]?|100)\z' -or $Value -gt [int]$threshold) {
+                $cells = @('⡀', '⣀', '⣄', '⣤', '⣦', '⣶', '⣷', '⣿')
+                $text = '֍' + $cells[[Math]::Min(7, [int][Math]::Floor($Value * 8 / 100))]
+            }
         }
     }
     [pscustomobject]@{ Text = $text; Foreground = $color }

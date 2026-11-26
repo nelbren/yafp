@@ -551,7 +551,11 @@ color and participates in the existing prefix-width measurement.
 
 All themes insert `↤[֍value]` immediately after the username, before `@`.
 `YAFP_CODEX_VALUE_STYLE` chooses `percent` or `symbols` independently of the
-machine resource options. Braille uses `min(7, floor(value * 8 / 100))` with
+machine resource options. In `symbols` mode, the optional
+`YAFP_CODEX_PERCENT_AT_OR_BELOW` switches the shared prompt and screen token
+to a numeric percentage when cached remaining quota reaches the inclusive
+threshold. The option is unset by default. Braille uses
+`min(7, floor(value * 8 / 100))` with
 fuller cells meaning greater availability. Foreground is green at 50% or
 above, yellow at 25% or above, and red below 25%. Red `֍dh` covers missing
 dependencies, authentication, quota, and errors. Before the first sample, an
@@ -585,6 +589,28 @@ The Git connection announcement invalidates the Codex timer once per
 transition. The prompt collects Git context first so Codex can start a check
 during the same pass. If a worker is active, the request remains pending until
 it finishes. A zero interval keeps Codex disabled.
+
+## On-demand terminal screen
+
+`yafp-screen` is registered when its shell context is loaded, but its art
+renderer is executed only when the command is invoked. Bash and zsh refresh the
+existing resource and Codex contexts once per display tick; PowerShell calls
+the corresponding context functions. Those contexts retain their worker
+uniqueness, configured intervals, unavailable states, and local reset
+countdown. The screen renderer does not make network requests.
+
+All shells invoke `scripts/unix/screen/render.py` on demand for its
+block-character canvas. The countdown digit bitmaps come from
+TheGiftOfLife's `PixelFont_5x5.iml` and are stored in the renderer. The
+renderer retains every glyph's full width until positioning is complete,
+including empty cells, and decodes Braille dots from the Unicode bit pattern.
+The Python file keeps its terminal-specific Unix loop behind the interactive
+entry point, so PowerShell can use the same renderer in plain mode.
+The shell loops use the alternate screen and restore input mode, colors, and
+cursor in a `finally`/trap path. Terminal dimensions are read for
+each frame so resize changes the layout without starting another collector.
+Tests cover fixed Braille cells, views, missing values, narrow layouts, PTY
+resize, and terminal restoration.
 
 ## Uniform indicator frames
 
@@ -866,6 +892,6 @@ subsequent repository-state banner.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-13 03:23:45 🪟 NDEV-DPC-02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-11-26 00:04:28 🍎 No expuesto |
+֎ OpenAI 🤖 Codex 🧠 GPT-6.2 Sol No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

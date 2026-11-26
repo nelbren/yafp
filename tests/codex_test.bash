@@ -187,6 +187,19 @@ while IFS='|' read -r value color cell; do
     done
 done < "$ROOT_DIR/tests/codex_display_cases.txt"
 
+while IFS='|' read -r style threshold value expected; do
+    YAFP_CODEX_VALUE_STYLE=$style
+    if [ "$threshold" = unset ]; then
+        unset YAFP_CODEX_PERCENT_AT_OR_BELOW
+    else
+        YAFP_CODEX_PERCENT_AT_OR_BELOW=$threshold
+    fi
+    yafp_codex_segment "$value"
+    [ "$yafp_ctx_codex_token" = "֍$expected" ] || fail "Wrong quota threshold: $style/$threshold/$value"
+done < "$ROOT_DIR/tests/codex_threshold_cases.txt"
+unset YAFP_CODEX_PERCENT_AT_OR_BELOW
+printf 'ok - Codex switches to percentage at the inclusive quota threshold\n'
+
 while IFS='|' read -r seconds expected; do
     yafp_codex_format_reset "$seconds"
     [ "$yafp_ctx_codex_reset_text" = "$expected" ] || fail "Wrong reset countdown: $seconds"

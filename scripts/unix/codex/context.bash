@@ -18,7 +18,7 @@ yafp_codex_format_reset() {
 
 yafp_codex_segment() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
-    local value="$1" level
+    local value="$1" level threshold="${YAFP_CODEX_PERCENT_AT_OR_BELOW:-}"
     local cells=('⡀' '⣀' '⣄' '⣤' '⣦' '⣶' '⣷' '⣿')
     yafp_ctx_codex_token='֍dh' yafp_ctx_codex_color=91
     case "$value" in ''|*[!0-9]*|0?*|????*) return 0 ;; esac
@@ -29,6 +29,9 @@ yafp_codex_segment() {
     fi
     yafp_ctx_codex_token="֍${value}%"
     if [ "${YAFP_CODEX_VALUE_STYLE:-percent}" = symbols ]; then
+        case "$threshold" in
+            0|[1-9]|[1-9][0-9]|100) [ "$value" -gt "$threshold" ] || return 0 ;;
+        esac
         level=$((value * 8 / 100))
         [ "$level" -lt 8 ] || level=7
         yafp_ctx_codex_token="֍${cells[$level]}"

@@ -49,6 +49,8 @@ YAFP_CODEX_CHECK_INTERVAL=0
 
 # Values: percent (֍74%5d9h) or symbols (֍⣶5d9h).
 YAFP_CODEX_VALUE_STYLE="percent"
+# Optional with symbols: show the percentage at or below this remaining quota.
+# YAFP_CODEX_PERCENT_AT_OR_BELOW=24
 
 # --- Machine resources ---
 # Sample CPU, RAM, swap, and disk capacity in the background (seconds).

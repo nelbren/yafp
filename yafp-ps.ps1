@@ -1208,6 +1208,9 @@ function Show-YafpHelp {
         @{ Name = 'yafp-help'; Description = 'Show available YAFP commands.' }
         @{ Name = 'yafp-codex'; Description = 'Show cached Codex quota and authentication state.' }
         @{ Name = 'yafp-resources'; Description = 'Show the latest RAM, swap, CPU, and disk sample.' }
+        @{ Name = 'yafp-screen'; Description = 'Show live Codex quota and machine resources.' }
+        @{ Name = 'yafp-screen-codex'; Description = 'Show only the live Codex quota screen.' }
+        @{ Name = 'yafp-screen-resources'; Description = 'Show only the live machine resources screen.' }
         @{ Name = 'yafp-resources-fix'; Description = 'Show process termination commands.' }
         @{ Name = 'yafp-demo-resources'; Description = 'Simulate resource load and colors.' }
     )) {
@@ -1854,6 +1857,84 @@ function Test-YafpAdministrator {
     ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+function global:Show-YafpScreen {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidUsingWriteHost', '',
+        Justification = 'The interactive screen writes terminal control sequences directly to an already validated console.'
+    )]
+    param([ValidateSet('all', 'resources', 'codex')][string]$View = 'all')
+    if ($args.Count -gt 0) { throw 'Usage: yafp-screen [resources|codex]' }
+    if ([Console]::IsInputRedirected -or [Console]::IsOutputRedirected) {
+        Write-Error 'yafp-screen requiere una terminal interactiva.' -ErrorAction Continue
+        return
+    }
+    if ($env:TERM -eq 'dumb') {
+        Write-Error 'yafp-screen requiere una terminal compatible con pantalla alternativa.' -ErrorAction Continue
+        return
+    }
+    $python = Get-Command python3, python -CommandType Application -ErrorAction Ignore |
+        Select-Object -First 1
+    if ($null -eq $python) {
+        Write-Error 'yafp-screen requiere Python 3.' -ErrorAction Continue
+        return
+    }
+    $renderer = Join-Path $script:YafpRoot 'scripts/unix/screen/render.py'
+    $oldColors = [Console]::ForegroundColor
+    try {
+        $Host.UI.Write("`e7`e[?1049h`e[?25l")
+        while ($true) {
+            $arguments = @($renderer, '--view', $View, '--plain', '--columns', [Console]::WindowWidth,
+                '--lines', [Console]::WindowHeight)
+            $codexColor = '90'
+            if ($View -ne 'resources') {
+                $codex = Get-YafpCodexContext
+                $codexText = if ($null -ne $codex) { $codex.Text } else { '֍OFF' }
+                $codexColor = switch ($codex.Foreground) {
+                    Green { '92' }; Yellow { '93' }; Red { '91' }; default { '90' }
+                }
+                $arguments += @('--codex', $codexText)
+            }
+            $resourceColors = @('90', '90', '90', '90')
+            if ($View -ne 'codex') {
+                $resources = Get-YafpResourceContext
+                $values = @('OFF', 'OFF', 'OFF', 'OFF')
+                if ($null -ne $resources -and $resources.Segments.Count -eq 4) {
+                    $values = @($resources.Segments | ForEach-Object { $_.Text })
+                    $resourceColors = @($resources.Segments | ForEach-Object {
+                        switch ($_.Foreground) {
+                            Green { '92' }; Yellow { '93' }; Red { '91' }; default { '90' }
+                        }
+                    })
+                }
+                $arguments += @('--resources') + $values
+            }
+            $arguments += @('--colors', $codexColor) + $resourceColors
+            $art = @(& $python.Source @arguments)
+            $Host.UI.Write("`e[H")
+            foreach ($line in $art) { $Host.UI.Write("`e[2K$line`n") }
+            $Host.UI.Write("`e[J")
+            if ([Console]::KeyAvailable) {
+                $key = [Console]::ReadKey($true)
+                if ($key.Key -in @('Q', 'Escape') -or $key.Key -eq 'C' -and
+                    ($key.Modifiers -band [ConsoleModifiers]::Control)) { break }
+            }
+            Start-Sleep -Seconds 1
+        }
+    }
+    finally {
+        $Host.UI.Write("`e[0m`e[?25h`e[?1049l`e8")
+        [Console]::ForegroundColor = $oldColors
+    }
+}
+
+function global:Show-YafpScreenCodex {
+    Show-YafpScreen -View codex @args
+}
+
+function global:Show-YafpScreenResources {
+    Show-YafpScreen -View resources @args
+}
+
 Set-Alias -Name yafp-status -Value Show-YafpStatus -Scope Global -Force
 Set-Alias -Name yafp-git -Value Show-YafpGit -Scope Global -Force
 Set-Alias -Name yafp-refresh -Value Invoke-YafpRefresh -Scope Global -Force
@@ -1867,6 +1948,9 @@ Set-Alias -Name yafp-codex -Value Show-YafpCodex -Scope Global -Force
 Set-Alias -Name yafp-resources -Value Show-YafpResources -Scope Global -Force
 Set-Alias -Name yafp-resources-fix -Value Show-YafpResourcesFix -Scope Global -Force
 Set-Alias -Name yafp-demo-resources -Value Show-YafpDemoResources -Scope Global -Force
+Set-Alias -Name yafp-screen -Value Show-YafpScreen -Scope Global -Force
+Set-Alias -Name yafp-screen-codex -Value Show-YafpScreenCodex -Scope Global -Force
+Set-Alias -Name yafp-screen-resources -Value Show-YafpScreenResources -Scope Global -Force
 
 Import-YafpTheme
 $script:YafpLoadedCommit = Get-YafpCurrentCommit

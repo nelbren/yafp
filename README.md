@@ -519,6 +519,7 @@ Add a configuration block to your personal Bash/zsh configuration:
 # --- Codex account quota ---
 YAFP_CODEX_CHECK_INTERVAL=300
 YAFP_CODEX_VALUE_STYLE="symbols"  # percent (default) or symbols
+# Optional: YAFP_CODEX_PERCENT_AT_OR_BELOW=24
 ```
 
 For PowerShell 7 on Windows:
@@ -527,6 +528,7 @@ For PowerShell 7 on Windows:
 # --- Codex account quota ---
 $global:YAFP_CODEX_CHECK_INTERVAL = 300
 $global:YAFP_CODEX_VALUE_STYLE = 'symbols'
+# Optional: $global:YAFP_CODEX_PERCENT_AT_OR_BELOW = 24
 ```
 
 Run `yafp-reload`. The interval accepts `1` through `86400` seconds; `0` or
@@ -550,6 +552,14 @@ Braille uses the same eight levels as resources, with fuller cells meaning
 more quota available. Colors use the remaining integer percentage, even in
 symbolic mode. `YAFP_CODEX_VALUE_STYLE` accepts `percent` or `symbols`;
 invalid styles fall back to `percent`.
+
+When using `symbols`, set `YAFP_CODEX_PERCENT_AT_OR_BELOW=24` (or
+`$global:YAFP_CODEX_PERCENT_AT_OR_BELOW = 24` in PowerShell) to show the
+numeric percentage at 24% remaining or below. From 25% up, the prompt and
+`yafp-screen` show Braille again. At this threshold the switch coincides with
+the red quota indicator. The option is unset by default and accepts whole
+numbers from 0 to 100 without leading zeros. An invalid value keeps Braille,
+and the option has no effect in `percent` mode.
 
 On its first check, the background worker locates `codex` and reads its account
 state. Only ChatGPT authentication enables the quota request. Each refresh
@@ -664,6 +674,34 @@ event log and does not display original server messages.
 Only percentages, deadlines, states, and diagnostics with fixed stages and
 reasons, duration, and process identifiers are stored. YAFP never stores or
 prints account identifiers, credentials, or server responses.
+
+### Terminal screen
+
+Run `yafp-screen` from Bash, zsh, or PowerShell 7 to view the live Codex quota
+above CPU, RAM, SWAP, and disk. Select `yafp-screen-codex` or
+`yafp-screen-resources` to show one group. These are shortcuts for
+`yafp-screen codex` and `yafp-screen resources`. The renderer uses block-character
+art, including a chip, memory grid, opposing swap arrows, disk, and Codex swirl.
+Countdown digits use the 5×5 PixelFont from TheGiftOfLife. Braille levels
+retain their two-column, four-row dot matrix, and all rows of a glyph share
+the same horizontal position. The Codex-only and combined views center the
+drawing on both axes. In larger windows they use separated Braille dots and
+a countdown with a dotted zero. The OpenAI Blossom grows with the digits and
+uses individual terminal cells to show its crossings. Smaller windows use a
+compact swirl. In the combined view, the Codex and resource graphics share
+the same visible width. Spacing adjusts between elements at their current size.
+The resources view centers all four metrics vertically and uses each metric's
+prompt color. When there is room, it draws separate dots for each Braille level.
+
+The screen reuses YAFP's resource and Codex collectors and their configured
+intervals. Local countdowns advance once per second. Resize the terminal to
+reflow the centered layout; wide windows keep all four resource pairs on one
+row, while narrower windows switch to two pairs per row and then a compact
+view with shorter labels as needed. Press `q`, `Esc`, or `Ctrl+C` to return.
+The previous screen, cursor,
+colors, and input mode are restored on exit. Both input and output must be an
+interactive terminal. The on-demand renderer requires Python 3 and is not
+loaded during normal prompt startup.
 
 ### Remote repository checks
 
@@ -1524,6 +1562,6 @@ section and does not install analyzers during a run.
 
 <!-- markdownlint-disable MD033 -->
 <div style="text-align: right; font-size: 12px;">
-📆 2026-11-13 02:38:27 🪟 NDEV-DPC-02 |
-֎ OpenAI 🤖 Codex 🧠 GPT-6 No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
+📆 2026-11-26 00:16:28 🍎 No expuesto |
+֎ OpenAI 🤖 Codex 🧠 GPT-6.2 Sol No expuesto & 👨🏻‍💻 Nelbren ©️ 2026
 </div>

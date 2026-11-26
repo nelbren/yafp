@@ -132,6 +132,18 @@ try {
             if ($segment.Text -ne $expected -or $segment.Foreground -ne $color) { throw "Wrong display: $line/$style" }
         }
     }
+    foreach ($line in Get-Content (Join-Path $PSScriptRoot 'codex_threshold_cases.txt')) {
+        $style, $threshold, $value, $expected = $line.Split('|')
+        $global:YAFP_CODEX_VALUE_STYLE = $style
+        if ($threshold -eq 'unset') {
+            Remove-Variable YAFP_CODEX_PERCENT_AT_OR_BELOW -Scope Global -ErrorAction Ignore
+        }
+        else { $global:YAFP_CODEX_PERCENT_AT_OR_BELOW = $threshold }
+        $number = if ($value -eq '-') { $null } else { [int]$value }
+        if ((Format-YafpCodexSegment $number).Text -cne "֍$expected") { throw "Wrong quota threshold: $line" }
+    }
+    Remove-Variable YAFP_CODEX_PERCENT_AT_OR_BELOW -Scope Global -ErrorAction Ignore
+    Write-Output 'ok - Codex switches to percentage at the inclusive quota threshold'
     $global:YAFP_CODEX_VALUE_STYLE = 'bad'
     if ((Format-YafpCodexSegment 74).Text -ne '֍74%') { throw 'Invalid style fallback' }
     foreach ($interval in @('0', '-1', 'bad', '0008', '999999999999999')) {
