@@ -17,6 +17,41 @@ SPEC.loader.exec_module(RENDER)
 
 
 class ScreenRendererTests(unittest.TestCase):
+    def test_themed_backgrounds_preserve_art_and_animate_in_each_view(self):
+        with patch.dict(RENDER.os.environ, clear=True):
+            for view in ("all", "codex", "resources"):
+                art = RENDER.compose(view, "֍⣶3d4h", ("⣀", "⣶", "⡀", "⣷"), 120, 32)
+                protected = RENDER.matrix_margins(art)
+                base = RENDER.shine_frames(art, "point", 85)
+                scenes = set()
+                for name in RENDER.SCENES:
+                    with self.subTest(view=view, name=name):
+                        frames = RENDER.scene_frames(name, art, base, 120, 32, 85, view)
+                        self.assertEqual(len(frames), 10)
+                        scenes.add(frames[0])
+                        for foreground, frame in zip(base, frames):
+                            self.assertTrue(frame.startswith(foreground))
+                            updates = re.findall(r"\x1b\[(\d+);(\d+)H", frame[len(foreground):])
+                            self.assertTrue(updates)
+                            for row, col in updates:
+                                pos = int(row), int(col)
+                                self.assertNotIn(pos, protected)
+                                self.assertTrue(1 <= pos[0] < 32 and 1 <= pos[1] < 120)
+                self.assertEqual(len(scenes), len(RENDER.SCENES))
+
+    def test_random_background_cycles_through_every_scene(self):
+        choices = {"matrix", *RENDER.SCENES}
+        picks = [RENDER.active_background("random", 42, turn) for turn in range(len(choices))]
+        self.assertEqual(set(picks), choices)
+        self.assertEqual(RENDER.active_background("random", 42, len(choices)), picks[0])
+
+    def test_themed_backgrounds_respect_static_modes(self):
+        for name in RENDER.SCENES:
+            base = ["frame"]
+            self.assertEqual(RENDER.scene_frames(name, ["Codex 70%"], base, 20, 4, 0, "all"), base)
+            with patch.dict(RENDER.os.environ, {"NO_COLOR": ""}):
+                self.assertEqual(RENDER.scene_frames(name, ["█"], base, 80, 24, 0, "all"), base)
+
     def test_matrix_rain_preserves_holes_margins_and_shine(self):
         art = [""] * 4 + ["          \x1b[93m█████\x1b[0m"] + [
             "          \x1b[93m█   █\x1b[0m"] * 3 + ["          \x1b[93m█████\x1b[0m"]
@@ -209,9 +244,9 @@ class ScreenRendererTests(unittest.TestCase):
 
     def test_three_views(self):
         values = ("⣀", "▦⣶", "⡀", "⣷")
-        resources = RENDER.compose("resources", "֍⣄3d4h", values, 120, 40)
-        codex = RENDER.compose("codex", "֍⣄3d4h", values, 120, 40)
-        combined = RENDER.compose("all", "֍⣄3d4h", values, 120, 40)
+        resources = RENDER.compose("resources", "֍⣄3d4h", values, 120, 40)
+        codex = RENDER.compose("codex", "֍⣄3d4h", values, 120, 40)
+        combined = RENDER.compose("all", "֍⣄3d4h", values, 120, 40)
         self.assertNotEqual(resources, codex)
         self.assertNotEqual(combined, resources)
 
@@ -219,6 +254,16 @@ class ScreenRendererTests(unittest.TestCase):
         art = RENDER.compose("all", "֍⣄3d4h", ("⣀", "▦⣶", "⡀", "⣷"), 120, 40)
         self.assertTrue(all(len(line) < 120 for line in art))
         self.assertTrue(all(line.startswith(" ") for line in art if line))
+
+    def test_hourglass_precedes_countdown_in_both_pixel_fonts(self):
+        small = RENDER.glyph_tiles(" 3")
+        self.assertFalse(any(row.strip() for row in small[0]))
+        self.assertEqual(small[1], ("█████", "█ █ █", "  █  ", " █ █ ", "█████"))
+        large = RENDER.codex_detail_tiles(" 3")
+        self.assertFalse(any(row.strip() for row in large[1]))
+        self.assertEqual(large[2][1], "███████")
+        self.assertEqual(large[2][6], "   █   ")
+        self.assertEqual(large[2][11], "███████")
 
     def test_countdown_uses_pixelfont_and_keeps_columns_at_each_scale(self):
         expected_three = ("█████", "    █", " ████", "    █", "█████")

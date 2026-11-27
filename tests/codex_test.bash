@@ -75,7 +75,7 @@ for iteration in {1..60}; do
     sleep 0.05
 done
 yafp_codex_context
-[ "$yafp_ctx_codex" = '֍60%5d9h' ] || fail 'Remaining quota was not read'
+[ "$yafp_ctx_codex" = '֍60% 5d9h' ] || fail 'Remaining quota was not read'
 out="$(yafp-codex)"
 yafp_strip_terminal_styles "$out"
 contains "$yafp_plain_text" '    Remaining: 60%' 'Diagnostic uses the limiting window'
@@ -172,7 +172,7 @@ saved_path=$PATH
 PATH=/nonexistent
 yafp_codex_context
 PATH=$saved_path
-[ "$yafp_ctx_codex" = '֍60%5d9h' ] || fail 'Warm context needed an external process'
+[ "$yafp_ctx_codex" = '֍60% 5d9h' ] || fail 'Warm context needed an external process'
 printf 'ok - Codex quota is opt-in, asynchronous, cached, and preserved on reload\n'
 
 while IFS='|' read -r value color cell; do
@@ -222,8 +222,8 @@ for theme in default minimal light; do
     for style in percent symbols; do
         YAFP_CODEX_VALUE_STYLE=$style
         yafp_codex_context
-        expected='֍60%5d9h'
-        [ "$style" != symbols ] || expected='֍⣦5d9h'
+        expected='֍60% 5d9h'
+        [ "$style" != symbols ] || expected='֍⣦5d9h'
         out="$(theme_render_main_block)"
         plain_prompt
         user_marker='\u'
@@ -273,7 +273,7 @@ yafp_codex_context
 [ "$yafp_ctx_codex" = '֍60%' ] || fail 'Legacy samples must omit an unknown reset'
 printf '0 ok 60 75 60 0\n' > "$YAFP_CODEX_DIR/sample"
 yafp_codex_context
-[ "$yafp_ctx_codex" = '֍60%0s' ] || fail 'Expired reset must stop at zero'
+[ "$yafp_ctx_codex" = '֍60% 0s' ] || fail 'Expired reset must stop at zero'
 
 # Reject corrupted cache rows without evaluation, and never retain old green quota after an error.
 YAFP_CODEX_CHECK_INTERVAL=300
@@ -324,5 +324,5 @@ for iteration in {1..60}; do
     sleep 0.05
 done
 yafp_codex_context
-[ "$yafp_ctx_codex" = '֍60%5d9h' ] || fail 'Quota sample did not recover after cache removal'
+[ "$yafp_ctx_codex" = '֍60% 5d9h' ] || fail 'Quota sample did not recover after cache removal'
 printf 'ok - Codex quota recovers after its temporary directory disappears\n'

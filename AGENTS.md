@@ -70,6 +70,27 @@ The scripts run the tests and use `shellcheck`, PSScriptAnalyzer, and
 `markdownlint` when installed. CI requires the analyzers through
 `YAFP_REQUIRE_LINTERS=1`.
 
+## Commit messages and versioning
+
+Every commit must advance the YAFP version. Read `YAFP_VERSION` from
+`yafp-ps1.bash` at `HEAD` and choose the highest level required by the
+changes included in the commit.
+
+- **Major** (`X.Y.Z → (X+1).0.0`) for changes that break compatibility
+  with existing commands, configuration, or supported shell behavior.
+- **Minor** (`X.Y.Z → X.(Y+1).0`) for backward-compatible features.
+- **Patch** (`X.Y.Z → X.Y.(Z+1)`) for fixes, documentation, tests,
+  refactoring, or maintenance without a new feature or breaking change.
+
+Whenever proposing a commit message, include the suggested numeric version
+alongside it and briefly explain the level chosen. A message-only request
+requires only the proposal.
+
+When creating the commit, stage the same version in the Bash and zsh
+`YAFP_VERSION` declarations, the PowerShell version header in `yafp-ps.ps1`,
+and the version badge in `README.md`. Before committing, verify that all four
+staged values match the proposed version.
+
 ## Delivery
 
 - Keep the tree free of temporary files and remote-state caches.

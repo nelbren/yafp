@@ -275,6 +275,7 @@ try {
     }
     & {
         function Show-YafpScreen { param([string]$View) $View }
+        Assert-Equal 'themes' (yafp-screen-themes) 'Screen themes shortcut'
         Assert-Equal 'codex' (yafp-screen-codex) 'Codex screen shortcut'
         Assert-Equal 'resources' (yafp-screen-resources) 'Resources screen shortcut'
     }
@@ -319,6 +320,9 @@ try {
         [pscustomobject]@{ Text = 'yafp-screen-resources'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Show only the live machine resources screen.'; Color = 'White'; NoNewline = $false }
+        [pscustomobject]@{ Text = 'yafp-screen-themes'; Color = 'Yellow'; NoNewline = $true }
+        [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
+        [pscustomobject]@{ Text = 'List available screen background themes.'; Color = 'White'; NoNewline = $false }
         [pscustomobject]@{ Text = 'yafp-resources-fix'; Color = 'Yellow'; NoNewline = $true }
         [pscustomobject]@{ Text = ' • '; Color = 'Gray'; NoNewline = $true }
         [pscustomobject]@{ Text = 'Show process termination commands.'; Color = 'White'; NoNewline = $false }

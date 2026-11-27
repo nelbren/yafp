@@ -3,6 +3,7 @@
 import argparse
 from itertools import groupby
 import json
+import math
 import os
 import random
 import re
@@ -28,6 +29,7 @@ GLYPHS = {
     "O": ".###. #...# #...# #...# .###.",
     "F": "##### #.... ####. #.... #....",
     "!": "..#.. ..#.. ..#.. ..... ..#..",
+    "": "##### #.#.# ..#.. .#.#. #####",
     "⟳": ".###. #.... #..## #...# .###.",
     "d": "....# ....# .#### #...# .####",
     "h": "#.... #.... ####. #...# #...#",
@@ -113,6 +115,7 @@ CODEX_LOGO_MASKS = (
 )
 # Higher resolution countdown masks for the standalone Codex view.
 CODEX_GLYPHS = {
+    "": "####### #.....# #.###.# .#.#.#. ..#.#.. ...#... ..#.#.. .#...#. #..#..# #.###.# #######",
     "0": "..###.. .#...#. #.....# #.....# #.....# #..#..# #.....# #.....# #.....# .#...#. ..###..",
     "1": "...#... ..##... .#.#... ...#... ...#... ...#... ...#... ...#... ...#... ...#... .#####.",
     "2": "..###.. .#...#. #.....# ......# .....#. ....#.. ...#... ..#.... .#..... #...... #######",
@@ -584,14 +587,201 @@ def matrix_frames(art, frames, columns, lines, first_step, density="low", color=
                     char = (word[-1 - depth] if words else
                             alphabet[(tick * 7 + depth * 11 + x) % len(alphabet)])
                     current[y, x] = (head_color if depth == 0 else trail_color, char)
-        updates = [frames[index]] if index < len(frames) else []
-        for y, x in previous.keys() - current.keys():
-            updates.append(f"\x1b[{y};{x}H ")
-        for (y, x), style in current.items():
-            if previous.get((y, x)) != style:
-                color, char = style
-                updates.append(f"\x1b[{y};{x}H\x1b[{color}m{char}")
-        records.append("".join(updates) + "\x1b[0m")
+        base = frames[index] if index < len(frames) else ""
+        records.append(background_update(base, previous, current))
+        previous = current
+    return records
+
+
+def background_update(base, previous, current):
+    updates = [base]
+    for y, x in previous.keys() - current.keys():
+        updates.append(f"\x1b[{y};{x}H ")
+    for (y, x), style in current.items():
+        if previous.get((y, x)) != style:
+            color, char = style
+            updates.append(f"\x1b[{y};{x}H\x1b[{color}m{char}")
+    return "".join(updates) + "\x1b[0m"
+
+
+def star_wars(width, height, step, focus):
+    cx, cy = focus
+    rng = random.Random(1977)
+    warp = step % 100 >= 90
+    for _ in range(min(220, 12 + width * height // 75)):
+        angle = rng.random() * math.tau
+        dx, dy = math.cos(angle), math.sin(angle) / 2
+        # Project each ray to the nearest edge, then accelerate along it.
+        reach = min((width - cx if dx > 0 else 1 - cx) / dx if dx else math.inf,
+                    (height - cy if dy > 0 else 1 - cy) / dy if dy else math.inf)
+        age = (rng.randrange(80) + step) % 80
+        distance = reach * (age / 79) ** 2
+        stroke = "─" if abs(dx) > 4 * abs(dy) else "│" if abs(dx) < abs(dy) else (
+            "╲" if dx * dy > 0 else "╱")
+        for tail in range(1 + (min(8, int(distance)) if warp else 0)):
+            yield (round(cy + dy * (distance - tail)), round(cx + dx * (distance - tail)),
+                   97 if tail == 0 and age > 50 else 90, stroke if warp else "·")
+
+
+def star_trek(width, height, step, focus):
+    sweep = step % width + 1
+    for y in range(2, height, 2):
+        yield y, sweep, 36, "┊"
+    for edge, direction, color in ((1, 1, 33), (width, -1, 35)):
+        for radius in (3, 5):
+            for degree in range(0, 91, 4):
+                angle = math.radians(degree)
+                yield (1 + round(radius * math.sin(angle)),
+                       edge + direction * round(2 * radius * math.cos(angle)), color, "▪")
+    rng = random.Random(1701)
+    for _ in range(max(4, width // 6)):
+        x, y = rng.randint(1, width), rng.randint(1, height)
+        elapsed = (sweep - x) % width
+        if elapsed < 14:
+            yield y, x, 93 if elapsed < 3 else 90, "✧" if elapsed < 3 else "·"
+
+
+def tron(width, height, step, focus):
+    horizon = max(1, height * 2 // 3)
+    depth = max(1, height - horizon)
+    for y in range(horizon, height + 1):
+        for lane in range(-7, 8):
+            x = round(width / 2 + lane * (1 + (y - horizon) * width / (8 * depth)))
+            yield y, x, 34, "│" if lane == 0 else "╱" if lane < 0 else "╲"
+    for row in {horizon, horizon + depth // 4, horizon + depth // 2, height}:
+        for x in range(1, width + 1):
+            yield row, x, 34, "─"
+    for bike, color in enumerate((96, 33)):
+        left = 1 + bike * width // 2
+        span, rise = max(1, width // 2 - 2), max(1, depth - 2)
+        perimeter = 2 * (span + rise)
+        for tail in range(min(12, perimeter - 1), -1, -1):
+            t = (step + bike * span - tail) % perimeter
+            x = left + min(t, span) - min(max(0, t - span - rise), span)
+            y = horizon + 1 + min(max(0, t - span), rise) - max(0, t - 2 * span - rise)
+            trail = "│" if span < t <= span + rise or t > 2 * span + rise else "─"
+            yield y, x, color, "◆" if tail == 0 else trail
+
+
+def cyberpunk(width, height, step, focus):
+    rng = random.Random(2077)
+    left = 1
+    while left <= width:
+        span = rng.randint(5, 10)
+        roof = height - rng.randint(max(1, height // 6), max(2, height // 2))
+        for x in range(left, left + span):
+            yield roof, x, 35, "─"
+        for y in range(roof + 1, height + 1):
+            yield y, left, 35, "│"
+            if (y - roof) % 2:
+                for x in range(left + 2, left + span - 1, 3):
+                    if (x * 7 + y + step // 8) % 5:
+                        yield y, x, 36, "▪"
+        left += span
+    for _ in range(min(150, 4 + width * height // 65)):
+        y = (rng.randrange(height) + step) % height
+        x = (rng.randrange(width) - y) % width
+        yield y + 1, x + 1, 90, "╱"
+    for offset, char in enumerate("NEON"):
+        if offset != 2 or step % 60 not in (0, 1, 4, 5):
+            yield max(1, height * 3 // 4), 3 + offset, 95, char
+
+
+def terminator(width, height, step, focus):
+    cycle, phase = divmod(step, 60)
+    # Pause the contact for acquisition, then let it slip the lock.
+    def contact(tick):
+        travel = cycle * 42 + min(tick, 28) + max(0, tick - 46)
+        x = 1 + round((width - 1) * (0.5 + 0.43 * math.sin(travel / 16)))
+        y = 2 + round(height * (0.10 + 0.08 * math.cos(travel / 12)))
+        return x, y
+
+    x, y = contact(phase)
+    aim_x, aim_y = contact(max(0, phase - 1) // 3 * 3 if phase < 46 else phase - 1)
+    radius = max(2, 7 - max(0, phase - 24) // 3) if phase < 47 else 7
+    for dx, dy, corner in ((-1, -1, "⌜"), (1, -1, "⌝"), (-1, 1, "⌞"), (1, 1, "⌟")):
+        yield aim_y + dy, aim_x + dx * radius, 91, corner
+    yield y, x, 97, "•"
+    yield 1, 1 + step % width, 31, "▾"
+
+
+def robocop(width, height, step, focus):
+    cycle, phase = divmod(step, 96)
+    scan = 1 + min(phase, 35) * (height - 1) // 35
+    for x in range(1 + step % 4, width + 1, 4):
+        yield scan, x, 34, "─"
+    x, y = 2 + width * (1 + cycle % 3) // 5, max(2, height // 5)
+    if phase > 12:
+        for dx, dy, corner in ((-2, -1, "┌"), (2, -1, "┐"), (-2, 1, "└"), (2, 1, "┘")):
+            yield y + dy, x + dx, 96, corner
+        yield y, x, 97, "+"
+    label = "SCAN" if phase < 35 else "MATCH"
+    if cycle % 3 == 2 and phase >= 55:
+        label = "DIRECTIVE 4" if phase < 73 else "CLASSIFIED"
+    for offset, char in enumerate(label):
+        yield 2, max(1, width - len(label)) + offset, 96, char
+
+
+def blade_runner(width, height, step, focus):
+    fly_x = step // 2 % (width + 8) - 3
+    fly_y = max(2, height // 6)
+    sign_x = max(3, width // 4)
+    for x in range(1, width + 1):
+        tower = (x - 1) // 8
+        roof = height - (2 + (tower * 13 + 3) % max(3, height // 2))
+        yield roof, x, 90, "─"
+        if x % 8 == 1:
+            for y in range(roof + 1, height + 1):
+                yield y, x, 90, "│"
+    for y in range(fly_y + 1, height + 1):
+        reach = y - fly_y
+        center = fly_x + reach
+        for x in range(center - reach // 3, center + reach // 3 + 1):
+            if (3 * x + 5 * y + step) % 11 == 0:
+                yield y, x, 36, "╱"
+    for offset, char in enumerate("•━•"):
+        yield fly_y, fly_x + offset, 93, char
+    eye = "─────" if 0 <= fly_x - sign_x <= 1 else "◁─◉─▷"
+    for offset, char in enumerate(eye):
+        yield max(2, height * 3 // 4), sign_x + offset, 95, char
+
+
+SCENES = {scene.__name__: scene for scene in
+          (star_wars, star_trek, tron, cyberpunk, terminator, robocop, blade_runner)}
+
+
+BACKGROUNDS = ("matrix", *SCENES)
+
+
+def active_background(setting, seed, turn):
+    if setting == "random":
+        order = list(BACKGROUNDS)
+        random.Random(seed).shuffle(order)
+        return order[turn % len(order)]
+    return setting if setting in BACKGROUNDS else "off"
+
+
+def scene_frames(name, art, frames, columns, lines, first_step, view):
+    if "NO_COLOR" in os.environ or not any("█" in row for row in art):
+        return frames
+    width, height = columns - 1, lines - 1
+    protected = matrix_margins(art)
+    focus = ((width + 1) / 2, (height + 1) / 2)
+    if name == "star_wars" and view == "codex":
+        # Locate the leftmost glyph (the Blossom) at the current drawing scale.
+        occupied = sorted({x for y, x in protected if 1 <= x <= width})
+        left = occupied[0]
+        right = next((x for x, nxt in zip(occupied, occupied[1:]) if nxt > x + 1),
+                     min(width, left + height))
+        focus = ((left + right) / 2, focus[1])
+    previous = {}
+    records = []
+    for index in range(10):
+        cells = SCENES[name](width, height, first_step + index, focus)
+        current = {(y, x): (color, char) for y, x, color, char in cells
+                   if 1 <= x <= width and 1 <= y <= height and (y, x) not in protected}
+        base = frames[index] if index < len(frames) else ""
+        records.append(background_update(base, previous, current))
         previous = current
     return records
 
@@ -605,11 +795,15 @@ def main():
     parser.add_argument("--columns", type=int)
     parser.add_argument("--lines", type=int)
     output = parser.add_mutually_exclusive_group()
+    output.add_argument("--list-themes", action="store_true")
     output.add_argument("--plain", action="store_true")
     output.add_argument("--frame", action="store_true")
     output.add_argument("--frames", choices=("lines", "json"))
     parser.add_argument("--shine", default="off")
     parser.add_argument("--background", default="off")
+    parser.add_argument("--background-seed", type=int, default=0)
+    parser.add_argument("--background-turn", type=int, default=0)
+    parser.add_argument("--show-background", action="store_true")
     parser.add_argument("--matrix-density", default="low")
     parser.add_argument("--matrix-speed", default="normal")
     parser.add_argument("--matrix-color", default="green")
@@ -617,6 +811,9 @@ def main():
     parser.add_argument("--step", type=int, default=0)
     parser.add_argument("--sweep-state", default=":0")
     args = parser.parse_args()
+    if args.list_themes:
+        print(*BACKGROUNDS, "random", "off", sep="\n")
+        return 0
     if not (args.plain or args.frames) and (not sys.stdin.isatty() or not sys.stdout.isatty()):
         print("yafp-screen requires an interactive terminal.", file=sys.stderr)
         return 1
@@ -628,10 +825,17 @@ def main():
             stripe, phase = args.sweep_state.split(":")
             state = [stripe, int(phase)]
             frames = shine_frames(art, args.shine, args.step, state)
-            if args.background == "matrix":
+            background = active_background(args.background, args.background_seed, args.background_turn)
+            if background == "matrix":
                 frames = matrix_frames(art, frames, size.columns, size.lines, args.step,
                                        args.matrix_density, args.matrix_color,
                                        args.matrix_text, args.view, args.matrix_speed)
+            elif background in SCENES:
+                frames = scene_frames(background, art, frames, size.columns, size.lines,
+                                      args.step, args.view)
+            if args.show_background and size.lines > 1 and size.columns > 1:
+                label = background[:size.columns - 1]
+                frames[0] += f"\x1b[{size.lines};{size.columns - len(label)}H\x1b[0m{label}"
             if args.shine == "random":
                 frames.insert(0, f"{state[0]}:{state[1]}")
             print(json.dumps(frames) if args.frames == "json" else "\n".join(frames))

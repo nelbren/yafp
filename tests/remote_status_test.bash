@@ -328,6 +328,7 @@ expected_help="$(printf '%s\n' \
     'yafp-screen • Show live Codex quota and machine resources.' \
     'yafp-screen-codex • Show only the live Codex quota screen.' \
     'yafp-screen-resources • Show only the live machine resources screen.' \
+    'yafp-screen-themes • List available screen background themes.' \
     'yafp-resources-fix • Show process termination commands.' \
     'yafp-demo-resources • Simulate resource load and colors.')"
 assert_eq "$expected_help" "$(framed_output yafp-help)" 'yafp-help output'

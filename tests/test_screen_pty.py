@@ -1,5 +1,6 @@
 import errno
 import os
+import re
 import select
 import shlex
 import signal
@@ -37,10 +38,28 @@ class ScreenPtyTests(unittest.TestCase):
                         yafp-screen() {{ printf '%s\\n' "$@"; }}
                         yafp-screen-codex
                         yafp-screen-resources
+                        yafp-screen-themes
                     """],
                     text=True, timeout=5,
                 )
-                self.assertEqual(output.splitlines(), ["codex", "resources"])
+                self.assertEqual(output.splitlines(), ["codex", "resources", "themes"])
+
+    @unittest.skipIf(pty is None, "Unix shells are unavailable on this platform")
+    def test_theme_list_frames_the_renderer_catalog(self):
+        catalog = subprocess.check_output(["python3", str(RENDERER), "--list-themes"], text=True)
+        for shell in ("bash", "zsh"):
+            if not shutil.which(shell):
+                continue
+            with self.subTest(shell=shell):
+                output = subprocess.check_output(
+                    [shell, "-c", '. "$YAFP_ROOT/scripts/unix/screen/context.bash"; yafp-screen-themes'],
+                    env={**os.environ, "YAFP_ROOT": str(ROOT), "COLUMNS": "80"}, text=True,
+                )
+                rows = re.sub(r"\x1b\[[0-9;]*m", "", output).strip().splitlines()
+                self.assertTrue(rows[0].startswith("┌") and rows[-1].endswith("┘"))
+                self.assertIn(" yafp-screen-themes", rows[1])
+                self.assertEqual(len(set(map(len, rows))), 1)
+                self.assertEqual([row[1:-1].strip() for row in rows[3:-1]], catalog.splitlines())
 
     @unittest.skipIf(pty is None, "pseudo-terminals are unavailable on this platform")
     def test_screen_switches_quota_format_when_the_cached_sample_changes(self):
@@ -72,9 +91,9 @@ class ScreenPtyTests(unittest.TestCase):
                         output = bytearray()
                         try:
                             for expected, next_sample in (
-                                ("Codex ⣄0s", "0 ok 24 24 - 0\n"),
-                                ("Codex 24%0s", "0 ok 25 25 - 0\n"),
-                                ("Codex ⣄0s", None),
+                                ("Codex ⣄0s", "0 ok 24 24 - 0\n"),
+                                ("Codex 24% 0s", "0 ok 25 25 - 0\n"),
+                                ("Codex ⣄0s", None),
                             ):
                                 output.clear()
                                 deadline = time.monotonic() + 5
@@ -118,7 +137,11 @@ class ScreenPtyTests(unittest.TestCase):
                 with self.subTest(shell=shell, mode=mode):
                     self._run_installed_screen(shell, options, mode)
 
-    def _run_installed_screen(self, shell, options, mode="off"):
+    @unittest.skipIf(pty is None or shutil.which("zsh") is None, "zsh PTY is unavailable")
+    def test_tron_resource_refresh_is_silent_in_zsh(self):
+        self._run_installed_screen("zsh", ["-df"], background="tron")
+
+    def _run_installed_screen(self, shell, options, mode="off", background="off"):
         with tempfile.TemporaryDirectory() as directory:
             install = Path(directory)
             entrypoint = install / f"yafp-ps1.{shell}"
@@ -129,14 +152,14 @@ class ScreenPtyTests(unittest.TestCase):
             config.write_text(
                 (ROOT / f"{config.name}.example").read_text()
                 + "\nYAFP_REPOS=0 YAFP_REMOTE_CHECK_INTERVAL=0 YAFP_STATS_ON_EXIT=0\n"
-                + f"YAFP_SCREEN_SHINE={mode}\n"
+                + f"YAFP_SCREEN_SHINE={mode}\nYAFP_SCREEN_BACKGROUND={background}\n"
                 + ("YAFP_SCREEN_BACKGROUND=matrix\nYAFP_SCREEN_MATRIX_COLOR=cyan\n"
                    "YAFP_SCREEN_MATRIX_DENSITY=medium\n" if mode == "random" else "")
             )
             for name in ("scripts", "themes"):
                 (install / name).symlink_to(ROOT / name, target_is_directory=True)
 
-            cols, rows = (18, 8) if mode == "off" else (80, 24)
+            cols, rows = (18, 8) if mode == "off" and background == "off" else (80, 24)
             environment = {
                 **os.environ, "YAFP_NO_INSTALL_HOOKS": "1", "TERM": "xterm-256color",
                 "YAFP_CONFIG_FILE": str(config), "YAFP_METRICS_DISABLED": "1",
@@ -144,6 +167,14 @@ class ScreenPtyTests(unittest.TestCase):
             }
             environment.pop("NO_COLOR", None)
             script = f"source {shlex.quote(str(entrypoint))} && yafp-screen"
+            if background == "tron":
+                script = f"""source {shlex.quote(str(entrypoint))}
+                    yafp_resources_context() {{
+                        yafp_ctx_resource_state=ok
+                        yafp_ctx_resource_tokens=(C1% R2% S3% D4%)
+                        yafp_ctx_resource_colors=(92 92 92 92)
+                    }}
+                    yafp-screen-resources"""
             pid, master = pty.fork()
             if pid == 0:
                 fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
@@ -171,7 +202,21 @@ class ScreenPtyTests(unittest.TestCase):
 
             try:
                 read_until(b"?1049h")
-                if mode == "off":
+                if background == "tron":
+                    read_until("◆".encode())
+                    output.clear()
+                    # A full repaint marks the next resource sample.
+                    read_until(b"\x1b[H")
+                    self.assertNotIn(b"i=3", output)
+                    os.write(master, b"b")
+                    read_until(b"\x1b[0mtron")
+                    os.write(master, b"B")
+                    output.clear()
+                    read_until(b"\x1b[H")
+                    read_until(b"\x1b[J")
+                    read_until("◆".encode())
+                    self.assertNotIn(b"\x1b[0mtron", output)
+                elif mode == "off":
                     for expected in (b"Codex OFF", b"CPU OFF", b"RAM OFF", b"SWAP OFF", b"DISK OFF"):
                         read_until(expected)
                 else:
@@ -213,7 +258,7 @@ class ScreenPtyTests(unittest.TestCase):
             executable = shutil.which(os.environ.get("PYTHON", "python3"))
             os.execv(executable, [
                 executable, str(RENDERER), "--view", "all",
-                "--codex", "֍⣄3d4h", "--resources", "⣀", "▦⣶", "⡀", "⣷",
+                "--codex", "֍⣄3d4h", "--resources", "⣀", "▦⣶", "⡀", "⣷",
             ])
         output = bytearray()
         try:

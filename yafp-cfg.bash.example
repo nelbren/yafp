@@ -26,7 +26,8 @@ YAFP_CLOCK=1
 # vertical-right, vertical-left, horizontal-down, horizontal-up, or random.
 YAFP_SCREEN_SHINE=off
 
-# Background behind the screen artwork: off or matrix.
+# Background behind the screen artwork: off, matrix, star_wars, star_trek, tron, cyberpunk,
+# terminator, robocop, blade_runner, or random. Press B to show the active name.
 YAFP_SCREEN_BACKGROUND=off
 # Matrix stream density: low, medium, or high.
 YAFP_SCREEN_MATRIX_DENSITY=low
@@ -58,7 +59,7 @@ YAFP_STATUS_PROGRESS_STYLE="blocks"
 # 0 disables checks; 300 enables a background refresh every five minutes.
 YAFP_CODEX_CHECK_INTERVAL=0
 
-# Values: percent (֍74%5d9h) or symbols (֍⣶5d9h).
+# Values: percent (֍74% 5d9h) or symbols (֍⣶5d9h).
 YAFP_CODEX_VALUE_STYLE="percent"
 # Optional with symbols: show the percentage at or below this remaining quota.
 # YAFP_CODEX_PERCENT_AT_OR_BELOW=24

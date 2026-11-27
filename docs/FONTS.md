@@ -1,5 +1,7 @@
 # Fonts with consistent Unicode fallback
 
+[Documentation index](../README.md#guides)
+
 ## Prompt icons
 
 Static labels use Font Awesome through Nerd Fonts in Bash, zsh, and
@@ -29,6 +31,7 @@ code points.
 | 17  | Git debugging context           | ``         | `F1D3`               |
 | 18  | Urgency of the next check       | ``         | `F111`               |
 | 19  | Process termination             | ``         | `EE15`               |
+| 20  | Codex reset countdown           | ``         | `F252`               |
 
 The catalog lists the approved replacements; each theme keeps the labels it
 already displayed. For example, the Bash/zsh `default` environment keeps its
@@ -102,7 +105,7 @@ icon replacements in the current catalog.
 
 <!-- markdownlint-disable MD013 -->
 ```less
-🪟 nelbren↤[֍⣿4d21h] @ NDEV-DPC-02↦[⚙⣄▦⣀⇄⡀◉⣿] ⌂ ~\yafp ↦[⣦✓🌐︎] master↯↦[±1+1] ⧖ 2026-10-30 09:03:27 ✓
+🪟 nelbren↤[֍⣿4d21h] @ NDEV-DPC-02↦[⚙⣄▦⣀⇄⡀◉⣿] ⌂ ~\yafp ↦[⣦✓🌐︎] master↯↦[±1+1] ⧖ 2026-10-30 09:03:27 ✓
 $
 ```
 <!-- markdownlint-enable MD013 -->

@@ -5,7 +5,7 @@
 # Main engine of YAFP
 #
 
-YAFP_VERSION=0.4.0
+YAFP_VERSION=0.5.0
 
 # Customize in themes...
 
@@ -2330,6 +2330,7 @@ yafp-resources|Show the latest RAM, swap, CPU, and disk sample.
 yafp-screen|Show live Codex quota and machine resources.
 yafp-screen-codex|Show only the live Codex quota screen.
 yafp-screen-resources|Show only the live machine resources screen.
+yafp-screen-themes|List available screen background themes.
 yafp-resources-fix|Show process termination commands.
 yafp-demo-resources|Simulate resource load and colors.
 EOF

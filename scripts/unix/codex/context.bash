@@ -75,7 +75,8 @@ yafp_codex_context() {
                 yafp_codex_segment "$value"
                 if [ "$value" != - ] && [ "$reset" != - ]; then
                     yafp_codex_format_reset "$((reset - SECONDS))"
-                    yafp_ctx_codex_token+="$yafp_ctx_codex_reset_text"
+                    case "$yafp_ctx_codex_token" in *%) yafp_ctx_codex_token+=' ' ;; esac
+                    yafp_ctx_codex_token+="$yafp_ctx_codex_reset_text"
                 fi
             fi
         fi

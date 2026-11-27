@@ -1,5 +1,7 @@
 # YAFP architecture
 
+[Documentation index](../README.md#guides)
+
 ## Purpose
 
 This document describes YAFP's current boundaries and the invariants that must
@@ -223,7 +225,8 @@ it adds no external processes during rendering.
 
 Reloads preserve the marker; new processes receive distinct PIDs.
 Noninteractive scripts and quality runners do not record real activations.
-Configuration and storage details are in README.
+See [startup tracking](DEVELOPMENT.md#yafp-startup-tracking) for configuration
+and storage details.
 
 ## Git context and remote status
 
@@ -458,7 +461,7 @@ The context text markers `Resources: waiting for sample` and
 `State`. Without a valid sample, the prompt produces four red tokens with
 ``, respecting labels and the separator (`↦[▦]` in Unicode +
 symbols mode). Missing partial metrics also use ``; valid values retain
-their colors. README describes
+their colors. The [monitoring guide](MONITORING.md) describes
 platform definitions and diagnostic limitations. Probe and lifecycle tests use
 fixtures and controlled workers to cover intervals, reload, failures, rendering
 without external tools, and preservation of the previous command status.
@@ -543,9 +546,9 @@ reset timestamps omit the timer without discarding valid availability.
 As with Unix resource monitoring, a missing temporary quota directory is
 replaced at the next scheduled refresh, after any active worker finishes.
 
-All themes append a compact reset countdown directly after the quota value,
-without a separator inside the frame, for example `↤[֍75%5d9h]` or
-`↤[֍⣷5d9h]`. Formatting keeps two units (days/hours, hours/minutes, or
+All themes append a compact reset countdown after the quota value,
+with a space before the hourglass only for percentages, as in `↤[֍75% 5d9h]` or
+`↤[֍⣷5d9h]`. Formatting keeps two units (days/hours, hours/minutes, or
 minutes/seconds), or just seconds below
 one minute. Subordinate units are rounded down; expired deadlines clamp to
 `0s` while waiting for the next sample. The timer shares the quota foreground
@@ -613,12 +616,18 @@ the screen. Each sample produces a complete drawing. When
 original color of each `█` cell and prepares ten frames per sample. After
 the first frame, it redraws only the cells that light up or return to their
 original color. The shell tracks the animation step across samples and
-checks for input between frames. Bash and zsh receive one frame per line.
+checks for input between frames. The Unix loop declares its resource index once
+to keep zsh from printing its value between samples. Bash and zsh receive one
+frame per line.
 In `random` mode the batch starts with the stripe name and next phase.
 The shell passes them back on the next sample to continue the same sweep.
 The optional Matrix layer uses the shell's frame counter to advance streams
 between samples. It writes only outside the padded artwork and clears cells
 as the tails pass. It shares the foreground frame batch and sampling cadence.
+The themed scenes use the same protected cells and delta updates as Matrix.
+B toggles the scene name on the reserved bottom row. Random mode shuffles
+the scene list with a session seed and advances every 15 sample batches.
+Their positions derive from the frame counter and current terminal dimensions.
 PowerShell decodes a JSON array with Unicode escapes to preserve the block
 characters across code pages. It polls the keyboard every 20 ms and drains
 queued keys so pressing `q` or `Esc` closes the screen without pressing Enter.

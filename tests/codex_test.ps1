@@ -285,7 +285,7 @@ try {
             $global:YAFP_CODEX_VALUE_STYLE = $style
             $global:LASTEXITCODE = 7
             $output = (@(prompt 6>&1) | ForEach-Object { "$_" }) -join ''
-            $expected = if ($style -eq 'percent') { '֍59%5d9h' } else { '֍⣦5d9h' }
+            $expected = if ($style -eq 'percent') { '֍59% 5d9h' } else { '֍⣦5d9h' }
             if (-not $output.Contains("quota-user↤[$expected]")) { throw "User quota missing: $theme/$style" }
             if ([regex]::Matches($output, '↤\[').Count -ne 1) { throw 'Quota duplicated' }
             if ($global:LASTEXITCODE -ne 7) { throw 'Previous exit code changed' }
@@ -316,7 +316,7 @@ try {
     $savedReset = $script:YafpCodexSample.ResetsAt
     $global:YAFP_CODEX_VALUE_STYLE = 'percent'
     $script:YafpCodexSample.ResetsAt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - 1
-    if ((Get-YafpCodexContext).Text -ne '֍59%0s') { throw 'Expired reset did not stop at zero' }
+    if ((Get-YafpCodexContext).Text -ne '֍59% 0s') { throw 'Expired reset did not stop at zero' }
     $script:YafpCodexSample.ResetsAt = $null
     if ((Get-YafpCodexContext).Text -ne '֍59%') { throw 'Missing reset must omit countdown' }
     $script:YafpCodexSample.ResetsAt = $savedReset

@@ -3,10 +3,18 @@ yafp-screen() {
     if [ -n "${ZSH_VERSION:-}" ]; then emulate -L zsh -o KSH_ARRAYS; fi
     local view=${1:-all} key old_tty screen_status=0 codex='֍dh' codex_color=90 args=() rendered
     local frames=() frame delay step=0 shine=${YAFP_SCREEN_SHINE:-off} sweep_state=:0
-    local legacy_bash=0 tty_timeout=10 next_timeout
+    local background_seed=$RANDOM sample=0 show_background=0
+    local legacy_bash=0 tty_timeout=10 next_timeout i=0
     if [ -z "${ZSH_VERSION:-}" ] && [ "${BASH_VERSINFO[0]}" -lt 4 ]; then legacy_bash=1; fi
-    case "$#:$view" in 0:all|1:all|1:resources|1:codex) ;; *)
-        printf '%s\n' 'Usage: yafp-screen [resources|codex]' >&2
+    case "$#:$view" in 1:themes)
+        local themes
+        themes=$(python3 "$YAFP_ROOT/scripts/unix/screen/render.py" --list-themes) || return
+        . "$YAFP_ROOT/scripts/unix/preview/lib/frame.bash" || return
+        yafp_preview_frame "$themes" '' fit-content ' yafp-screen-themes'
+        return
+        ;;
+    0:all|1:all|1:resources|1:codex) ;; *)
+        printf '%s\n' 'Usage: yafp-screen [resources|codex|themes]' >&2
         return 2 ;;
     esac
     if [ ! -t 0 ] || [ ! -t 1 ]; then
@@ -45,7 +53,6 @@ yafp-screen() {
         if [ "$view" != codex ]; then
             yafp_resources_context
             args+=(--resources)
-            local i
             if [ "${yafp_ctx_resource_state:-}" = disabled ]; then
                 args+=(OFF OFF OFF OFF)
             else
@@ -60,6 +67,9 @@ yafp-screen() {
         else
             args+=(--colors "$codex_color" 90 90 90 90)
         fi
+        args+=(--background-seed "$background_seed" --background-turn "$((sample / 15))")
+        if [ "$show_background" = 1 ]; then args+=(--show-background); fi
+        sample=$((sample + 1))
         rendered=$(PYTHONIOENCODING=utf-8 python3 "$YAFP_ROOT/scripts/unix/screen/render.py" "${args[@]}" \
             --frames lines --shine="$shine" --step "$step" --sweep-state="$sweep_state" \
             --background="${YAFP_SCREEN_BACKGROUND:-off}" \
@@ -98,7 +108,7 @@ yafp-screen() {
             else
                 IFS= read -r -s -n 1 -t "$delay" key || true
             fi
-            case "$key" in q|Q|$'\033'|$'\003') break 2 ;; esac
+            case "$key" in b|B) show_background=$((1 - show_background)) ;; q|Q|$'\033'|$'\003') break 2 ;; esac
             step=$((step + 1))
         done
     done
@@ -113,4 +123,8 @@ yafp-screen-codex() {
 
 yafp-screen-resources() {
     yafp-screen resources "$@"
+}
+
+yafp-screen-themes() {
+    yafp-screen themes "$@"
 }

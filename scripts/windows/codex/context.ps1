@@ -115,7 +115,8 @@ function global:Get-YafpCodexContext {
     }
     if ($null -ne $value -and $script:YafpCodexSample.PSObject.Properties['ResetsAt'] -and
         $null -ne $script:YafpCodexSample.ResetsAt) {
-        $segment.Text += (Format-YafpCodexReset -Seconds ($script:YafpCodexSample.ResetsAt - $now))
+        if ($segment.Text.EndsWith('%')) { $segment.Text += ' ' }
+        $segment.Text += '' + (Format-YafpCodexReset -Seconds ($script:YafpCodexSample.ResetsAt - $now))
     }
     [pscustomobject]@{
         Text = $segment.Text; Foreground = $segment.Foreground; Sample = $script:YafpCodexSample

@@ -1,6 +1,6 @@
 # Yet Another Fancy Prompt for PowerShell
 #
-# v0.4.0 - 2026-11-26 - nelbren@nelbren.com
+# v0.5.0 - 2026-11-26 - nelbren@nelbren.com
 #
 # Provides a themed prompt with Git and Python virtual environment information.
 
@@ -1211,6 +1211,7 @@ function Show-YafpHelp {
         @{ Name = 'yafp-screen'; Description = 'Show live Codex quota and machine resources.' }
         @{ Name = 'yafp-screen-codex'; Description = 'Show only the live Codex quota screen.' }
         @{ Name = 'yafp-screen-resources'; Description = 'Show only the live machine resources screen.' }
+        @{ Name = 'yafp-screen-themes'; Description = 'List available screen background themes.' }
         @{ Name = 'yafp-resources-fix'; Description = 'Show process termination commands.' }
         @{ Name = 'yafp-demo-resources'; Description = 'Simulate resource load and colors.' }
     )) {
@@ -1862,13 +1863,13 @@ function global:Show-YafpScreen {
         'PSAvoidUsingWriteHost', '',
         Justification = 'The interactive screen writes terminal control sequences directly to an already validated console.'
     )]
-    param([ValidateSet('all', 'resources', 'codex')][string]$View = 'all')
-    if ($args.Count -gt 0) { throw 'Usage: yafp-screen [resources|codex]' }
-    if ([Console]::IsInputRedirected -or [Console]::IsOutputRedirected) {
+    param([ValidateSet('all', 'resources', 'codex', 'themes')][string]$View = 'all')
+    if ($args.Count -gt 0) { throw 'Usage: yafp-screen [resources|codex|themes]' }
+    if ($View -ne 'themes' -and ([Console]::IsInputRedirected -or [Console]::IsOutputRedirected)) {
         Write-Error 'yafp-screen requires an interactive terminal.' -ErrorAction Continue
         return
     }
-    if ($env:TERM -eq 'dumb') {
+    if ($View -ne 'themes' -and $env:TERM -eq 'dumb') {
         Write-Error 'yafp-screen requires a terminal that supports the alternate screen.' -ErrorAction Continue
         return
     }
@@ -1885,12 +1886,22 @@ function global:Show-YafpScreen {
         return
     }
     $renderer = Join-Path $script:YafpRoot 'scripts/unix/screen/render.py'
+    if ($View -eq 'themes') {
+        $themes = & $python.Source $renderer --list-themes
+        if ($LASTEXITCODE -ne 0) { return }
+        . (Join-Path $script:YafpRoot 'scripts/windows/preview/lib/frame.ps1')
+        Write-YafpPreviewFrame -Text ($themes -join "`n") -FitContent -Title ' yafp-screen-themes'
+        return
+    }
     $shine = Get-Variable YAFP_SCREEN_SHINE -Scope Global -ValueOnly -ErrorAction Ignore
     $background = Get-Variable YAFP_SCREEN_BACKGROUND -Scope Global -ValueOnly -ErrorAction Ignore
     $matrixDensity = Get-Variable YAFP_SCREEN_MATRIX_DENSITY -Scope Global -ValueOnly -ErrorAction Ignore
     $matrixSpeed = Get-Variable YAFP_SCREEN_MATRIX_SPEED -Scope Global -ValueOnly -ErrorAction Ignore
     $matrixColor = Get-Variable YAFP_SCREEN_MATRIX_COLOR -Scope Global -ValueOnly -ErrorAction Ignore
     $matrixText = Get-Variable YAFP_SCREEN_MATRIX_TEXT -Scope Global -ValueOnly -ErrorAction Ignore
+    $backgroundSeed = Get-Random
+    $sampleNumber = 0
+    $showBackground = $false
     $sweepState = ':0'
     $step = 0
     $oldColors = [Console]::ForegroundColor
@@ -1929,6 +1940,9 @@ function global:Show-YafpScreen {
             $arguments += @("--background=$background", "--matrix-density=$matrixDensity", "--matrix-color=$matrixColor")
             $arguments += "--matrix-text=$matrixText"
             $arguments += "--matrix-speed=$matrixSpeed"
+            $arguments += @('--background-seed', $backgroundSeed, '--background-turn', [Math]::Floor($sampleNumber / 15))
+            if ($showBackground) { $arguments += '--show-background' }
+            $sampleNumber++
             $batch = & $python.Source @arguments --frames json "--shine=$shine" --step $step "--sweep-state=$sweepState"
             if ($LASTEXITCODE -ne 0) {
                 throw "yafp-screen: the renderer exited with code $LASTEXITCODE."
@@ -1947,6 +1961,7 @@ function global:Show-YafpScreen {
                 do {
                     while ([Console]::KeyAvailable) {
                         $key = [Console]::ReadKey($true)
+                        if ($key.KeyChar -in @('b', 'B')) { $showBackground = -not $showBackground }
                         if ($key.KeyChar -in @('q', 'Q', [char]27, [char]3) -or
                             $key.Key -in @('Q', 'Escape')) { return }
                     }
@@ -1963,6 +1978,10 @@ function global:Show-YafpScreen {
 
 function global:Show-YafpScreenCodex {
     Show-YafpScreen -View codex @args
+}
+
+function global:Show-YafpScreenThemes {
+    Show-YafpScreen -View themes @args
 }
 
 function global:Show-YafpScreenResources {
@@ -1984,6 +2003,7 @@ Set-Alias -Name yafp-resources-fix -Value Show-YafpResourcesFix -Scope Global -F
 Set-Alias -Name yafp-demo-resources -Value Show-YafpDemoResources -Scope Global -Force
 Set-Alias -Name yafp-screen -Value Show-YafpScreen -Scope Global -Force
 Set-Alias -Name yafp-screen-codex -Value Show-YafpScreenCodex -Scope Global -Force
+Set-Alias -Name yafp-screen-themes -Value Show-YafpScreenThemes -Scope Global -Force
 Set-Alias -Name yafp-screen-resources -Value Show-YafpScreenResources -Scope Global -Force
 
 Import-YafpTheme

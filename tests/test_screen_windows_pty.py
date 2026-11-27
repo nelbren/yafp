@@ -37,6 +37,9 @@ class PowerShellScreenTests(unittest.TestCase):
                                    f"$global:YAFP_SCREEN_SHINE='{mode}'; yafp-screen\r")
                     marker = "\x1b[96m" if mode == "random" else "\x1b[97m"
                     self.wait_for(terminal, "█" if mode == "off" else marker)
+                    if mode == "random":
+                        terminal.write("b")
+                        self.wait_for(terminal, "matrix")
                     # Unrelated keystrokes queued before the exit key must drain in one tick.
                     terminal.write("xyz" + key)
                     self.wait_for(terminal, "READY>", timeout=2)
